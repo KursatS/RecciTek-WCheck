@@ -33,7 +33,7 @@
       color: white;
       text-align: center;
       position: relative;
-      width: 450px;
+      width: 490px;
       min-height: 300px;
       animation: slideUp 0.5s ease-out forwards;
     }
@@ -44,7 +44,7 @@
       background: linear-gradient(135deg, #2196F3, #1976D2);
     }
     .red {
-      background: linear-gradient(135deg, #f44336, #d32f2f);
+      background: linear-gradient(135deg, #c0342a, #aa2626);
     }
     .content {
       height: 100%;
@@ -81,6 +81,8 @@
       justify-content: center;
       gap: 8px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      word-wrap: break-word;
+      max-width: 100%;
     }
     #status-icon {
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -135,11 +137,6 @@
       height: 4px;
       background: #ffeb3b;
       border-radius: 2px;
-      animation: progress 5s linear forwards;
-    }
-    @keyframes progress {
-      from { width: 100%; }
-      to { width: 0%; }
     }
   </style>
 </head>
@@ -160,6 +157,10 @@
   </div>
   <script>
     console.log('Inline script running');
+    let progressInterval;
+    let startTime;
+    let duration = 5000;
+    let currentWidth = 100;
     document.addEventListener('DOMContentLoaded', () => {
       console.log('DOM loaded in popup');
 
@@ -233,10 +234,43 @@
         // Start progress bar
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
-          progressBar.style.animation = 'progress 5s linear forwards';
-          setTimeout(() => {
-            window.close();
-          }, 5000);
+          progressBar.style.width = '100%';
+          startTime = Date.now();
+          progressInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
+            progressBar.style.width = currentWidth + '%';
+            if (currentWidth <= 0) {
+              clearInterval(progressInterval);
+              window.close();
+            }
+          }, 50);
+        }
+
+        // Hover events
+        if (popup) {
+          popup.addEventListener('mouseenter', () => {
+            // Pause progress bar and notify main process
+            if (progressInterval) {
+              clearInterval(progressInterval);
+            }
+            ipcRenderer.send('popup-hover-enter');
+          });
+
+          popup.addEventListener('mouseleave', () => {
+            // Resume progress bar and notify main process
+            startTime = Date.now() - ((100 - currentWidth) / 100 * duration);
+            progressInterval = setInterval(() => {
+              const elapsed = Date.now() - startTime;
+              currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
+              progressBar.style.width = currentWidth + '%';
+              if (currentWidth <= 0) {
+                clearInterval(progressInterval);
+                window.close();
+              }
+            }, 50);
+            ipcRenderer.send('popup-hover-leave');
+          });
         }
       });
     });

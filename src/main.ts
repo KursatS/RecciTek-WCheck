@@ -1,13 +1,13 @@
-const electron = require('electron');
+import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, clipboard } from 'electron';
 import * as path from 'path';
 import { checkWarranty } from './warrantyChecker';
 import { isSerialNumber } from './serialDetector';
 import { getCachedData, saveToCache, loadCache, toggleFavorite, saveNote, getNote, clearCache, saveStatus, initCache } from './cacheManager';
 
-const gotTheLock = electron.app.requestSingleInstanceLock();
+const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  electron.app.quit();
+  app.quit();
   process.exit(0);
 }
 
@@ -15,9 +15,11 @@ let mainWindow: any = null;
 let tray: any = null;
 let monitoringEnabled = true;
 let lockScreenEnabled = false;
+let popupTimeout: NodeJS.Timeout | null = null;
+let currentPopup: BrowserWindow | null = null;
 
 function createWindow(): void {
-  const splash = new electron.BrowserWindow({
+  const splash = new BrowserWindow({
     width: 600,
     height: 400,
     frame: false,
@@ -34,10 +36,11 @@ function createWindow(): void {
   setTimeout(() => {
     splash.close();
 
-    mainWindow = new electron.BrowserWindow({
+    mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
       minWidth: 475,
+      minHeight: 400,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
@@ -58,9 +61,9 @@ function createWindow(): void {
       mainWindow!.hide();
     });
 
-    const icon = electron.nativeImage.createFromPath(path.join(__dirname, '../logo.png'));
-    tray = new electron.Tray(icon);
-    const contextMenu = electron.Menu.buildFromTemplate([
+    const icon = nativeImage.createFromPath(path.join(__dirname, '../logo.png'));
+    tray = new Tray(icon);
+    const contextMenu = Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => mainWindow?.show() },
       { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
         lockScreenEnabled = !lockScreenEnabled;
@@ -73,7 +76,7 @@ function createWindow(): void {
         if (mainWindow) {
           mainWindow.destroy();
         }
-        electron.app.quit();
+        app.quit();
       }},
     ]);
 
@@ -87,7 +90,7 @@ function createWindow(): void {
 
     const monitorClipboard = () => {
       if (!monitoringEnabled) return;
-      const currentClipboard = require('electron').clipboard.readText();
+      const currentClipboard = clipboard.readText();
       if (currentClipboard !== lastClipboard && isSerialNumber(currentClipboard)) {
         lastClipboard = currentClipboard;
         handleSerialNumber(currentClipboard);
@@ -121,15 +124,15 @@ function showPopup(info: any): void {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
-  const popup = new electron.BrowserWindow({
-    width: 480,
+  const popup = new BrowserWindow({
+    width: 520,
     height: 360,
     show: false,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    x: width - 500,
+    x: width - 540,
     y: height - 400,
     webPreferences: {
       nodeIntegration: true,
@@ -137,6 +140,7 @@ function showPopup(info: any): void {
     },
   });
 
+  currentPopup = popup;
   popup.loadFile(path.join(__dirname, 'popup.html'));
 
   popup.once('ready-to-show', () => {
@@ -146,57 +150,67 @@ function showPopup(info: any): void {
       popup.webContents.send('popup-data', info);
     }, 100);
 
-    setTimeout(() => {
-      if (popup && !popup.isDestroyed()) {
-        popup.close();
+    // Set initial 5-second timeout
+    popupTimeout = setTimeout(() => {
+      if (currentPopup && !currentPopup.isDestroyed()) {
+        currentPopup.close();
       }
+      popupTimeout = null;
     }, 5000);
   });
 
   popup.on('closed', () => {
+    if (popupTimeout) {
+      clearTimeout(popupTimeout);
+      popupTimeout = null;
+    }
+    currentPopup = null;
   });
 }
 
-electron.ipcMain.handle('get-cached-data', async () => {
+ipcMain.handle('get-cached-data', async () => {
   return await loadCache();
 });
 
-electron.ipcMain.on('toggle-monitoring', (event: any, enabled: any) => {
+ipcMain.on('toggle-monitoring', (event: any, enabled: any) => {
   monitoringEnabled = enabled;
 });
 
-electron.ipcMain.handle('toggle-favorite', async (event: any, serial: string) => {
+ipcMain.handle('toggle-favorite', async (event: any, serial: string) => {
   await toggleFavorite(serial);
   return await getCachedData(serial);
 });
 
-electron.ipcMain.handle('save-note', async (event: any, serial: string, note: string) => {
+ipcMain.handle('save-note', async (event: any, serial: string, note: string) => {
   await saveNote(serial, note);
   return await getCachedData(serial);
 });
 
-electron.ipcMain.handle('get-note', async (event: any, serial: string) => {
+ipcMain.handle('get-note', async (event: any, serial: string) => {
   return await getNote(serial);
 });
 
-electron.ipcMain.handle('clear-cache', async () => {
+ipcMain.handle('clear-cache', async () => {
   await clearCache();
+  if (mainWindow) {
+    mainWindow.focus();
+  }
   return await loadCache();
 });
 
-electron.ipcMain.handle('save-status', async (event: any, serial: string, status: string) => {
+ipcMain.handle('save-status', async (event: any, serial: string, status: string) => {
   await saveStatus(serial, status);
   return await getCachedData(serial);
 });
 
-electron.ipcMain.on('toggle-lock-screen', () => {
+ipcMain.on('toggle-lock-screen', () => {
   lockScreenEnabled = !lockScreenEnabled;
   if (mainWindow) {
     mainWindow.setAlwaysOnTop(lockScreenEnabled);
     mainWindow.webContents.send('lock-screen-toggled', lockScreenEnabled);
   }
   if (tray) {
-    const contextMenu = electron.Menu.buildFromTemplate([
+    const contextMenu = Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => mainWindow?.show() },
       { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
         lockScreenEnabled = !lockScreenEnabled;
@@ -209,33 +223,53 @@ electron.ipcMain.on('toggle-lock-screen', () => {
         if (mainWindow) {
           mainWindow.destroy();
         }
-        electron.app.quit();
+        app.quit();
       }},
     ]);
     tray.setContextMenu(contextMenu);
   }
 });
 
-electron.app.on('second-instance', () => {
+// Popup hover IPC handlers
+ipcMain.on('popup-hover-enter', (event: any) => {
+  if (event.sender === currentPopup?.webContents && popupTimeout) {
+    clearTimeout(popupTimeout);
+    popupTimeout = null;
+  }
+});
+
+ipcMain.on('popup-hover-leave', (event: any) => {
+  if (event.sender === currentPopup?.webContents) {
+    // Set a new 5-second timeout to close the popup
+    popupTimeout = setTimeout(() => {
+      if (currentPopup && !currentPopup.isDestroyed()) {
+        currentPopup.close();
+      }
+      popupTimeout = null;
+    }, 5000);
+  }
+});
+
+app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
   }
 });
 
-electron.app.whenReady().then(() => {
+app.whenReady().then(() => {
   initCache();
   createWindow();
 });
 
-electron.app.on('window-all-closed', () => {
+app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    electron.app.quit();
+    app.quit();
   }
 });
 
-electron.app.on('activate', () => {
-  if (electron.BrowserWindow.getAllWindows().length === 0) {
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
