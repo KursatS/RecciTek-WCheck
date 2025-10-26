@@ -82,7 +82,3 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 ---
 
 ⭐ Eğer bu proje hoşunuza gittiyse, yıldız verin!
-
----
-
-⭐ Eğer bu proje hoşunuza gittiyse, yıldız verin!
