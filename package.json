@@ -30,9 +30,19 @@
     },
     "files": [
       "dist/**/*",
-      "assets/**/*"
+      "logo.png",
+      "logo256.ico"
     ],
-    "win": {},
+    "icon": "logo256.ico",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true
+    },
+    "win": {
+      "icon": "logo256.ico"
+    },
     "mac": {
       "icon": "logo.icns"
     },

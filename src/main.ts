@@ -35,7 +35,7 @@ function createWindow(): void {
         nodeIntegration: true,
         contextIsolation: false,
       },
-      icon: undefined,
+      icon: path.join(__dirname, '../logo.png'),
       show: false,
       autoHideMenuBar: true,
     });
