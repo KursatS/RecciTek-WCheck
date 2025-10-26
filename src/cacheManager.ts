@@ -1,26 +1,31 @@
 import Database from 'better-sqlite3';
 import * as path from 'path';
-import { app } from 'electron';
+const electron = require('electron');
+const { app } = electron;
 
-const dbPath = path.join(app.getPath('userData'), 'cache.db');
-const db = new Database(dbPath);
+let db: any = null;
 
-db.exec(`CREATE TABLE IF NOT EXISTS cache (
-  serial TEXT PRIMARY KEY,
-  model_name TEXT,
-  model_color TEXT,
-  warranty_status TEXT,
-  copy_date TEXT,
-  warranty_end TEXT,
-  is_favorite INTEGER DEFAULT 0,
-  has_note INTEGER DEFAULT 0,
-  note_content TEXT,
-  status TEXT
-)`);
+export function initCache() {
+  const dbPath = path.join(app.getPath('userData'), 'cache.db');
+  db = new Database(dbPath);
 
-try {
-  db.exec(`ALTER TABLE cache ADD COLUMN status TEXT`);
-} catch (err) {
+  db.exec(`CREATE TABLE IF NOT EXISTS cache (
+    serial TEXT PRIMARY KEY,
+    model_name TEXT,
+    model_color TEXT,
+    warranty_status TEXT,
+    copy_date TEXT,
+    warranty_end TEXT,
+    is_favorite INTEGER DEFAULT 0,
+    has_note INTEGER DEFAULT 0,
+    note_content TEXT,
+    status TEXT
+  )`);
+
+  try {
+    db.exec(`ALTER TABLE cache ADD COLUMN status TEXT`);
+  } catch (err) {
+  }
 }
 
 interface CacheEntry {

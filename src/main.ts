@@ -2,7 +2,14 @@ const electron = require('electron');
 import * as path from 'path';
 import { checkWarranty } from './warrantyChecker';
 import { isSerialNumber } from './serialDetector';
-import { getCachedData, saveToCache, loadCache, toggleFavorite, saveNote, getNote, clearCache, saveStatus } from './cacheManager';
+import { getCachedData, saveToCache, loadCache, toggleFavorite, saveNote, getNote, clearCache, saveStatus, initCache } from './cacheManager';
+
+const gotTheLock = electron.app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  electron.app.quit();
+  process.exit(0);
+}
 
 let mainWindow: any = null;
 let tray: any = null;
@@ -209,7 +216,17 @@ electron.ipcMain.on('toggle-lock-screen', () => {
   }
 });
 
-electron.app.whenReady().then(createWindow);
+electron.app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+electron.app.whenReady().then(() => {
+  initCache();
+  createWindow();
+});
 
 electron.app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
