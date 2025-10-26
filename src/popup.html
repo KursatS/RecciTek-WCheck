@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Popup</title>
+  <style>
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    body {
+      background: transparent; /* popup dışında boş alan */
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .popup {
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3), 0 5px 15px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      color: white;
+      text-align: center;
+      position: relative;
+      width: 450px;
+      min-height: 300px;
+      animation: slideUp 0.5s ease-out forwards;
+    }
+    .green {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+    }
+    .blue {
+      background: linear-gradient(135deg, #2196F3, #1976D2);
+    }
+    .red {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+    }
+    .content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    button {
+      margin-top: 15px;
+      padding: 12px 20px;
+      cursor: pointer;
+      background-color: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: inherit;
+      border-radius: 25px;
+      font-weight: 600;
+      font-size: 16.9px;
+      transition: all 0.3s ease;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    button:hover {
+      background-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+    #status {
+      font-size: 28.6px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    #status-icon {
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    #serial {
+      font-size: 27.3px;
+      margin-bottom: 8px;
+      opacity: 0.9;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    #model, #color {
+      font-size: 27.3px;
+      opacity: 0.9;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .info-row {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: nowrap;
+      width: 100%;
+    }
+    .info-row span {
+      vertical-align: middle;
+      white-space: normal;
+      word-wrap: break-word;
+      max-width: 300px;
+    }
+    #close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: inherit;
+      font-size: 26px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+    #close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    #progress-bar {
+      position: absolute;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #ffeb3b;
+      border-radius: 2px;
+      animation: progress 5s linear forwards;
+    }
+    @keyframes progress {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="popup" class="popup">
+    <button id="close-btn">×</button>
+    <div class="content">
+      <div id="status">
+        <span id="status-icon">✅</span>
+        <span id="status-text"></span>
+      </div>
+      <div class="info-row"> <span id="serial"></span></div>
+      <div class="info-row"> <span id="model"></span> - <span id="color"></span></div>
+      <div id="warranty-end" style="display: none; margin-top: 10px;">📅 KVK Güvence Bitiş Tarihi: <span id="end-date"></span></div>
+      <button id="copy-btn">📋 Kopyala</button>
+      <div id="progress-bar"></div>
+    </div>
+  </div>
+  <script>
+    console.log('Inline script running');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded in popup');
+
+      // IPC listener
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('popup-data', (event, info) => {
+        console.log('IPC message received in popup:', info);
+        const statusText = document.getElementById('status-text');
+        const statusIcon = document.getElementById('status-icon');
+        if (statusText) statusText.textContent = info.warranty_status || 'Bilinmiyor';
+        if (statusIcon) {
+          if (info.warranty_status === 'RECCI GARANTILI') {
+            statusIcon.textContent = '✅';
+          } else if (info.warranty_status === 'KVK GARANTILI') {
+            statusIcon.textContent = '🔵';
+          } else {
+            statusIcon.textContent = '❌';
+          }
+        }
+        const serial = document.getElementById('serial');
+        if (serial) serial.textContent = info.serial || 'Bilinmiyor';
+        const model = document.getElementById('model');
+        if (model) model.textContent = info.model_name || 'Model Bulunamadi';
+        const color = document.getElementById('color');
+        if (color) color.textContent = info.model_color || 'Renk Bulunamadi';
+        const warrantyEnd = document.getElementById('warranty-end');
+        const endDate = document.getElementById('end-date');
+        if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end && warrantyEnd && endDate) {
+          warrantyEnd.style.display = 'block';
+          endDate.textContent = info.warranty_end;
+        }
+
+        // Apply CSS classes
+        const popup = document.getElementById('popup');
+        if (info.warranty_status === 'RECCI GARANTILI') {
+          popup.className = 'popup green';
+        } else if (info.warranty_status === 'KVK GARANTILI') {
+          popup.className = 'popup blue';
+        } else {
+          popup.className = 'popup red';
+        }
+
+        // Set copy button functionality
+        const copyBtn = document.getElementById('copy-btn');
+        if (copyBtn) {
+          if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end) {
+            copyBtn.style.display = 'block';
+            copyBtn.textContent = '📋 Güvence Bitiş Tarihini Kopyala';
+            copyBtn.onclick = () => {
+              require('electron').clipboard.writeText(`GÜVENCE BİTİŞ TARİHİ : ${info.warranty_end}`);
+            };
+          } else if (info.warranty_status === 'RECCI GARANTILI' && info.model_name && info.model_name !== 'MODEL BULUNAMADI' && info.model_color && info.model_color !== 'RENK BULUNAMADI') {
+            copyBtn.style.display = 'block';
+            copyBtn.textContent = '📋 Kopyala';
+            copyBtn.onclick = () => {
+              require('electron').clipboard.writeText(`${info.model_name} - ${info.model_color}`);
+            };
+          } else {
+            copyBtn.style.display = 'none';
+          }
+        }
+
+        // Close button functionality
+        const closeBtn = document.getElementById('close-btn');
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            window.close();
+          };
+        }
+
+        // Start progress bar
+        const progressBar = document.getElementById('progress-bar');
+        if (progressBar) {
+          progressBar.style.animation = 'progress 5s linear forwards';
+          setTimeout(() => {
+            window.close();
+          }, 5000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
