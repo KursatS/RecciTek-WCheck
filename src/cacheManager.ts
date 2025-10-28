@@ -6,7 +6,15 @@ const { app } = electron;
 let db: any = null;
 
 export function initCache() {
-  const dbPath = path.join(app.getPath('userData'), 'cache.db');
+  const dbDir = path.join(app.getPath('documents'), 'RecciTek');
+  const fs = require('fs');
+
+  // Create RecciTek directory in Documents if it doesn't exist
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+
+  const dbPath = path.join(dbDir, 'cache.db');
   db = new Database(dbPath);
 
   db.exec(`CREATE TABLE IF NOT EXISTS cache (
@@ -101,4 +109,8 @@ export function clearCache(): Promise<void> {
   const stmt = db.prepare('DELETE FROM cache WHERE is_favorite = 0');
   stmt.run();
   return Promise.resolve();
+}
+
+export function getDatabasePath(): string {
+  return path.join(app.getPath('documents'), 'RecciTek', 'cache.db');
 }

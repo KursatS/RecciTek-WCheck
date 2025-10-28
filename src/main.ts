@@ -17,6 +17,193 @@ let monitoringEnabled = true;
 let lockScreenEnabled = false;
 let popupTimeout: NodeJS.Timeout | null = null;
 let currentPopup: BrowserWindow | null = null;
+let popupTimeoutDuration = 5000; // Default 5 seconds
+let popupSizeLevel = 3; // Default to large size
+
+// Settings persistence
+interface AppSettings {
+  popupTimeout: number;
+  popupSizeLevel: number;
+}
+
+function getSettingsPath(): string {
+  const path = require('path');
+  const { app } = require('electron');
+  return path.join(app.getPath('documents'), 'RecciTek', 'settings.json');
+}
+
+function loadSettings(): AppSettings {
+  const fs = require('fs');
+  const path = require('path');
+  const settingsPath = getSettingsPath();
+
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.log('Settings file not found or corrupted, using defaults');
+  }
+
+  return {
+    popupTimeout: 5000,
+    popupSizeLevel: 3
+  };
+}
+
+function saveSettings(settings: AppSettings): void {
+  const fs = require('fs');
+  const path = require('path');
+  const settingsPath = getSettingsPath();
+  const settingsDir = path.dirname(settingsPath);
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(settingsDir)) {
+    fs.mkdirSync(settingsDir, { recursive: true });
+  }
+
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+}
+
+// Size levels: 3 predefined popup types
+const POPUP_SIZE_LEVELS = [
+  { level: 1, file: 'spopup.html', width: 400, height: 300, label: 'Küçük' },
+  { level: 2, file: 'mpopup.html', width: 460, height: 330, label: 'Orta' },
+  { level: 3, file: 'lpopup.html', width: 520, height: 360, label: 'Büyük' }
+];
+
+// Get current size based on level
+function getCurrentPopupSize() {
+  const level = POPUP_SIZE_LEVELS.find(l => l.level === popupSizeLevel);
+  return level || POPUP_SIZE_LEVELS[2]; // Default to large if not found
+}
+
+let popupWidth = getCurrentPopupSize().width;
+let popupHeight = getCurrentPopupSize().height;
+let settingsWindow: BrowserWindow | null = null;
+
+function openSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    show: false,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+    title: 'Ayarlar',
+    icon: path.join(__dirname, '../logo.png'),
+    autoHideMenuBar: true,
+  });
+
+  // Create settings HTML content
+  const settingsHtml = `
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+      <meta charset="UTF-8">
+      <title>Ayarlar</title>
+      <style>
+        body {
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          margin: 20px;
+          background: #f5f5f5;
+          color: #333;
+        }
+        .setting-group {
+          margin-bottom: 20px;
+        }
+        label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: 600;
+        }
+        input, select {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+          font-size: 14px;
+        }
+        button {
+          padding: 10px 20px;
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: 600;
+          margin-right: 10px;
+        }
+        button:hover {
+          background: #45a049;
+        }
+        .buttons {
+          text-align: right;
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <h2>Popup Ayarları</h2>
+
+      <div class="setting-group">
+        <label for="timeout">Popup Kapanma Süresi (saniye):</label>
+        <input type="number" id="timeout" min="1" max="30" value="${popupTimeoutDuration / 1000}">
+      </div>
+
+      <div class="setting-group">
+        <label for="size">Popup Boyutu:</label>
+        <select id="size">
+          ${POPUP_SIZE_LEVELS.map(level =>
+            `<option value="${level.level}" ${level.level === popupSizeLevel ? 'selected' : ''}>${level.label} (${level.width}x${level.height})</option>`
+          ).join('')}
+        </select>
+      </div>
+
+      <div class="buttons">
+        <button id="save">Kaydet</button>
+        <button id="cancel">İptal</button>
+      </div>
+
+      <script>
+        const { ipcRenderer } = require('electron');
+
+        document.getElementById('save').onclick = () => {
+          const timeout = parseInt(document.getElementById('timeout').value) * 1000;
+          const sizeLevel = parseInt(document.getElementById('size').value);
+
+          ipcRenderer.send('save-settings', { timeout, sizeLevel });
+          window.close();
+        };
+
+        document.getElementById('cancel').onclick = () => {
+          window.close();
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  settingsWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(settingsHtml)}`);
+
+  settingsWindow.once('ready-to-show', () => {
+    if (settingsWindow) {
+      settingsWindow.show();
+    }
+  });
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+  });
+}
 
 function createWindow(): void {
   const splash = new BrowserWindow({
@@ -65,6 +252,7 @@ function createWindow(): void {
     tray = new Tray(icon);
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => mainWindow?.show() },
+      { label: 'Ayarlar', click: () => openSettingsWindow() },
       { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
         lockScreenEnabled = !lockScreenEnabled;
         if (mainWindow) {
@@ -120,20 +308,27 @@ async function handleSerialNumber(serial: string): Promise<void> {
 }
 
 function showPopup(info: any): void {
+  // Close any existing popup before showing new one
+  if (currentPopup && !currentPopup.isDestroyed()) {
+    currentPopup.close();
+  }
+
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
+  const currentSize = getCurrentPopupSize();
+
   const popup = new BrowserWindow({
-    width: 520,
-    height: 360,
+    width: currentSize.width,
+    height: currentSize.height,
     show: false,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    x: width - 540,
-    y: height - 400,
+    x: width - currentSize.width - 20,
+    y: height - currentSize.height - 40,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -141,22 +336,22 @@ function showPopup(info: any): void {
   });
 
   currentPopup = popup;
-  popup.loadFile(path.join(__dirname, 'popup.html'));
+  popup.loadFile(path.join(__dirname, currentSize.file));
 
   popup.once('ready-to-show', () => {
     popup.show();
 
     setTimeout(() => {
-      popup.webContents.send('popup-data', info);
+      popup.webContents.send('popup-data', info, popupTimeoutDuration);
     }, 100);
 
-    // Set initial 5-second timeout
+    // Set initial timeout based on settings
     popupTimeout = setTimeout(() => {
       if (currentPopup && !currentPopup.isDestroyed()) {
         currentPopup.close();
       }
       popupTimeout = null;
-    }, 5000);
+    }, popupTimeoutDuration);
   });
 
   popup.on('closed', () => {
@@ -240,14 +435,29 @@ ipcMain.on('popup-hover-enter', (event: any) => {
 
 ipcMain.on('popup-hover-leave', (event: any) => {
   if (event.sender === currentPopup?.webContents) {
-    // Set a new 5-second timeout to close the popup
+    // Set a new timeout based on settings to close the popup
     popupTimeout = setTimeout(() => {
       if (currentPopup && !currentPopup.isDestroyed()) {
         currentPopup.close();
       }
       popupTimeout = null;
-    }, 5000);
+    }, popupTimeoutDuration);
   }
+});
+
+// Settings IPC handler
+ipcMain.on('save-settings', (event: any, settings: any) => {
+  popupTimeoutDuration = Math.min(settings.timeout, 5000); // Max 5 seconds
+  popupSizeLevel = settings.sizeLevel;
+  const newSize = getCurrentPopupSize();
+  popupWidth = newSize.width;
+  popupHeight = newSize.height;
+
+  // Save settings to file
+  saveSettings({
+    popupTimeout: popupTimeoutDuration,
+    popupSizeLevel: popupSizeLevel
+  });
 });
 
 app.on('second-instance', () => {
@@ -258,6 +468,11 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(() => {
+  // Load settings on app startup
+  const settings = loadSettings();
+  popupTimeoutDuration = settings.popupTimeout;
+  popupSizeLevel = settings.popupSizeLevel;
+
   initCache();
   createWindow();
 });

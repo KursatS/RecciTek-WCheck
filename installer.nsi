@@ -13,6 +13,8 @@
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_UNPAGE_FINISH
 
+!define MUI_UNABORTWARNING
+
 Section "Ana Uygulama" SecApp
   SectionIn RO
   SetOutPath "$INSTDIR"
@@ -21,6 +23,16 @@ SectionEnd
 
 Section "Masaüstü Kısayolu" SecDesktop
   CreateShortCut "$DESKTOP\RecciTek WCheck.lnk" "$INSTDIR\RecciTek WCheck.exe"
+SectionEnd
+
+Section "Uninstall"
+  MessageBox MB_YESNO "Program verilerini (önbellek ve ayarlar) silmek istiyor musunuz?" IDYES true IDNO false
+  true:
+    RMDir /r "$DOCUMENTS\RecciTek"
+    goto next
+  false:
+    ; Do nothing, keep user data
+  next:
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN

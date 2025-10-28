@@ -10,14 +10,6 @@ export interface WarrantyInfo {
 }
 
 export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
-  if (serial.startsWith('RCFVBY') || serial.startsWith('RCCVBY')) {
-    return {
-      serial,
-      warranty_status: 'RECCI GARANTILI',
-      model_name: 'MODEL BULUNAMADI',
-      model_color: 'RENK BULUNAMADI'
-    };
-  }
 
   function makeRequest(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -89,6 +81,14 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         model_name = model_name.toUpperCase();
         if (model_name.includes('QREVO')) {
           model_name = model_name.replace('QREVO', 'Q REVO');
+        }
+        // Remove SONIC from model names (e.g., S8 SONIC -> S8)
+        while (model_name.includes('SONIC')) {
+          model_name = model_name.replace('SONIC', '').trim();
+        }
+        // Remove SONIC from model names (e.g., S8 SONIC -> S8)
+        while (model_name.includes('SONIC')) {
+          model_name = model_name.replace('SONIC', '').trim();
         }
       }
 
