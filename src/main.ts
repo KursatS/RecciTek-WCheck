@@ -70,7 +70,7 @@ function saveSettings(settings: AppSettings): void {
 const POPUP_SIZE_LEVELS = [
   { level: 1, file: 'spopup.html', width: 400, height: 300, label: 'Küçük' },
   { level: 2, file: 'mpopup.html', width: 460, height: 330, label: 'Orta' },
-  { level: 3, file: 'lpopup.html', width: 520, height: 360, label: 'Büyük' }
+  { level: 3, file: 'lpopup.html', width: 500, height: 350, label: 'Büyük' }
 ];
 
 // Get current size based on level
@@ -312,6 +312,11 @@ function showPopup(info: any): void {
   if (currentPopup && !currentPopup.isDestroyed()) {
     currentPopup.close();
   }
+  // Clear any existing timeout when closing the popup
+  if (popupTimeout) {
+    clearTimeout(popupTimeout);
+    popupTimeout = null;
+  }
 
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -355,11 +360,13 @@ function showPopup(info: any): void {
   });
 
   popup.on('closed', () => {
-    if (popupTimeout) {
-      clearTimeout(popupTimeout);
-      popupTimeout = null;
+    if (popup === currentPopup) {
+      if (popupTimeout) {
+        clearTimeout(popupTimeout);
+        popupTimeout = null;
+      }
+      currentPopup = null;
     }
-    currentPopup = null;
   });
 }
 
@@ -398,6 +405,10 @@ ipcMain.handle('save-status', async (event: any, serial: string, status: string)
   return await getCachedData(serial);
 });
 
+ipcMain.on('open-settings', () => {
+  openSettingsWindow();
+});
+
 ipcMain.on('toggle-lock-screen', () => {
   lockScreenEnabled = !lockScreenEnabled;
   if (mainWindow) {
@@ -407,6 +418,7 @@ ipcMain.on('toggle-lock-screen', () => {
   if (tray) {
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => mainWindow?.show() },
+      { label: 'Ayarlar', click: () => openSettingsWindow() },
       { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
         lockScreenEnabled = !lockScreenEnabled;
         if (mainWindow) {

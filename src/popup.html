@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <title>Popup</title>
   <style>
-    @keyframes slideUp {
+    @keyframes fadeInScale {
       from {
-        transform: translateY(30px);
         opacity: 0;
+        transform: scale(0.9);
       }
       to {
-        transform: translateY(0);
         opacity: 1;
+        transform: scale(1);
       }
     }
     body {
@@ -27,7 +27,6 @@
     }
     .popup {
       border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.3), 0 5px 15px rgba(0,0,0,0.2);
       backdrop-filter: blur(10px);
       padding: 25px;
       color: white;
@@ -36,7 +35,8 @@
       width: calc(100vw - 40px);
       max-width: 490px;
       min-height: 300px;
-      animation: slideUp 0.5s ease-out forwards;
+      animation: fadeInScale 0.5s ease-out forwards;
+      background: rgba(0, 0, 0, 0.1);
     }
     .green {
       background: linear-gradient(135deg, #4CAF50, #45a049);
@@ -84,6 +84,11 @@
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
       word-wrap: break-word;
       max-width: 100%;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 15px;
+      padding: 12px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
     #status-icon {
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);

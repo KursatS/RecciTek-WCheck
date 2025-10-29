@@ -266,6 +266,7 @@
 <body class="dark">
   <div class="container">
     <h1>RecciTek Garanti Sorgu Geçmişi</h1>
+    <button id="settings-btn" style="position: absolute; top: 0; left: 0; background: none; border: none; font-size: 24px; cursor: pointer;">⚙️</button>
     <button id="theme-toggle" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 24px; cursor: pointer;">🌙</button>
     <div class="controls">
       <input type="text" id="search" placeholder="Seri numarası ara...">
@@ -453,6 +454,11 @@
     };
 
     let currentSerial = '';
+
+    // Settings button
+    document.getElementById('settings-btn').onclick = () => {
+      ipcRenderer.send('open-settings');
+    };
 
     // Theme toggle
     document.getElementById('theme-toggle').onclick = () => {
