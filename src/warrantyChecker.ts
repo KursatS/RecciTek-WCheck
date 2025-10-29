@@ -82,14 +82,8 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         if (model_name.includes('QREVO')) {
           model_name = model_name.replace('QREVO', 'Q REVO');
         }
-        // Remove SONIC from model names (e.g., S8 SONIC -> S8)
-        while (model_name.includes('SONIC')) {
-          model_name = model_name.replace('SONIC', '').trim();
-        }
-        // Remove SONIC from model names (e.g., S8 SONIC -> S8)
-        while (model_name.includes('SONIC')) {
-          model_name = model_name.replace('SONIC', '').trim();
-        }
+        // Remove SONIC from model names (e.g., S8 SONIC -> S8, S8 SONİC -> S8)
+        model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
       }
 
       return {

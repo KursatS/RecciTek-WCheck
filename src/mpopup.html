@@ -37,6 +37,10 @@
       animation: fadeInScale 0.45s ease-out forwards;
       background: rgba(0, 0, 0, 0.4);
       border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 0 20px rgba(255, 255, 255, 0.05) inset;
     }
     .green {
       background: linear-gradient(135deg, #4CAF50, #45a049);
@@ -53,7 +57,7 @@
       justify-content: flex-start;
       align-items: center;
       height: calc(100% - 15px);
-      padding: 15% 0 5px 0;
+      padding: 10% 0 5px 0;
     }
     button {
       margin-top: 14px;
@@ -72,7 +76,8 @@
     }
     button:hover {
       background-color: rgba(255, 255, 255, 0.25);
-      transform: translateY(-1px);
+      transform: translateY(-1px) scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     #status {
       font-size: 24px;
@@ -82,7 +87,7 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
       background: rgba(255, 255, 255, 0.15);
       border-radius: 14px;
       padding: 10px 18px;
@@ -90,18 +95,18 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
     #status-icon {
-      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
     }
     #serial {
       font-size: 22px;
       margin-bottom: 7px;
       opacity: 0.9;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
     }
     #model, #color {
       font-size: 22px;
       opacity: 0.9;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
     }
     .info-row {
       margin-bottom: 7px;
@@ -140,8 +145,18 @@
       left: 0;
       right: 0;
       height: 3px;
-      background: #ffeb3b;
+      background: linear-gradient(90deg, #ffeb3b, #ffd700);
       border-radius: 2px;
+      box-shadow: 0 0 8px rgba(255, 235, 59, 0.6), 0 0 16px rgba(255, 235, 59, 0.4);
+      animation: progressGlow 2s ease-in-out infinite alternate;
+    }
+    @keyframes progressGlow {
+      from {
+        box-shadow: 0 0 8px rgba(255, 235, 59, 0.6), 0 0 16px rgba(255, 235, 59, 0.4);
+      }
+      to {
+        box-shadow: 0 0 12px rgba(255, 235, 59, 0.8), 0 0 24px rgba(255, 235, 59, 0.6);
+      }
     }
   </style>
 </head>
@@ -150,13 +165,27 @@
     <button id="close-btn">×</button>
     <div class="content">
       <div id="status">
-        <span id="status-icon">✅</span>
+        <span id="status-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+        </span>
         <span id="status-text"></span>
       </div>
       <div class="info-row"> <span id="serial"></span></div>
       <div class="info-row"> <span id="model"></span> - <span id="color"></span></div>
-      <div id="warranty-end" style="display: none; margin-top: 9px;">📅 KVK Güvence Bitiş Tarihi: <span id="end-date"></span></div>
-      <button id="copy-btn">📋 Kopyala</button>
+      <div id="warranty-end" style="display: none; margin-top: 9px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;">
+          <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+        </svg>
+        KVK Güvence Bitiş Tarihi: <span id="end-date"></span>
+      </div>
+      <button id="copy-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;">
+          <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+        </svg>
+        Kopyala
+      </button>
     </div>
     <div id="progress-bar"></div>
   </div>
@@ -178,17 +207,17 @@
         if (statusText) statusText.textContent = info.warranty_status || 'Bilinmiyor';
         if (statusIcon) {
           if (info.warranty_status === 'RECCI GARANTILI') {
-            statusIcon.textContent = '✅';
+            statusIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
           } else if (info.warranty_status === 'KVK GARANTILI') {
-            statusIcon.textContent = '🔵';
+            statusIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>';
           } else {
-            statusIcon.textContent = '❌';
+            statusIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
           }
         }
         const serial = document.getElementById('serial');
         if (serial) serial.textContent = info.serial || 'Bilinmiyor';
         const model = document.getElementById('model');
-        if (model) model.textContent = (info.model_name || 'Model Bulunamadi').replace('SONIC', '').trim();
+        if (model) model.textContent = (info.model_name || 'Model Bulunamadi').replace(/SON[Iİ]C/g, '').trim();
         const color = document.getElementById('color');
         if (color) color.textContent = info.model_color || 'Renk Bulunamadi';
         const warrantyEnd = document.getElementById('warranty-end');
@@ -213,13 +242,13 @@
         if (copyBtn) {
           if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end) {
             copyBtn.style.display = 'block';
-            copyBtn.textContent = '📋 Güvence Bitiş Tarihini Kopyala';
+            copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Güvence Bitiş Tarihini Kopyala';
             copyBtn.onclick = () => {
               require('electron').clipboard.writeText(`GÜVENCE BİTİŞ TARİHİ : ${info.warranty_end}`);
             };
           } else if (info.warranty_status === 'RECCI GARANTILI' && info.model_name && info.model_name !== 'MODEL BULUNAMADI' && info.model_color && info.model_color !== 'RENK BULUNAMADI') {
             copyBtn.style.display = 'block';
-            copyBtn.textContent = '📋 Kopyala';
+            copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Kopyala';
             copyBtn.onclick = () => {
               require('electron').clipboard.writeText(`${info.model_name} - ${info.model_color}`);
             };

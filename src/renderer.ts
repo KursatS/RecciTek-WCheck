@@ -28,7 +28,7 @@ function loadCards() {
           <span class="favorite" onclick="toggleFavorite('${item.serial}')">⭐</span>
           <div class="card-content">
             <p><strong>Seri Numarası:</strong> ${item.serial}</p>
-            <p><strong>Model:</strong> ${item.model_name} - ${item.model_color}</p>
+            <p><strong>Model:</strong> ${item.model_name.replace(/SON[Iİ]C/g, '').trim()} - ${item.model_color}</p>
             <p><strong>Garanti Durumu:</strong> ${item.warranty_status}</p>
             <p><strong>Kopyalama Tarihi:</strong> ${item.copy_date}</p>
             ${item.warranty_end ? `<p><strong>Garanti Bitiş:</strong> ${item.warranty_end}</p>` : ''}
