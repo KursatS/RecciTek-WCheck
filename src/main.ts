@@ -43,7 +43,7 @@ function loadSettings(): AppSettings {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.log('Settings file not found or corrupted, using defaults');
+    // Settings file not found or corrupted, using defaults
   }
 
   return {
@@ -308,6 +308,13 @@ async function handleSerialNumber(serial: string): Promise<void> {
 }
 
 function showPopup(info: any): void {
+  // Override warranty status for RCCVBY and RCFVBY prefixes if out of warranty
+  if ((info.serial.startsWith('RCCVBY') || info.serial.startsWith('RCFVBY')) && info.warranty_status === 'GARANTI KAPSAMI DISINDA') {
+    info.warranty_status = 'RECCI GARANTILI';
+    info.model_name = 'cihaz üzerinden öğreniniz';
+    info.model_color = 'cihaz üzerinden öğreniniz';
+  }
+
   // Close any existing popup before showing new one
   if (currentPopup && !currentPopup.isDestroyed()) {
     currentPopup.close();

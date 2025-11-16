@@ -63,5 +63,5 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-#Kilo Code
+# Development files
 .kilocode/

@@ -49,7 +49,6 @@ function loadCards() {
   }).catch(error => {
   });
 }
-
 loadCards();
 
 // Global functions
