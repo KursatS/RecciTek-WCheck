@@ -60,6 +60,13 @@ export function getCachedData(serial: string): Promise<CacheEntry | null> {
 }
 
 export function saveToCache(serial: string, info: any): Promise<void> {
+  // Override warranty status for RCCVBY and RCFVBY prefixes if out of warranty
+  if ((serial.startsWith('RCCVBY') || serial.startsWith('RCFVBY')) && info.warranty_status === 'GARANTI KAPSAMI DISINDA') {
+    info.warranty_status = 'RECCI GARANTILI';
+    info.model_name = 'cihaz üzerinden öğreniniz';
+    info.model_color = 'cihaz üzerinden öğreniniz';
+  }
+
   const entry: CacheEntry = {
     serial,
     model_name: info.model_name || '',
