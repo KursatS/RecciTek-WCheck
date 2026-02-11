@@ -201,6 +201,41 @@ function showPopup(info: any): void {
   });
 }
 
+function openSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 500,
+    height: 450,
+    resizable: false,
+    frame: true,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+    title: 'Ayarlar'
+  });
+
+  settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+  });
+}
+
+function forceQuit(): void {
+  globalShortcut.unregisterAll();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.destroy();
+  }
+  if (currentPopup && !currentPopup.isDestroyed()) {
+    currentPopup.destroy();
+  }
+  app.exit(0);
+}
+
 function createWindow(): void {
   const splash = new BrowserWindow({
     width: 600,
@@ -241,9 +276,9 @@ function createWindow(): void {
 
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-      { label: 'Ayarlar', click: () => mainWindow?.webContents.send('open-settings') },
+      { label: 'Ayarlar', click: () => openSettingsWindow() },
       { type: 'separator' },
-      { label: 'Çıkış', click: () => app.quit() }
+      { label: 'Çıkış', click: () => forceQuit() }
     ]));
 
     tray.on('double-click', () => {
@@ -283,24 +318,7 @@ ipcMain.on('toggle-monitoring', (_, enabled) => {
 });
 
 ipcMain.on('open-settings', () => {
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.focus();
-    return;
-  }
-
-  settingsWindow = new BrowserWindow({
-    width: 500,
-    height: 450,
-    resizable: false,
-    frame: true,
-    webPreferences: { nodeIntegration: true, contextIsolation: false },
-    title: 'Ayarlar'
-  });
-
-  settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
-  settingsWindow.on('closed', () => {
-    settingsWindow = null;
-  });
+  openSettingsWindow();
 });
 
 ipcMain.handle('toggle-double-copy', async (_, enabled) => {
