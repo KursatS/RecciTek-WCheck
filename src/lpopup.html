@@ -51,6 +51,9 @@
     .red {
       background: linear-gradient(135deg, #f44336, #d32f2f);
     }
+    .yellow {
+      background: linear-gradient(135deg, #ffc107, #ffb300);
+    }
     .content {
       display: flex;
       flex-direction: column;
@@ -190,18 +193,13 @@
     <div id="progress-bar"></div>
   </div>
   <script>
-    console.log('Large popup script running');
     let progressInterval;
     let startTime;
     let duration = 5000;
     let currentWidth = 100;
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('Large popup DOM loaded');
-
-      // IPC listener
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('popup-data', (event, info, timeoutDuration = 5000) => {
-        console.log('IPC message received in large popup:', info);
         const statusText = document.getElementById('status-text');
         const statusIcon = document.getElementById('status-icon');
         if (statusText) statusText.textContent = info.warranty_status || 'Bilinmiyor';
@@ -227,17 +225,17 @@
           endDate.textContent = info.warranty_end;
         }
 
-        // Apply CSS classes
         const popup = document.getElementById('popup');
         if (info.warranty_status === 'RECCI GARANTILI') {
           popup.className = 'popup green';
         } else if (info.warranty_status === 'KVK GARANTILI') {
           popup.className = 'popup blue';
+        } else if (info.warranty_status === 'İnternet Bağlantı Hatası' || info.is_error) {
+          popup.className = 'popup yellow';
         } else {
           popup.className = 'popup red';
         }
 
-        // Set copy button functionality
         const copyBtn = document.getElementById('copy-btn');
         if (copyBtn) {
           if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end) {
@@ -257,7 +255,6 @@
           }
         }
 
-        // Close button functionality
         const closeBtn = document.getElementById('close-btn');
         if (closeBtn) {
           closeBtn.onclick = () => {
@@ -265,12 +262,11 @@
           };
         }
 
-        // Start progress bar
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
           progressBar.style.width = '100%';
           startTime = Date.now();
-          duration = timeoutDuration; // Use the passed timeout duration
+          duration = timeoutDuration;
           progressInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
@@ -282,7 +278,6 @@
           }, 50);
         }
 
-        // Hover events
         if (popup) {
           popup.addEventListener('mouseenter', () => {
             if (progressInterval) {

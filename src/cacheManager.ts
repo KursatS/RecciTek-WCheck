@@ -118,6 +118,12 @@ export function clearCache(): Promise<void> {
   return Promise.resolve();
 }
 
+export function deleteEntry(serial: string): Promise<void> {
+  const stmt = db.prepare('DELETE FROM cache WHERE serial = ?');
+  stmt.run(serial);
+  return Promise.resolve();
+}
+
 export function getDatabasePath(): string {
   return path.join(app.getPath('documents'), 'RecciTek', 'cache.db');
 }

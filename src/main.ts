@@ -1,207 +1,203 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, clipboard } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  ipcMain,
+  nativeImage,
+  screen,
+  clipboard,
+  globalShortcut
+} from 'electron';
 import * as path from 'path';
 import { checkWarranty } from './warrantyChecker';
 import { isSerialNumber } from './serialDetector';
-import { getCachedData, saveToCache, loadCache, toggleFavorite, saveNote, getNote, clearCache, saveStatus, initCache } from './cacheManager';
+import {
+  getCachedData,
+  saveToCache,
+  loadCache,
+  toggleFavorite,
+  saveNote,
+  getNote,
+  clearCache,
+  saveStatus,
+  initCache,
+  deleteEntry
+} from './cacheManager';
 
 const gotTheLock = app.requestSingleInstanceLock();
-
 if (!gotTheLock) {
   app.quit();
   process.exit(0);
 }
 
-let mainWindow: any = null;
-let tray: any = null;
+let mainWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let monitoringEnabled = true;
-let lockScreenEnabled = false;
+
 let popupTimeout: NodeJS.Timeout | null = null;
 let currentPopup: BrowserWindow | null = null;
-let popupTimeoutDuration = 5000; // Default 5 seconds
-let popupSizeLevel = 3; // Default to large size
+let popupTimeoutDuration = 5000;
+let popupSizeLevel = 3;
+let currentPopupData: any = null;
 
-// Settings persistence
+let doubleCopyEnabled = true;
+let popupVisible = false;
+
+const fs = require('fs');
+
 interface AppSettings {
   popupTimeout: number;
   popupSizeLevel: number;
+  doubleCopyEnabled: boolean;
 }
 
 function getSettingsPath(): string {
-  const path = require('path');
-  const { app } = require('electron');
   return path.join(app.getPath('documents'), 'RecciTek', 'settings.json');
 }
 
 function loadSettings(): AppSettings {
-  const fs = require('fs');
-  const path = require('path');
-  const settingsPath = getSettingsPath();
-
   try {
-    if (fs.existsSync(settingsPath)) {
-      const data = fs.readFileSync(settingsPath, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    // Settings file not found or corrupted, using defaults
-  }
-
-  return {
-    popupTimeout: 5000,
-    popupSizeLevel: 3
-  };
+    const p = getSettingsPath();
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {}
+  return { popupTimeout: 5000, popupSizeLevel: 3, doubleCopyEnabled: true };
 }
 
 function saveSettings(settings: AppSettings): void {
-  const fs = require('fs');
-  const path = require('path');
-  const settingsPath = getSettingsPath();
-  const settingsDir = path.dirname(settingsPath);
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(settingsDir)) {
-    fs.mkdirSync(settingsDir, { recursive: true });
-  }
-
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  fs.mkdirSync(path.dirname(getSettingsPath()), { recursive: true });
+  fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2));
 }
 
-// Size levels: 3 predefined popup types
 const POPUP_SIZE_LEVELS = [
   { level: 1, file: 'spopup.html', width: 400, height: 300, label: 'Küçük' },
   { level: 2, file: 'mpopup.html', width: 460, height: 330, label: 'Orta' },
   { level: 3, file: 'lpopup.html', width: 500, height: 350, label: 'Büyük' }
 ];
 
-// Get current size based on level
 function getCurrentPopupSize() {
-  const level = POPUP_SIZE_LEVELS.find(l => l.level === popupSizeLevel);
-  return level || POPUP_SIZE_LEVELS[2]; // Default to large if not found
+  return POPUP_SIZE_LEVELS.find(l => l.level === popupSizeLevel) || POPUP_SIZE_LEVELS[2];
 }
 
-let popupWidth = getCurrentPopupSize().width;
-let popupHeight = getCurrentPopupSize().height;
-let settingsWindow: BrowserWindow | null = null;
+function extractCopyText(data: any): string {
+  if (!data) return '';
+  if (data.warranty_status === 'KVK GARANTILI' && data.warranty_end) {
+    return `GÜVENCE BİTİŞ TARİHİ : ${data.warranty_end}`;
+  }
+  if (data.warranty_status === 'RECCI GARANTILI' && 
+      data.model_name && data.model_name !== 'MODEL BULUNAMADI' && 
+      data.model_color && data.model_color !== 'RENK BULUNAMADI') {
+    return `${data.model_name} - ${data.model_color}`;
+  }
+  return '';
+}
 
-function openSettingsWindow(): void {
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.focus();
+function handleDoubleCopy(): void {
+  try {
+    if (!popupVisible || !currentPopupData) return;
+
+    const textToCopy = extractCopyText(currentPopupData);
+    if (!textToCopy) return;
+
+    clipboard.writeText(textToCopy);
+
+    if (currentPopup && !currentPopup.isDestroyed()) {
+      if (popupTimeout) {
+        clearTimeout(popupTimeout);
+        popupTimeout = null;
+      }
+      currentPopup.close();
+    }
+  } catch {}
+}
+
+function startClipboardMonitor() {
+  let lastClipboard = '';
+
+  setInterval(() => {
+    if (!monitoringEnabled) return;
+
+    const text = clipboard.readText().trim();
+    if (!text || text === lastClipboard) return;
+    lastClipboard = text;
+
+    if (!isSerialNumber(text)) return;
+
+    handleSerialNumber(text);
+  }, 800);
+}
+
+async function handleSerialNumber(serial: string): Promise<void> {
+  const cached = await getCachedData(serial);
+  if (cached) {
+    showPopup(cached);
+    mainWindow?.webContents.send('refresh-cards');
     return;
   }
 
-  settingsWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
-    show: false,
-    resizable: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-    title: 'Ayarlar',
-    icon: path.join(__dirname, '../logo.png'),
-    autoHideMenuBar: true,
-  });
+  try {
+    const warrantyInfo = await checkWarranty(serial);
+    await saveToCache(serial, warrantyInfo);
+    showPopup(warrantyInfo);
+    mainWindow?.webContents.send('refresh-cards');
+  } catch {
+    showPopup({
+      serial,
+      warranty_status: 'İnternet Bağlantı Hatası',
+      is_error: true
+    });
+  }
+}
 
-  // Create settings HTML content
-  const settingsHtml = `
-    <!DOCTYPE html>
-    <html lang="tr">
-    <head>
-      <meta charset="UTF-8">
-      <title>Ayarlar</title>
-      <style>
-        body {
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          margin: 20px;
-          background: #f5f5f5;
-          color: #333;
-        }
-        .setting-group {
-          margin-bottom: 20px;
-        }
-        label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: 600;
-        }
-        input, select {
-          width: 100%;
-          padding: 8px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-          font-size: 14px;
-        }
-        button {
-          padding: 10px 20px;
-          background: #4CAF50;
-          color: white;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          font-weight: 600;
-          margin-right: 10px;
-        }
-        button:hover {
-          background: #45a049;
-        }
-        .buttons {
-          text-align: right;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <h2>Popup Ayarları</h2>
-
-      <div class="setting-group">
-        <label for="timeout">Popup Kapanma Süresi (saniye):</label>
-        <input type="number" id="timeout" min="1" max="30" value="${popupTimeoutDuration / 1000}">
-      </div>
-
-      <div class="setting-group">
-        <label for="size">Popup Boyutu:</label>
-        <select id="size">
-          ${POPUP_SIZE_LEVELS.map(level =>
-            `<option value="${level.level}" ${level.level === popupSizeLevel ? 'selected' : ''}>${level.label} (${level.width}x${level.height})</option>`
-          ).join('')}
-        </select>
-      </div>
-
-      <div class="buttons">
-        <button id="save">Kaydet</button>
-        <button id="cancel">İptal</button>
-      </div>
-
-      <script>
-        const { ipcRenderer } = require('electron');
-
-        document.getElementById('save').onclick = () => {
-          const timeout = parseInt(document.getElementById('timeout').value) * 1000;
-          const sizeLevel = parseInt(document.getElementById('size').value);
-
-          ipcRenderer.send('save-settings', { timeout, sizeLevel });
-          window.close();
-        };
-
-        document.getElementById('cancel').onclick = () => {
-          window.close();
-        };
-      </script>
-    </body>
-    </html>
-  `;
-
-  settingsWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(settingsHtml)}`);
-
-  settingsWindow.once('ready-to-show', () => {
-    if (settingsWindow) {
-      settingsWindow.show();
+function showPopup(info: any): void {
+  try {
+    if (currentPopup && !currentPopup.isDestroyed()) {
+      currentPopup.removeAllListeners('closed');
+      currentPopup.close();
     }
+  } catch {}
+
+  if (popupTimeout) clearTimeout(popupTimeout);
+
+  currentPopupData = info;
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const size = getCurrentPopupSize();
+
+  const popup = new BrowserWindow({
+    width: size.width,
+    height: size.height,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    x: width - size.width - 20,
+    y: height - size.height - 40,
+    webPreferences: { nodeIntegration: true, contextIsolation: false }
   });
 
-  settingsWindow.on('closed', () => {
-    settingsWindow = null;
+  currentPopup = popup;
+  popup.loadFile(path.join(__dirname, size.file));
+
+  popup.once('ready-to-show', () => {
+    try {
+      popup.show();
+      popupVisible = true;
+      popup.webContents.send('popup-data', info, popupTimeoutDuration);
+      popupTimeout = setTimeout(() => {
+        try {
+          popup.close();
+        } catch {}
+      }, popupTimeoutDuration);
+    } catch {}
+  });
+
+  popup.on('closed', () => {
+    popupVisible = false;
+    currentPopup = null;
+    currentPopupData = null;
   });
 }
 
@@ -211,299 +207,148 @@ function createWindow(): void {
     height: 400,
     frame: false,
     alwaysOnTop: true,
-    resizable: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
+    resizable: false
   });
 
   splash.loadFile(path.join(__dirname, 'splash.html'));
 
   setTimeout(() => {
-    splash.close();
+    try {
+      splash.close();
+    } catch {}
 
     mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
       minWidth: 475,
       minHeight: 400,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-      },
-      icon: path.join(__dirname, '../logo.png'),
       show: false,
-      autoHideMenuBar: true,
+      webPreferences: { nodeIntegration: true, contextIsolation: false },
+      icon: path.join(__dirname, '../logo.png'),
+      autoHideMenuBar: true
     });
 
-    mainWindow!.loadFile(path.join(__dirname, 'index.html'));
-
-    mainWindow!.on('closed', () => {
-      mainWindow = null;
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
+    mainWindow.on('close', e => {
+      e.preventDefault();
+      mainWindow?.hide();
     });
 
-    mainWindow!.on('close', (event: any) => {
-      event.preventDefault();
-      mainWindow!.hide();
-    });
+    mainWindow.once('ready-to-show', () => mainWindow?.show());
 
-    const icon = nativeImage.createFromPath(path.join(__dirname, '../logo.png'));
-    tray = new Tray(icon);
-    const contextMenu = Menu.buildFromTemplate([
-      { label: 'Ana Menü', click: () => mainWindow?.show() },
-      { label: 'Ayarlar', click: () => openSettingsWindow() },
-      { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
-        lockScreenEnabled = !lockScreenEnabled;
-        if (mainWindow) {
-          mainWindow.setAlwaysOnTop(lockScreenEnabled);
-          mainWindow.webContents.send('lock-screen-toggled', lockScreenEnabled);
-        }
-      }},
-      { label: 'Çıkış', click: () => {
-        if (mainWindow) {
-          mainWindow.destroy();
-        }
-        app.quit();
-      }},
-    ]);
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, '../logo.png')));
+    tray.setToolTip('Warranty Monitor');
 
-    tray!.on('double-click', () => {
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
+      { label: 'Ayarlar', click: () => mainWindow?.webContents.send('open-settings') },
+      { type: 'separator' },
+      { label: 'Çıkış', click: () => app.quit() }
+    ]));
+
+    tray.on('double-click', () => {
       mainWindow?.show();
+      mainWindow?.focus();
     });
-    tray!.setToolTip('Warranty Monitor');
-    tray!.setContextMenu(contextMenu);
 
-    let lastClipboard = '';
-
-    const monitorClipboard = () => {
-      if (!monitoringEnabled) return;
-      const currentClipboard = clipboard.readText();
-      if (currentClipboard !== lastClipboard && isSerialNumber(currentClipboard)) {
-        lastClipboard = currentClipboard;
-        handleSerialNumber(currentClipboard);
-      }
-    };
-
-    setInterval(monitorClipboard, 1000);
-  }, 3000);
+    startClipboardMonitor();
+  }, 2500);
 }
 
-async function handleSerialNumber(serial: string): Promise<void> {
-  const cached = await getCachedData(serial);
-  if (cached) {
-    showPopup(cached);
-    if (mainWindow) {
-      mainWindow.webContents.send('refresh-cards');
-    }
-    return;
-  }
+ipcMain.handle('get-cached-data', async () => await loadCache());
+ipcMain.handle('get-double-copy', async () => doubleCopyEnabled);
 
-  const warrantyInfo = await checkWarranty(serial);
-  await saveToCache(serial, warrantyInfo);
-  showPopup(warrantyInfo);
-  if (mainWindow) {
-    mainWindow.webContents.send('refresh-cards');
-  }
-}
-
-function showPopup(info: any): void {
-  // Override warranty status for RCCVBY and RCFVBY prefixes if out of warranty
-  if ((info.serial.startsWith('RCCVBY') || info.serial.startsWith('RCFVBY')) && info.warranty_status === 'GARANTI KAPSAMI DISINDA') {
-    info.warranty_status = 'RECCI GARANTILI';
-    info.model_name = 'cihaz üzerinden öğreniniz';
-    info.model_color = 'cihaz üzerinden öğreniniz';
-  }
-
-  // Close any existing popup before showing new one
-  if (currentPopup && !currentPopup.isDestroyed()) {
-    currentPopup.close();
-  }
-  // Clear any existing timeout when closing the popup
-  if (popupTimeout) {
-    clearTimeout(popupTimeout);
-    popupTimeout = null;
-  }
-
-  const { screen } = require('electron');
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
-
-  const currentSize = getCurrentPopupSize();
-
-  const popup = new BrowserWindow({
-    width: currentSize.width,
-    height: currentSize.height,
-    show: false,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    resizable: false,
-    x: width - currentSize.width - 20,
-    y: height - currentSize.height - 40,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  });
-
-  currentPopup = popup;
-  popup.loadFile(path.join(__dirname, currentSize.file));
-
-  popup.once('ready-to-show', () => {
-    popup.show();
-
-    setTimeout(() => {
-      popup.webContents.send('popup-data', info, popupTimeoutDuration);
-    }, 100);
-
-    // Set initial timeout based on settings
-    popupTimeout = setTimeout(() => {
-      if (currentPopup && !currentPopup.isDestroyed()) {
-        currentPopup.close();
-      }
-      popupTimeout = null;
-    }, popupTimeoutDuration);
-  });
-
-  popup.on('closed', () => {
-    if (popup === currentPopup) {
-      if (popupTimeout) {
-        clearTimeout(popupTimeout);
-        popupTimeout = null;
-      }
-      currentPopup = null;
-    }
-  });
-}
-
-ipcMain.handle('get-cached-data', async () => {
-  return await loadCache();
+ipcMain.handle('get-settings', async () => {
+  return {
+    popupTimeout: popupTimeoutDuration,
+    popupSizeLevel: popupSizeLevel,
+    doubleCopyEnabled: doubleCopyEnabled
+  };
 });
 
-ipcMain.on('toggle-monitoring', (event: any, enabled: any) => {
+ipcMain.handle('save-settings', async (_, settings) => {
+  popupTimeoutDuration = settings.popupTimeout;
+  popupSizeLevel = settings.popupSizeLevel;
+  doubleCopyEnabled = settings.doubleCopyEnabled;
+  saveSettings({
+    popupTimeout: settings.popupTimeout,
+    popupSizeLevel: settings.popupSizeLevel,
+    doubleCopyEnabled: settings.doubleCopyEnabled
+  });
+  return true;
+});
+
+ipcMain.on('toggle-monitoring', (_, enabled) => {
   monitoringEnabled = enabled;
 });
 
-ipcMain.handle('toggle-favorite', async (event: any, serial: string) => {
-  await toggleFavorite(serial);
-  return await getCachedData(serial);
-});
-
-ipcMain.handle('save-note', async (event: any, serial: string, note: string) => {
-  await saveNote(serial, note);
-  return await getCachedData(serial);
-});
-
-ipcMain.handle('get-note', async (event: any, serial: string) => {
-  return await getNote(serial);
-});
-
-ipcMain.handle('clear-cache', async () => {
-  await clearCache();
-  if (mainWindow) {
-    mainWindow.focus();
-  }
-  return await loadCache();
-});
-
-ipcMain.handle('save-status', async (event: any, serial: string, status: string) => {
-  await saveStatus(serial, status);
-  return await getCachedData(serial);
-});
-
 ipcMain.on('open-settings', () => {
-  openSettingsWindow();
-});
-
-ipcMain.on('toggle-lock-screen', () => {
-  lockScreenEnabled = !lockScreenEnabled;
-  if (mainWindow) {
-    mainWindow.setAlwaysOnTop(lockScreenEnabled);
-    mainWindow.webContents.send('lock-screen-toggled', lockScreenEnabled);
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
   }
-  if (tray) {
-    const contextMenu = Menu.buildFromTemplate([
-      { label: 'Ana Menü', click: () => mainWindow?.show() },
-      { label: 'Ayarlar', click: () => openSettingsWindow() },
-      { label: 'Ekrana Kilitle', type: 'checkbox', checked: lockScreenEnabled, click: () => {
-        lockScreenEnabled = !lockScreenEnabled;
-        if (mainWindow) {
-          mainWindow.setAlwaysOnTop(lockScreenEnabled);
-          mainWindow.webContents.send('lock-screen-toggled', lockScreenEnabled);
-        }
-      }},
-      { label: 'Çıkış', click: () => {
-        if (mainWindow) {
-          mainWindow.destroy();
-        }
-        app.quit();
-      }},
-    ]);
-    tray.setContextMenu(contextMenu);
-  }
-});
 
-// Popup hover IPC handlers
-ipcMain.on('popup-hover-enter', (event: any) => {
-  if (event.sender === currentPopup?.webContents && popupTimeout) {
-    clearTimeout(popupTimeout);
-    popupTimeout = null;
-  }
-});
+  settingsWindow = new BrowserWindow({
+    width: 500,
+    height: 450,
+    resizable: false,
+    frame: true,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+    title: 'Ayarlar'
+  });
 
-ipcMain.on('popup-hover-leave', (event: any) => {
-  if (event.sender === currentPopup?.webContents) {
-    // Set a new timeout based on settings to close the popup
-    popupTimeout = setTimeout(() => {
-      if (currentPopup && !currentPopup.isDestroyed()) {
-        currentPopup.close();
-      }
-      popupTimeout = null;
-    }, popupTimeoutDuration);
-  }
-});
-
-// Settings IPC handler
-ipcMain.on('save-settings', (event: any, settings: any) => {
-  popupTimeoutDuration = Math.min(settings.timeout, 5000); // Max 5 seconds
-  popupSizeLevel = settings.sizeLevel;
-  const newSize = getCurrentPopupSize();
-  popupWidth = newSize.width;
-  popupHeight = newSize.height;
-
-  // Save settings to file
-  saveSettings({
-    popupTimeout: popupTimeoutDuration,
-    popupSizeLevel: popupSizeLevel
+  settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
   });
 });
 
-app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
+ipcMain.handle('toggle-double-copy', async (_, enabled) => {
+  doubleCopyEnabled = enabled;
+  const s = loadSettings();
+  s.doubleCopyEnabled = enabled;
+  saveSettings(s);
+  return enabled;
+});
+
+ipcMain.handle('toggle-favorite', async (_, s) => {
+  await toggleFavorite(s);
+  return await getCachedData(s);
+});
+ipcMain.handle('save-note', async (_, s, n) => {
+  await saveNote(s, n);
+  return await getCachedData(s);
+});
+ipcMain.handle('get-note', async (_, s) => await getNote(s));
+ipcMain.handle('clear-cache', async () => {
+  await clearCache();
+  return await loadCache();
+});
+ipcMain.handle('delete-entry', async (_, s) => {
+  await deleteEntry(s);
+  return await loadCache();
 });
 
 app.whenReady().then(() => {
-  // Load settings on app startup
   const settings = loadSettings();
   popupTimeoutDuration = settings.popupTimeout;
   popupSizeLevel = settings.popupSizeLevel;
+  doubleCopyEnabled = settings.doubleCopyEnabled !== false;
 
   initCache();
   createWindow();
+
+  globalShortcut.register('CommandOrControl+Shift+C', () => {
+    if (popupVisible && doubleCopyEnabled) {
+      handleDoubleCopy();
+    }
+  });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });

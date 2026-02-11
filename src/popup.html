@@ -51,6 +51,9 @@
     .red {
       background: linear-gradient(135deg, #c0342a, #aa2626);
     }
+    .yellow {
+      background: linear-gradient(135deg, #ffc107, #ffb300);
+    }
     .content {
       height: 100%;
       display: flex;
@@ -191,15 +194,11 @@
     </div>
   </div>
   <script>
-    console.log('Inline script running');
     let progressInterval;
     let startTime;
     let duration;
     let currentWidth = 100;
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded in popup');
-
-      // IPC listener
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('popup-data', (event, info, timeoutDuration = 5000) => {
         const statusText = document.getElementById('status-text');
@@ -227,19 +226,17 @@
           endDate.textContent = info.warranty_end;
         }
 
-        // Apply CSS classes and scaling
         const popup = document.getElementById('popup');
         if (info.warranty_status === 'RECCI GARANTILI') {
           popup.className = 'popup green';
         } else if (info.warranty_status === 'KVK GARANTILI') {
           popup.className = 'popup blue';
+        } else if (info.warranty_status === 'İnternet Bağlantı Hatası' || info.is_error) {
+          popup.className = 'popup yellow';
         } else {
           popup.className = 'popup red';
         }
 
-        // Apply CSS classes
-
-        // Set copy button functionality
         const copyBtn = document.getElementById('copy-btn');
         if (copyBtn) {
           if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end) {
@@ -259,7 +256,6 @@
           }
         }
 
-        // Close button functionality
         const closeBtn = document.getElementById('close-btn');
         if (closeBtn) {
           closeBtn.onclick = () => {
@@ -267,12 +263,11 @@
           };
         }
 
-        // Start progress bar
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
           progressBar.style.width = '100%';
           startTime = Date.now();
-          duration = timeoutDuration; // Use the passed timeout duration
+          duration = timeoutDuration;
           progressInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
@@ -284,10 +279,8 @@
           }, 50);
         }
 
-        // Hover events
         if (popup) {
           popup.addEventListener('mouseenter', () => {
-            // Pause progress bar and notify main process
             if (progressInterval) {
               clearInterval(progressInterval);
             }
@@ -295,7 +288,6 @@
           });
 
           popup.addEventListener('mouseleave', () => {
-            // Resume progress bar and notify main process
             startTime = Date.now() - ((100 - currentWidth) / 100 * duration);
             progressInterval = setInterval(() => {
               const elapsed = Date.now() - startTime;

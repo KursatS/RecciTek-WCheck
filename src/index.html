@@ -13,15 +13,6 @@
       --button-hover: #45a049;
       --filter-bg: #666;
       --filter-active: #4CAF50;
-      --note-btn-bg: #2196F3;
-      --note-btn-hover: #1976D2;
-      --note-btn-has: #ff9800;
-      --note-btn-has-hover: #f57c00;
-      --modal-bg: rgba(0,0,0,0.5);
-      --modal-content-bg: white;
-      --modal-text: #333;
-      --save-btn-bg: #4CAF50;
-      --cancel-btn-bg: #f44336;
     }
 
     .dark {
@@ -33,15 +24,6 @@
       --button-hover: #45a049;
       --filter-bg: #666;
       --filter-active: #4CAF50;
-      --note-btn-bg: #2196F3;
-      --note-btn-hover: #1976D2;
-      --note-btn-has: #ff9800;
-      --note-btn-has-hover: #f57c00;
-      --modal-bg: rgba(0,0,0,0.7);
-      --modal-content-bg: #36393f;
-      --modal-text: #dcddde;
-      --save-btn-bg: #4CAF50;
-      --cancel-btn-bg: #f44336;
     }
 
     body {
@@ -93,6 +75,22 @@
     .filter-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      cursor: pointer;
+      font-size: 20px;
+      color: #f44336;
+      background: none;
+      border: none;
+      padding: 5px;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+    .delete-btn:hover {
+      background: rgba(244, 67, 54, 0.1);
     }
     #search {
       padding: 12px 20px;
@@ -146,14 +144,6 @@
       transform: translateY(-5px);
       box-shadow: 0 12px 24px rgba(0,0,0,0.2);
     }
-    .favorite {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      cursor: pointer;
-      font-size: 20px;
-      color: #ffd700;
-    }
     .card-content {
       margin-top: 10px;
     }
@@ -166,101 +156,6 @@
       color: var(--text-color);
       font-weight: 700;
     }
-    .note-btn {
-      margin-top: 15px;
-      padding: 8px 16px;
-      background: var(--note-btn-bg);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.3s ease;
-    }
-    .note-btn.has-note {
-      background: var(--note-btn-has);
-    }
-    .note-btn:hover {
-      background: var(--note-btn-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    .note-btn.has-note:hover {
-      background: var(--note-btn-has-hover);
-    }
-    .status-dropdown {
-      margin-top: 10px;
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid var(--border-color);
-      background: var(--card-bg);
-      color: var(--text-color);
-      font-size: 14px;
-    }
-
-    /* Modal styles */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: var(--modal-bg);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-content {
-      background: var(--modal-content-bg);
-      padding: 20px;
-      border-radius: 10px;
-      width: 450px;
-      max-width: 90%;
-      color: var(--modal-text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal h3 {
-      margin-top: 0;
-      margin-bottom: 15px;
-      color: var(--modal-text);
-      text-align: center;
-    }
-    .modal textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid var(--border-color);
-      border-radius: 5px;
-      resize: none;
-      font-family: inherit;
-      background: var(--card-bg);
-      color: var(--text-color);
-      margin: 10px 0;
-    }
-    .modal-buttons {
-      margin-top: 15px;
-      text-align: right;
-      width: 100%;
-    }
-    .modal-buttons button {
-      margin-left: 10px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    #save-note {
-      background: var(--save-btn-bg);
-      color: white;
-    }
-    #cancel-note {
-      background: var(--cancel-btn-bg);
-      color: white;
-    }
   </style>
 </head>
 <body class="dark">
@@ -271,56 +166,27 @@
     <div class="controls">
       <input type="text" id="search" placeholder="Seri numarası ara...">
       <button id="toggle">👁️ Clipboard İzlemeyi Devre Dışı Bırak</button>
-      <button id="lock-screen" style="background: linear-gradient(135deg, #9c27b0, #673ab7); color: white; border: none; border-radius: 25px; padding: 12px 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Ekranı Kilitle</button>
       <button id="clear-cache" style="background: linear-gradient(135deg, #f44336, #d32f2f); color: white; border: none; border-radius: 25px; padding: 12px 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Cache Temizle</button>
+      <button id="double-copy-toggle" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; border-radius: 25px; padding: 12px 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">🔄 Double Copy: Kapalı</button>
     </div>
     <div class="filter-buttons">
-      <button class="filter-btn active" data-filter="all">Tümü</button>
-      <button class="filter-btn" data-filter="favorites">Favoriler</button>
-      <button class="filter-btn" data-filter="notes">Notlu</button>
       <button class="filter-btn" id="sort-btn" data-sort="desc">📅 Yeniden Eskiye</button>
     </div>
     <div class="cards-grid" id="cards"></div>
   </div>
 
-  <!-- Note Modal -->
-  <div id="note-modal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h3>Not Ekle/Düzenle</h3>
-      <textarea id="note-text" rows="4" placeholder="Notunuzu buraya yazın..."></textarea>
-      <div class="modal-buttons">
-        <button id="save-note">Kaydet</button>
-        <button id="cancel-note">İptal</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    console.log('Index HTML loaded');
-
-    // Inline renderer script
     const { ipcRenderer } = require('electron');
-
-    console.log('Renderer script starting...');
 
     const cardsDiv = document.getElementById('cards');
     const searchInput = document.getElementById('search');
     const toggleBtn = document.getElementById('toggle');
 
-    console.log('DOM elements found:', {
-      cardsDiv: !!cardsDiv,
-      searchInput: !!searchInput,
-      toggleBtn: !!toggleBtn
-    });
-
     let monitoringEnabled = true;
-    let currentFilter = 'all';
 
     toggleBtn.onclick = () => {
-      console.log('Toggle button clicked, current state:', monitoringEnabled);
       monitoringEnabled = !monitoringEnabled;
       toggleBtn.textContent = monitoringEnabled ? '👁️ Clipboard İzlemeyi Devre Dışı Bırak' : '👁️ Clipboard İzlemeyi Etkinleştir';
-      console.log('Sending toggle-monitoring:', monitoringEnabled);
       ipcRenderer.send('toggle-monitoring', monitoringEnabled);
     };
 
@@ -330,26 +196,20 @@
 
     let currentSort = 'desc';
 
-    // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.id === 'sort-btn') {
           currentSort = currentSort === 'asc' ? 'desc' : 'asc';
           btn.textContent = currentSort === 'asc' ? '📅 Eskiden Yeniye' : '📅 Yeniden Eskiye';
-        } else {
-          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentFilter = btn.dataset.filter;
         }
         loadCards();
       });
     });
 
-    // Clear cache button
     const clearCacheBtn = document.getElementById('clear-cache');
     if (clearCacheBtn) {
       clearCacheBtn.addEventListener('click', () => {
-        if (confirm('Favoriye eklenen cihazlar hariç tüm cihazları silmek istediğinizden emin misiniz?')) {
+        if (confirm('Tüm cihazları silmek istediğinizden emin misiniz?')) {
           ipcRenderer.invoke('clear-cache').then(() => {
             loadCards();
           });
@@ -357,11 +217,21 @@
       });
     }
 
-    // Lock screen button
-    const lockScreenBtn = document.getElementById('lock-screen');
-    if (lockScreenBtn) {
-      lockScreenBtn.addEventListener('click', () => {
-        ipcRenderer.send('toggle-lock-screen');
+    const doubleCopyBtn = document.getElementById('double-copy-toggle');
+    if (doubleCopyBtn) {
+      let doubleCopyEnabled = false;
+      
+      ipcRenderer.invoke('get-double-copy').then((enabled) => {
+        doubleCopyEnabled = enabled;
+        doubleCopyBtn.textContent = enabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı';
+        doubleCopyBtn.style.background = enabled ? 'linear-gradient(135deg, #4CAF50, #45a049)' : 'linear-gradient(135deg, #ff9800, #f57c00)';
+      });
+      
+      doubleCopyBtn.addEventListener('click', async () => {
+        doubleCopyEnabled = !doubleCopyEnabled;
+        await ipcRenderer.invoke('toggle-double-copy', doubleCopyEnabled);
+        doubleCopyBtn.textContent = doubleCopyEnabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı';
+        doubleCopyBtn.style.background = doubleCopyEnabled ? 'linear-gradient(135deg, #4CAF50, #45a049)' : 'linear-gradient(135deg, #ff9800, #f57c00)';
       });
     }
 
@@ -371,13 +241,10 @@
     }
 
     function loadCards() {
-      console.log('loadCards called');
       ipcRenderer.invoke('get-cached-data').then((data) => {
-        console.log('Received data:', data);
         cardsDiv.innerHTML = '';
         const query = searchInput.value.toLowerCase();
 
-        // Sort data by copy date
         data.sort((a, b) => {
           const dateA = new Date(a.copy_date);
           const dateB = new Date(b.copy_date);
@@ -385,16 +252,7 @@
         });
 
         data.forEach(item => {
-          let shouldShow = false;
-          if (currentFilter === 'all') {
-            shouldShow = item.serial.toLowerCase().includes(query);
-          } else if (currentFilter === 'favorites') {
-            shouldShow = item.is_favorite && item.serial.toLowerCase().includes(query);
-          } else if (currentFilter === 'notes') {
-            shouldShow = item.has_note && item.serial.toLowerCase().includes(query);
-          }
-
-          if (shouldShow) {
+          if (item.serial.toLowerCase().includes(query)) {
             const card = document.createElement('div');
             let cardClass = 'card';
             if (item.warranty_status.includes('RECCI')) {
@@ -406,97 +264,42 @@
             }
             card.className = cardClass;
             card.innerHTML = `
-              <span class="favorite" onclick="toggleFavorite('${item.serial}')">${item.is_favorite ? '⭐' : '☆'}</span>
+              <button class="delete-btn" onclick="deleteEntry('${item.serial}')">🗑️</button>
               <div class="card-content">
                 <p><strong>Seri Numarası:</strong> ${item.serial}</p>
                 <p><strong>Model:</strong> ${item.model_name} - ${item.model_color}</p>
                 <p><strong>Garanti Durumu:</strong> ${item.warranty_status}</p>
                 <p><strong>Kopyalama Tarihi:</strong> ${formatDate(item.copy_date)}</p>
                 ${item.warranty_end ? `<p><strong>Garanti Bitiş:</strong> ${item.warranty_end}</p>` : ''}
-                <button class="note-btn ${item.has_note ? 'has-note' : ''}" onclick="addNote('${item.serial}')">${item.has_note ? 'Notu Değiştir' : 'Not Ekle'}</button>
-                <select class="status-dropdown" onchange="updateStatus('${item.serial}', this.value)">
-                  <option value="">Durum Seç</option>
-                  <option value="ARIZA EKSİK" ${item.status === 'ARIZA EKSİK' ? 'selected' : ''}>ARIZA EKSİK</option>
-                  <option value="ADRES EKSİK" ${item.status === 'ADRES EKSİK' ? 'selected' : ''}>ADRES EKSİK</option>
-                  <option value="ARIZA VE ADRES EKSİK" ${item.status === 'ARIZA VE ADRES EKSİK' ? 'selected' : ''}>ARIZA VE ADRES EKSİK</option>
-                  <option value="SERVİS KAYIT FORMU EKSİK" ${item.status === 'SERVİS KAYIT FORMU EKSİK' ? 'selected' : ''}>SERVİS KAYIT FORMU EKSİK</option>
-                  <option value="DİĞER" ${item.status === 'DİĞER' ? 'selected' : ''}>DİĞER</option>
-                </select>
               </div>
             `;
             cardsDiv.appendChild(card);
           }
         });
-      }).catch(error => {
-        console.error('Error loading cards:', error);
-      });
+      }).catch(() => {});
     }
 
     loadCards();
 
-    // Listen for refresh event
     ipcRenderer.on('refresh-cards', () => {
       loadCards();
     });
 
-    // Listen for lock screen toggle
-    ipcRenderer.on('lock-screen-toggled', (event, enabled) => {
-      const lockBtn = document.getElementById('lock-screen');
-      if (lockBtn) {
-        lockBtn.textContent = enabled ? 'Ekran Kilidini Aç' : 'Ekranı Kilitle';
+    window.deleteEntry = async (serial) => {
+      if (confirm(`Bu cihazı silmek istediğinizden emin misiniz?\n\nSeri Numarası: ${serial}`)) {
+        await ipcRenderer.invoke('delete-entry', serial);
+        loadCards();
       }
-    });
-
-    // Global functions for card interactions
-    window.toggleFavorite = async (serial) => {
-      await ipcRenderer.invoke('toggle-favorite', serial);
-      loadCards();
     };
 
-    let currentSerial = '';
-
-    // Settings button
     document.getElementById('settings-btn').onclick = () => {
       ipcRenderer.send('open-settings');
     };
 
-    // Theme toggle
     document.getElementById('theme-toggle').onclick = () => {
       document.body.classList.toggle('dark');
       const isDark = document.body.classList.contains('dark');
       document.getElementById('theme-toggle').textContent = isDark ? '🌙' : '☀️';
-    };
-
-    // Make functions available globally
-    window.toggleFavorite = async (serial) => {
-      await ipcRenderer.invoke('toggle-favorite', serial);
-      loadCards();
-    };
-
-    window.addNote = async (serial) => {
-      const existingNote = await ipcRenderer.invoke('get-note', serial);
-      const modal = document.getElementById('note-modal');
-      const textArea = document.getElementById('note-text');
-      textArea.value = existingNote || '';
-      modal.style.display = 'flex';
-
-      // Handle save
-      document.getElementById('save-note').onclick = async () => {
-        const note = textArea.value;
-        await ipcRenderer.invoke('save-note', serial, note);
-        modal.style.display = 'none';
-        loadCards();
-      };
-
-      // Handle cancel
-      document.getElementById('cancel-note').onclick = () => {
-        modal.style.display = 'none';
-      };
-    };
-
-    window.updateStatus = async (serial, status) => {
-      await ipcRenderer.invoke('save-status', serial, status);
-      loadCards();
     };
   </script>
 </body>

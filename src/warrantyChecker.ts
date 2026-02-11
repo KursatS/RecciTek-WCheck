@@ -17,7 +17,14 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
       request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
       request.setHeader('Accept-Charset', 'utf-8');
 
+      // Set timeout to 7 seconds
+      const timeout = setTimeout(() => {
+        request.abort();
+        reject(new Error('Request timeout'));
+      }, 7000);
+
       request.on('response', (response) => {
+        clearTimeout(timeout);
         let buffers: Buffer[] = [];
         response.on('data', (chunk) => {
           buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -34,6 +41,7 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         });
       });
       request.on('error', (error) => {
+        clearTimeout(timeout);
         reject(error);
       });
       request.end();
@@ -95,6 +103,9 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
     } else if (body && body.textContent.includes('Bu ürün Roborock Türkiye Garanti kapsamında değildir!')) {
     }
   } catch (error) {
+    // Any error from the first API (timeout or connection error) should be treated as timeout
+    // because the second API will also fail with the same connection issue
+    throw new Error('TIMEOUT');
   }
 
   try {
@@ -133,6 +144,9 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
       };
     }
   } catch (error) {
+    // Any error from the first API (timeout or connection error) should be treated as timeout
+    // because the second API will also fail with the same connection issue
+    throw new Error('TIMEOUT');
   }
 
   return {
