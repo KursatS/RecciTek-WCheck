@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Prim Hesaplama Paneli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 40px;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at top left, rgba(56, 189, 248, 0.05), transparent 400px);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        .upload-area {
+            background: var(--card-bg);
+            border: 2px dashed var(--glass-border);
+            border-radius: 24px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 40px;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .results-container {
+            display: grid;
+            gap: 20px;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideUp 0.4s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        .result-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .stat-item strong {
+            color: var(--text-main);
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .status-eligible {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <p>Veriler Hesaplanıyor...</p>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Prim Hesaplama</h1>
+            <p style="color: var(--text-muted)">CRM kayıtlarınızı yükleyin ve aylık prim durumunuzu görün</p>
+        </header>
+
+        <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
+        <div class="upload-area" id="drop-zone">
+            <span class="upload-icon">📊</span>
+            <h2>Dosyayı Buraya Sürükleyin</h2>
+            <p style="color: var(--text-muted); margin-top: 8px">veya tıklayarak dosya seçin (.xlsx, .csv)</p>
+        </div>
+
+        <div id="results" class="results-container"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const resultsDiv = document.getElementById('results');
+        const loading = document.getElementById('loading');
+
+        dropZone.onclick = () => fileInput.click();
+
+        dropZone.ondragover = (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        };
+
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file.path);
+        };
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file.path);
+        };
+
+        async function handleFile(path) {
+            loading.style.display = 'flex';
+            try {
+                const results = await ipcRenderer.invoke('calculate-bonus', path);
+                displayResults(results);
+            } catch (err) {
+                alert('Dosya okunurken bir hata oluştu. Lütfen formatı kontrol edin.');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(results) {
+            resultsDiv.innerHTML = '';
+            if (results.length === 0) {
+                resultsDiv.innerHTML = `<p style="text-align: center; color: var(--text-muted)">Geçerli veri bulunamadı.</p>`;
+                return;
+            }
+
+            results.forEach((res, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.style.animationDelay = `${index * 0.1}s`;
+
+                let statusText = '';
+                let statusClass = '';
+
+                if (res.isEligible) {
+                    statusText = '🏆 Prim Tamam';
+                    statusClass = 'status-eligible';
+                } else {
+                    if (index === 0) {
+                        // Most recent month
+                        const remaining = 850 - res.validCount;
+                        statusText = `Eksik: ${remaining}`;
+                        statusClass = 'status-pending';
+                    } else {
+                        // Past months
+                        statusText = 'Prim tamamlanamadı';
+                        statusClass = 'status-pending';
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="result-info">
+                        <h3>${res.month}</h3>
+                        <div class="result-stats">
+                            <div class="stat-item">Geçerli: <strong>${res.validCount}</strong></div>
+                            <div class="stat-item">Mesai Dışı: <strong>${res.overtimeCount}</strong></div>
+                            <div class="stat-item">Toplam: ${res.totalCount}</div>
+                        </div>
+                    </div>
+                    <div class="status-badge ${statusClass}">
+                        ${statusText}
+                    </div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+    </script>
+</body>
+
+</html>

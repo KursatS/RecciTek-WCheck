@@ -22,6 +22,8 @@ import {
 import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
+import { parseBonusData } from './bonusCalculator';
+import * as fs from 'fs';
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -186,6 +188,20 @@ function setupIpcHandlers() {
 
   ipcMain.on('open-settings', () => {
     windowManager.openSettingsWindow();
+  });
+
+  ipcMain.on('open-bonus', () => {
+    windowManager.openBonusWindow();
+  });
+
+  ipcMain.handle('calculate-bonus', async (_, filePath) => {
+    try {
+      const buffer = fs.readFileSync(filePath);
+      return parseBonusData(buffer);
+    } catch (error) {
+      console.error('Bonus calculation error:', error);
+      throw error;
+    }
   });
 
   ipcMain.handle('toggle-double-copy', async (_, enabled) => {

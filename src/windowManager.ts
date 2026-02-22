@@ -18,6 +18,7 @@ export const POPUP_SIZE_LEVELS: PopupSize[] = [
 export class WindowManager {
     private mainWindow: BrowserWindow | null = null;
     private settingsWindow: BrowserWindow | null = null;
+    private bonusWindow: BrowserWindow | null = null;
     private currentPopup: BrowserWindow | null = null;
     private popupTimeout: NodeJS.Timeout | null = null;
     private popupVisible: boolean = false;
@@ -89,6 +90,29 @@ export class WindowManager {
         this.settingsWindow.loadFile(path.join(this.appPath, 'settings.html'));
         this.settingsWindow.on('closed', () => {
             this.settingsWindow = null;
+        });
+    }
+
+    openBonusWindow(): void {
+        if (this.bonusWindow && !this.bonusWindow.isDestroyed()) {
+            this.bonusWindow.focus();
+            return;
+        }
+
+        this.bonusWindow = new BrowserWindow({
+            width: 900,
+            height: 700,
+            resizable: true,
+            frame: true,
+            webPreferences: { nodeIntegration: true, contextIsolation: false },
+            title: 'Prim Hesaplama',
+            autoHideMenuBar: true
+        });
+
+        this.bonusWindow.setMenuBarVisibility(false);
+        this.bonusWindow.loadFile(path.join(this.appPath, 'bonus.html'));
+        this.bonusWindow.on('closed', () => {
+            this.bonusWindow = null;
         });
     }
 

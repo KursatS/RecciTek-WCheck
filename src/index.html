@@ -21,12 +21,12 @@
     }
 
     .light {
-      --bg-color: #f1f5f9;
-      --card-bg: rgba(255, 255, 255, 0.8);
-      --glass-border: rgba(0, 0, 0, 0.05);
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --accent: #0ea5e9;
+      --bg-color: #e2e8f0;
+      --card-bg: rgba(248, 250, 252, 0.7);
+      --glass-border: rgba(0, 0, 0, 0.1);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --accent: #0284c7;
     }
 
     * {
@@ -48,9 +48,24 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
+      padding: 0 40px;
       position: relative;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      margin-bottom: 20px;
+    }
+
+    .nav-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
     }
 
     header {
@@ -149,6 +164,17 @@
 
     .btn-warning:hover {
       background: #f59e0b;
+      color: white;
+    }
+
+    .btn-success {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-success:hover {
+      background: #10b981;
       color: white;
     }
 
@@ -258,45 +284,70 @@
       color: var(--none);
     }
 
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 40px;
+      position: relative;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 30px 0;
+      margin-bottom: 20px;
+    }
+
+    .nav-group {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
     .nav-btn {
-      background: none;
-      border: none;
-      font-size: 24px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      font-size: 22px;
       cursor: pointer;
       color: var(--text-muted);
-      transition: color 0.3s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
     .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
       color: var(--text-main);
-    }
-
-    #theme-toggle {
-      position: absolute;
-      right: 0;
-      top: 0;
-    }
-
-    #settings-btn {
-      position: absolute;
-      left: 0;
-      top: 0;
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(56, 189, 248, 0.2);
     }
 
     .server-status {
-      position: absolute;
-      right: 45px;
-      top: 5px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
+      gap: 10px;
+      font-size: 0.85rem;
       font-weight: 600;
       color: var(--text-muted);
-      background: rgba(0, 0, 0, 0.2);
-      padding: 4px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 20px;
       border-radius: 50px;
       border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s;
+    }
+
+    .server-status:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.4);
     }
 
     .status-dot {
@@ -479,20 +530,28 @@
   </div>
 
   <div class="container">
-    <button id="settings-btn" class="nav-btn">⚙️</button>
-    <div class="server-status" id="server-status-box">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-info">Sunucu Kontrol...</span>
-      <div id="status-refresh-btn" title="Manuel Yenile">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 4v6h-6"></path>
-          <path d="M1 20v-6h6"></path>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
+    <div class="top-bar">
+      <div class="nav-group">
+        <button id="settings-btn" class="nav-btn" title="Ayarlar">⚙️</button>
+        <button id="bonus-btn" class="nav-btn" title="Prim Analizi">🏆</button>
+      </div>
+
+      <div class="nav-group">
+        <div class="server-status" id="server-status-box">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-info">Sunucu Kontrol...</span>
+          <div id="status-refresh-btn" title="Manuel Yenile">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </div>
+        </div>
+        <button id="theme-toggle" class="nav-btn">🌙</button>
       </div>
     </div>
-    <button id="theme-toggle" class="nav-btn">🌙</button>
 
     <header>
       <h1>Cihaz Geçmişi</h1>
@@ -638,6 +697,7 @@
     };
 
     document.getElementById('settings-btn').onclick = () => ipcRenderer.send('open-settings');
+    document.getElementById('bonus-btn').onclick = () => ipcRenderer.send('open-bonus');
 
     // Double Copy Toggle
     const dcBtn = document.getElementById('double-copy-toggle');
