@@ -5,11 +5,11 @@
   "author": "Kürşat Sinan",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc && copy src\\*.html dist\\ && copy src\\splash.html dist\\",
+    "build": "tsc && copyfiles -u 1 src/*.html dist/ && copyfiles -u 1 src/splash.html dist/",
     "start": "npm run build && npx electron dist/main.js",
     "dev": "tsc --watch & copy src\\*.html dist\\ --watch & copy src\\splash.html dist\\ --watch & npx electron dist/main.js --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder --publish always"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
