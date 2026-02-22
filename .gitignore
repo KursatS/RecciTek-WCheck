@@ -6,62 +6,34 @@ yarn-error.log*
 
 # Build outputs
 dist/
-build/
 release/
+*.exe
+*.zip
+*.dmg
+*.AppImage
 
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# dotenv environment variables file
-.env
-.env.test
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Electron specific
-release/
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE
+# IDEs and Editors
 .vscode/
 .idea/
-
-# Temporary files
-*.tmp
-*.temp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # TypeScript
-*.tsbuildinfo
+tsconfig.tsbuildinfo
 
-# Development files
-.kilocode/
+# OS related files
+.DS_Store
+Thumbs.db
+
+# Database and Local Storage (IMPORTANT)
+*.sqlite
+*.db
+settings.json
+backup/
+
+# Logs
+logs/
+*.log

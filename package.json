@@ -33,26 +33,26 @@
     },
     "files": [
       "dist/**/*",
-      "logo.png",
-      "logo256.ico",
-      "logo512.png"
+      "assets/logo.png",
+      "assets/logo256.ico",
+      "assets/logo512.png"
     ],
-    "icon": "logo256.ico",
+    "icon": "assets/logo256.ico",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "runAfterFinish": true,
       "createDesktopShortcut": true,
-      "installerIcon": "logo256.ico",
-      "uninstallerIcon": "logo256.ico",
-      "installerHeaderIcon": "logo256.ico",
+      "installerIcon": "assets/logo256.ico",
+      "uninstallerIcon": "assets/logo256.ico",
+      "installerHeaderIcon": "assets/logo256.ico",
       "deleteAppDataOnUninstall": true,
       "displayLanguageSelector": false,
       "language": "1033",
       "include": "build/installer.nsh"
     },
     "win": {
-      "icon": "logo256.ico",
+      "icon": "assets/logo256.ico",
       "target": "nsis"
     },
     "mac": {
