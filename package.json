@@ -1,6 +1,6 @@
 {
   "name": "reccitek-wcheck",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "RecciTek WCheck - Garanti Takip Sistemi",
   "author": "Kürşat Sinan",
   "main": "dist/main.js",
@@ -30,6 +30,11 @@
     "productName": "RecciTek WCheck",
     "directories": {
       "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "KursatS",
+      "repo": "RecciTek-WCheck"
     },
     "files": [
       "dist/**/*",
