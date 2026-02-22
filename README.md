@@ -6,6 +6,18 @@
 
 RecciTek WCheck - Gelişmiş Garanti Takip Sistemi. Clipboard'dan seri numarası kopyalayın, garanti durumunu anlık olarak sorgulayın ve modern popup bildirimleri ile takip edin.
 
+## 🖼️ Ekran Görüntüleri
+
+### Ana Panel & Açılış
+| Ana Sayfa | Açılış Ekranı (Splash) |
+| :---: | :---: |
+| ![Ana Panel](assets/screenshots/home.png) | ![Açılış Ekranı](assets/screenshots/splash.png) |
+
+### Akıllı Durum Bildirimleri (Popups)
+| Garanti Kapsamında | Garanti Dışı / Hata | Bağlantı Sorunu |
+| :---: | :---: | :---: |
+| ![RECCI/KVK](assets/screenshots/inwarrantypopup.png) | ![Dışında](assets/screenshots/outofwarrantypopup.png) | ![Hata](assets/screenshots/connectionproblempopup.png) |
+
 ## ✨ Yeni Nesil Özellikler (v1.4.0)
 
 - 🎨 **Premium Glassmorphic UI**: Tüm uygulama modern "Glassmorphism" tasarımı ve "Inter" font ailesi ile baştan aşağı yenilendi.
@@ -50,6 +62,7 @@ Dosya `release` klasörü altında oluşturulacaktır.
 
 ```
 reccitek-wcheck/
+├── assets/                 # Logolar, ikonlar ve ekran görüntüleri
 ├── src/                    # Kaynak kodları (TypeScript)
 │   ├── main.ts            # Merkezi Electron süreci
 │   ├── windowManager.ts   # Pencere & Popup Yönetimi
