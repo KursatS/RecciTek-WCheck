@@ -1,36 +1,125 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
-  <title>Splash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      background: #4a148c;
+    * {
       margin: 0;
       padding: 0;
-      height: 100vh;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      width: 600px;
+      height: 400px;
+      background: #0f172a;
+      color: white;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      color: white;
-      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      justify-content: center;
       overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
     }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.15) 0%, transparent 50%);
+      animation: rotate 10s linear infinite;
+    }
+
+    @keyframes rotate {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .content {
+      z-index: 10;
+      text-align: center;
+      animation: fadeIn 1s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     h1 {
-      font-size: 32px;
-      margin: 0;
-      text-align: center;
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 5px;
+      background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    p {
-      font-size: 18px;
-      margin: 10px 0 0 0;
-      text-align: center;
+
+    .version {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #38bdf8;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .loader {
+      margin-top: 40px;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .brand {
+      position: absolute;
+      bottom: 30px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.3);
+      letter-spacing: 1px;
     }
   </style>
 </head>
+
 <body>
-  <h1>RecciTek Garanti Takip Sistemi Başlatılıyor...</h1>
-  <p>Geliştirici - Kürşat Sinan</p>
+  <div class="content">
+    <h1>RecciTek</h1>
+    <div class="version">Waranty Check</div>
+    <div class="loader" style="margin-left: auto; margin-right: auto;"></div>
+  </div>
+  <div class="brand">Geliştirici: Kürşat Sinan | Garanti Kontrol Sistemi</div>
 </body>
+
 </html>

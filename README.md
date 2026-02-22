@@ -1,84 +1,73 @@
 # 🚀 RecciTek WCheck
 
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/KursatS/reccitek-wcheck)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/KursatS/reccitek-wcheck)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Electron](https://img.shields.io/badge/electron-22.3.27-purple.svg)](https://electronjs.org)
+[![Electron](https://img.shields.io/badge/electron-22.0.0-purple.svg)](https://electronjs.org)
 
-RecciTek WCheck - Garanti Takip Sistemi. Clipboard'dan seri numarası kopyalayın, garanti durumunu otomatik sorgular ve popup ile gösterir.
+RecciTek WCheck - Gelişmiş Garanti Takip Sistemi. Clipboard'dan seri numarası kopyalayın, garanti durumunu anlık olarak sorgulayın ve modern popup bildirimleri ile takip edin.
 
-## ✨ Özellikler
+## ✨ Yeni Nesil Özellikler (v1.4.0)
 
-- 🔍 **Otomatik Garanti Sorgu**: RECCI ve KVK sistemlerinden garanti bilgisi çeker.
-- 📋 **Clipboard İzleme**: Seri numarası kopyaladığınızda otomatik popup gösterir.
-- 💾 **Cache Sistemi**: Önceki sorguları kaydeder, hızlı erişim sağlar.
-- 🎨 **Modern UI**: Kart tabanlı tasarım, durum etiketleri.
-- 🔔 **Popup Bildirimler**: Renk kodlu popup'lar (yeşil RECCI, mavi KVK, kırmızı süresi dolmuş).
+- 🎨 **Premium Glassmorphic UI**: Tüm uygulama modern "Glassmorphism" tasarımı ve "Inter" font ailesi ile baştan aşağı yenilendi.
+- 📡 **Canlı Sunucu Durumu**: Ana sayfa üzerinden Recci garanti sunucularının aktiflik durumunu ve ms cinsinden gecikme süresini anlık takip edin.
+- 🔄 **Anlık Yenileme (Instant Refresh)**: Bir popup açıkken yeni bir seri kopyaladığınızda beklemeden anında yeni cihaz bilgileriyle güncellenir.
+- 🔍 **Akıllı Takip Mantığı**: Aynı seri numarasının üst üste kopyalanması durumunda gereksiz popup oluşumu engellenir.
+- 🏗️ **Güçlü Mimari**: Merkezi pencere yönetimi (`WindowManager`) ve ayar yönetimi (`SettingsManager`) ile daha stabil bir deneyim.
+- 📉 **Düşük Sunucu Yükü**: Gelişmiş durum izleme mekanizması, sunucuya minimum yük bindirecek şekilde jitter (rastgele gecikme) ile çalışır.
 
-## 🛠️ Kurulum
+## 🛠️ Kurulum & Derleme
 
 ### Gereksinimler
 - Node.js 16+
 - npm
 
-### Adımlar
+### Geliştirici Adımları
 ```bash
-# Projeyi klonlayın
-git clone https://github.com/KursatS/reccitek-wcheck.git
-cd reccitek-wcheck
-
 # Bağımlılıkları yükleyin
 npm install
 
 # Projeyi derleyin
 npm run build
 
-# Uygulamayı çalıştırın
+# Uygulamayı başlatın
 npm start
 ```
 
+### Setup / Kurulum Dosyası Oluşturma
+Uygulamanın Windows (.exe) kurulum dosyasını oluşturmak için:
+```bash
+npm run dist
+```
+Dosya `release` klasörü altında oluşturulacaktır.
+
 ## 🎯 Kullanım
 
-1. **Seri Numarası Kopyalayın**: R ile başlayan 14 karakterli seri numarasını kopyalayın (örneğin: R1234567890ABC).
-2. **Popup Bekleyin**: Uygulama otomatik olarak garanti durumunu sorgular ve popup gösterir.
-3. **Ana Menü**: Tray ikonundan ana menüye erişin, geçmiş sorguları yönetin.
+1. **Seri Numarası Kopyalayın**: R ile başlayan seri numarasını kopyalayın.
+2. **Popup'ı İnceleyin**: Modern, renk kodlu (Yeşil: RECCI, Mavi: KVK, Kırmızı: Hata/Yok) popup ile garanti durumunu görün.
+3. **Geçmişi Yönetin**: Ana ekran üzerinden tüm sorgu geçmişinizi, model bilgilerini ve tarihleri inceleyin.
 
-### Klavye Kısayolları
-- Seri numarası kopyalayın ve popup bekleyin.
-
-## 📁 Proje Yapısı
+## 📁 Dosya Yapısı
 
 ```
 reccitek-wcheck/
-├── src/                    # Kaynak kodları
-│   ├── main.ts            # Ana Electron süreci
-│   ├── warrantyChecker.ts # Garanti sorgu mantığı
-│   ├── cacheManager.ts    # Cache yönetimi
-│   ├── index.html         # Ana pencere
-│   ├── popup.html         # Popup penceresi
-│   └── splash.html        # Başlangıç ekranı
-├── dist/                  # Derlenmiş dosyalar (Git'e eklenmez)
-├── package.json           # Proje konfigürasyonu
-└── README.md              # Bu dosya
+├── src/                    # Kaynak kodları (TypeScript)
+│   ├── main.ts            # Merkezi Electron süreci
+│   ├── windowManager.ts   # Pencere & Popup Yönetimi
+│   ├── settingsManager.ts # Ayar & Dosya Yönetimi
+│   ├── warrantyChecker.ts # Garanti API Entegrasyonları
+│   ├── cacheManager.ts    # SQLite Veri Yönetimi
+│   └── *.html             # Modern UI Dosyaları
+├── release/               # Kurulum dosyalarının oluşturulduğu dizin
+├── package.json           # Proje bileşenleri ve versiyon
+└── README.md              # Kullanım Klavuzu
 ```
-
-## 🤝 Katkıda Bulunma
-
-1. Fork edin
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit edin (`git commit -m 'Add amazing feature'`)
-4. Push edin (`git push origin feature/amazing-feature`)
-5. Pull Request açın
-
-## 📄 Lisans
-
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
 
 ## 👨‍💻 Geliştirici
 
 **Kürşat Sinan**
 - GitHub: [@KursatS](https://github.com/KursatS)
-- Email: kursat0sinan@gmail.com
+- Proje: [RecciTek-WCheck](https://github.com/KursatS/RecciTek-WCheck)
 
 ---
 
-⭐ Eğer bu proje hoşunuza gittiyse, yıldız verin!
+⭐ Eğer bu proje işinizi kolaylaştırdıysa, GitHub üzerinden yıldız vermeyi unutmayın!

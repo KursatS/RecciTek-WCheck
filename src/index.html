@@ -1,177 +1,353 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
   <title>RecciTek Garanti Sorgu Geçmişi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #f5f5f5;
-      --card-bg: white;
-      --text-color: #333;
-      --border-color: #ddd;
-      --button-bg: #4CAF50;
-      --button-hover: #45a049;
-      --filter-bg: #666;
-      --filter-active: #4CAF50;
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --recci: #10b981;
+      --kvk: #3b82f6;
+      --none: #64748b;
     }
 
-    .dark {
-      --bg-color: #2c2f33;
-      --card-bg: #36393f;
-      --text-color: #dcddde;
-      --border-color: #202225;
-      --button-bg: #4CAF50;
-      --button-hover: #45a049;
-      --filter-bg: #666;
-      --filter-active: #4CAF50;
+    .light {
+      --bg-color: #f1f5f9;
+      --card-bg: rgba(255, 255, 255, 0.8);
+      --glass-border: rgba(0, 0, 0, 0.05);
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --accent: #0ea5e9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
     }
 
     body {
-       font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-       margin: 0;
-       padding: 20px;
-       background-color: var(--bg-color);
-       color: var(--text-color);
-       transition: background-color 0.3s, color 0.3s;
-     }
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      transition: all 0.3s ease;
+      min-height: 100vh;
+      padding: 40px 20px;
+      background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 400px),
+        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 400px);
+      background-attachment: fixed;
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
       position: relative;
     }
-    h1 {
+
+    header {
       text-align: center;
-      margin-bottom: 30px;
-      color: var(--text-color);
-      font-weight: 500;
+      margin-bottom: 50px;
     }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
     .controls {
       display: flex;
-      gap: 20px;
-      margin-bottom: 30px;
+      gap: 15px;
+      margin-bottom: 40px;
       justify-content: center;
       flex-wrap: wrap;
       align-items: center;
+      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
     }
-    .filter-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      justify-content: center;
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 300px;
+      max-width: 500px;
     }
-    .filter-btn {
-      padding: 8px 16px;
-      background: var(--filter-bg);
+
+    #search {
+      width: 100%;
+      padding: 12px 24px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
       color: white;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    #search:focus {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 16px;
       border: none;
-      border-radius: 20px;
-      cursor: pointer;
       font-weight: 600;
-      transition: all 0.3s ease;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .filter-btn.active {
-      background: var(--filter-active);
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
     }
-    .filter-btn:hover {
+
+    .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
     }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-danger:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .btn-warning:hover {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 24px;
+      border: 1px solid var(--glass-border);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--none);
+    }
+
+    .card.recci::before {
+      background: var(--recci);
+    }
+
+    .card.kvk::before {
+      background: var(--kvk);
+    }
+
     .delete-btn {
       position: absolute;
       top: 15px;
       right: 15px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.1);
+      border: none;
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      font-size: 20px;
-      color: #f44336;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .card:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .delete-btn:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    .card p {
+      margin: 12px 0;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .card strong {
+      color: var(--text-main);
+      font-weight: 600;
+      margin-right: 4px;
+    }
+
+    .status-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .recci .status-tag {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--recci);
+    }
+
+    .kvk .status-tag {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--kvk);
+    }
+
+    .out-of-warranty .status-tag {
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--none);
+    }
+
+    .nav-btn {
       background: none;
       border: none;
-      padding: 5px;
-      border-radius: 50%;
-      transition: background 0.3s;
-    }
-    .delete-btn:hover {
-      background: rgba(244, 67, 54, 0.1);
-    }
-    #search {
-      padding: 12px 20px;
-      border: 1px solid #ddd;
-      border-radius: 25px;
-      font-size: 16px;
-      width: 300px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    #toggle {
-      padding: 12px 20px;
-      background: var(--button-bg);
-      color: white;
-      border: none;
-      border-radius: 25px;
+      font-size: 24px;
       cursor: pointer;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+    }
+
+    #theme-toggle {
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
+
+    #settings-btn {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .server-status {
+      position: absolute;
+      right: 45px;
+      top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
       font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px 12px;
+      border-radius: 50px;
+      border: 1px solid var(--glass-border);
     }
-    #toggle:hover {
-      background: var(--button-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+      box-shadow: 0 0 10px rgba(148, 163, 184, 0.3);
     }
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 20px;
+
+    .status-dot.online {
+      background: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     }
-    .card {
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-      transition: all 0.3s ease;
-      position: relative;
-      border: 3px solid transparent;
-      color: var(--text-color);
+
+    .status-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
     }
-    .card.recci {
-      border-color: #4CAF50;
-    }
-    .card.kvk {
-      border-color: #2196F3;
-    }
-    .card.out-of-warranty {
-      border-color: #f44336;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 24px rgba(0,0,0,0.2);
-    }
-    .card-content {
-      margin-top: 10px;
-    }
-    .card p {
-      margin: 8px 0;
-      font-size: 16px;
-      color: var(--text-color);
-    }
-    .card strong {
-      color: var(--text-color);
-      font-weight: 700;
+
+    .status-dot.slow {
+      background: #f59e0b;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
   </style>
 </head>
+
 <body class="dark">
   <div class="container">
-    <h1>RecciTek Garanti Sorgu Geçmişi</h1>
-    <button id="settings-btn" style="position: absolute; top: 0; left: 0; background: none; border: none; font-size: 24px; cursor: pointer;">⚙️</button>
-    <button id="theme-toggle" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 24px; cursor: pointer;">🌙</button>
+    <button id="settings-btn" class="nav-btn">⚙️</button>
+    <div class="server-status" id="server-status-box">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-info">Sunucu Kontrol...</span>
+    </div>
+    <button id="theme-toggle" class="nav-btn">🌙</button>
+
+    <header>
+      <h1>Cihaz Geçmişi</h1>
+      <p style="color: var(--text-muted)">Toplam sorgulanan cihazlar ve garanti durumları</p>
+    </header>
+
     <div class="controls">
-      <input type="text" id="search" placeholder="Seri numarası ara...">
-      <button id="toggle">👁️ Clipboard İzlemeyi Devre Dışı Bırak</button>
-      <button id="clear-cache" style="background: linear-gradient(135deg, #f44336, #d32f2f); color: white; border: none; border-radius: 25px; padding: 12px 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Cache Temizle</button>
-      <button id="double-copy-toggle" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; border-radius: 25px; padding: 12px 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">🔄 Double Copy: Kapalı</button>
+      <div class="search-wrapper">
+        <input type="text" id="search" placeholder="Seri numarası ile filtrele...">
+      </div>
+      <button id="toggle" class="btn btn-primary">
+        <span>👁️ Clipboard İzleme: Aktif</span>
+      </button>
+      <button id="double-copy-toggle" class="btn btn-warning">🔄 Double Copy: Kapalı</button>
+      <button id="clear-cache" class="btn btn-danger">🗑️ Tümünü Temizle</button>
     </div>
-    <div class="filter-buttons">
-      <button class="filter-btn" id="sort-btn" data-sort="desc">📅 Yeniden Eskiye</button>
-    </div>
+
     <div class="cards-grid" id="cards"></div>
   </div>
 
@@ -181,63 +357,29 @@
     const cardsDiv = document.getElementById('cards');
     const searchInput = document.getElementById('search');
     const toggleBtn = document.getElementById('toggle');
+    const themeBtn = document.getElementById('theme-toggle');
 
     let monitoringEnabled = true;
 
     toggleBtn.onclick = () => {
       monitoringEnabled = !monitoringEnabled;
-      toggleBtn.textContent = monitoringEnabled ? '👁️ Clipboard İzlemeyi Devre Dışı Bırak' : '👁️ Clipboard İzlemeyi Etkinleştir';
+      toggleBtn.querySelector('span').textContent = monitoringEnabled ? '👁️ Clipboard İzleme: Aktif' : '👁️ Clipboard İzleme: Devre Dışı';
+      toggleBtn.style.opacity = monitoringEnabled ? '1' : '0.6';
       ipcRenderer.send('toggle-monitoring', monitoringEnabled);
     };
 
-    searchInput.oninput = () => {
-      loadCards();
+    themeBtn.onclick = () => {
+      document.body.classList.toggle('dark');
+      document.body.classList.toggle('light');
+      const isDark = document.body.classList.contains('dark');
+      themeBtn.textContent = isDark ? '🌙' : '☀️';
     };
 
-    let currentSort = 'desc';
-
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.id === 'sort-btn') {
-          currentSort = currentSort === 'asc' ? 'desc' : 'asc';
-          btn.textContent = currentSort === 'asc' ? '📅 Eskiden Yeniye' : '📅 Yeniden Eskiye';
-        }
-        loadCards();
-      });
-    });
-
-    const clearCacheBtn = document.getElementById('clear-cache');
-    if (clearCacheBtn) {
-      clearCacheBtn.addEventListener('click', () => {
-        if (confirm('Tüm cihazları silmek istediğinizden emin misiniz?')) {
-          ipcRenderer.invoke('clear-cache').then(() => {
-            loadCards();
-          });
-        }
-      });
-    }
-
-    const doubleCopyBtn = document.getElementById('double-copy-toggle');
-    if (doubleCopyBtn) {
-      let doubleCopyEnabled = false;
-      
-      ipcRenderer.invoke('get-double-copy').then((enabled) => {
-        doubleCopyEnabled = enabled;
-        doubleCopyBtn.textContent = enabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı';
-        doubleCopyBtn.style.background = enabled ? 'linear-gradient(135deg, #4CAF50, #45a049)' : 'linear-gradient(135deg, #ff9800, #f57c00)';
-      });
-      
-      doubleCopyBtn.addEventListener('click', async () => {
-        doubleCopyEnabled = !doubleCopyEnabled;
-        await ipcRenderer.invoke('toggle-double-copy', doubleCopyEnabled);
-        doubleCopyBtn.textContent = doubleCopyEnabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı';
-        doubleCopyBtn.style.background = doubleCopyEnabled ? 'linear-gradient(135deg, #4CAF50, #45a049)' : 'linear-gradient(135deg, #ff9800, #f57c00)';
-      });
-    }
+    searchInput.oninput = () => loadCards();
 
     function formatDate(dateString) {
       const date = new Date(dateString);
-      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
 
     function loadCards() {
@@ -245,62 +387,77 @@
         cardsDiv.innerHTML = '';
         const query = searchInput.value.toLowerCase();
 
-        data.sort((a, b) => {
-          const dateA = new Date(a.copy_date);
-          const dateB = new Date(b.copy_date);
-          return currentSort === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-        });
+        data.sort((a, b) => new Date(b.copy_date) - new Date(a.copy_date));
 
         data.forEach(item => {
           if (item.serial.toLowerCase().includes(query)) {
             const card = document.createElement('div');
             let cardClass = 'card';
-            if (item.warranty_status.includes('RECCI')) {
-              cardClass += ' recci';
-            } else if (item.warranty_status.includes('KVK')) {
-              cardClass += ' kvk';
-            } else {
-              cardClass += ' out-of-warranty';
-            }
+            let statusLabel = item.warranty_status;
+
+            if (statusLabel.includes('RECCI')) cardClass += ' recci';
+            else if (statusLabel.includes('KVK')) cardClass += ' kvk';
+            else cardClass += ' out-of-warranty';
+
             card.className = cardClass;
             card.innerHTML = `
-              <button class="delete-btn" onclick="deleteEntry('${item.serial}')">🗑️</button>
-              <div class="card-content">
-                <p><strong>Seri Numarası:</strong> ${item.serial}</p>
-                <p><strong>Model:</strong> ${item.model_name} - ${item.model_color}</p>
-                <p><strong>Garanti Durumu:</strong> ${item.warranty_status}</p>
-                <p><strong>Kopyalama Tarihi:</strong> ${formatDate(item.copy_date)}</p>
-                ${item.warranty_end ? `<p><strong>Garanti Bitiş:</strong> ${item.warranty_end}</p>` : ''}
-              </div>
+              <button class="delete-btn" onclick="deleteEntry('${item.serial}')">✕</button>
+              <div class="status-tag">${statusLabel}</div>
+              <p><strong>Seri:</strong> ${item.serial}</p>
+              <p><strong>Model:</strong> ${item.model_name || 'Bilinmiyor'} ${item.model_color || ''}</p>
+              <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
+              ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ''}
             `;
             cardsDiv.appendChild(card);
           }
         });
-      }).catch(() => {});
+      });
     }
 
-    loadCards();
-
-    ipcRenderer.on('refresh-cards', () => {
-      loadCards();
-    });
-
     window.deleteEntry = async (serial) => {
-      if (confirm(`Bu cihazı silmek istediğinizden emin misiniz?\n\nSeri Numarası: ${serial}`)) {
+      if (confirm(`Bu cihazı listeden silmek istiyor musunuz?`)) {
         await ipcRenderer.invoke('delete-entry', serial);
         loadCards();
       }
     };
 
-    document.getElementById('settings-btn').onclick = () => {
-      ipcRenderer.send('open-settings');
+    document.getElementById('clear-cache').onclick = async () => {
+      if (confirm('Tüm geçmişi silmek istediğinizden emin misiniz?')) {
+        await ipcRenderer.invoke('clear-cache');
+        loadCards();
+      }
     };
 
-    document.getElementById('theme-toggle').onclick = () => {
-      document.body.classList.toggle('dark');
-      const isDark = document.body.classList.contains('dark');
-      document.getElementById('theme-toggle').textContent = isDark ? '🌙' : '☀️';
+    document.getElementById('settings-btn').onclick = () => ipcRenderer.send('open-settings');
+
+    // Double Copy Toggle
+    const dcBtn = document.getElementById('double-copy-toggle');
+    ipcRenderer.invoke('get-double-copy').then(enabled => updateDCUI(enabled));
+    dcBtn.onclick = async () => {
+      const current = dcBtn.textContent.includes('Açık');
+      await ipcRenderer.invoke('toggle-double-copy', !current);
+      updateDCUI(!current);
     };
+
+    function updateDCUI(enabled) {
+      dcBtn.textContent = enabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı';
+      dcBtn.classList.toggle('btn-warning', !enabled);
+      dcBtn.classList.toggle('btn-primary', enabled);
+    }
+
+    loadCards();
+    ipcRenderer.on('refresh-cards', () => loadCards());
+
+    // Server Status IPC Listener
+    ipcRenderer.on('server-status-update', (event, status) => {
+      const box = document.getElementById('server-status-box');
+      const dot = document.getElementById('status-dot');
+      const info = document.getElementById('status-info');
+
+      dot.className = 'status-dot ' + (status.online ? (status.latency > 1000 ? 'slow' : 'online') : 'offline');
+      info.textContent = status.online ? `Sunucu: ${status.latency}ms` : 'Sunucu: Erişilemiyor';
+    });
   </script>
 </body>
+
 </html>

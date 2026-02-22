@@ -1,308 +1,364 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
-  <title>Popup</title>
+  <title>Warranty Popup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
   <style>
-    @keyframes fadeInScale {
-      from {
-        opacity: 0;
-        transform: scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
+    :root {
+      /* Base Dimensions */
+      --width: 470px;
+      --height: 330px;
+      --radius: 24px;
+
+      /* Colors & Gradients */
+      --glass-bg: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+      --text-main: #FFFFFF;
+      --text-muted: rgba(255, 255, 255, 0.8);
+
+      /* Status Gradients */
+      --grad-recci: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      --grad-kvk: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      --grad-none: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+      --grad-error: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+
+      /* Font Sizes */
+      --fs-status: 20px;
+      --fs-serial: 32px;
+      --fs-model: 22px;
     }
-    body {
-      background: transparent; /* popup dışında boş alan */
+
+    /* Size Overrides */
+    .size-1 {
+      --width: 400px;
+      --height: 300px;
+      --radius: 20px;
+      --fs-status: 18px;
+      --fs-serial: 26px;
+      --fs-model: 18px;
+    }
+
+    .size-2 {
+      --width: 460px;
+      --height: 330px;
+      --radius: 24px;
+      --fs-status: 20px;
+      --fs-serial: 30px;
+      --fs-model: 21px;
+    }
+
+    .size-3 {
+      --width: 500px;
+      --height: 350px;
+      --radius: 28px;
+      --fs-status: 22px;
+      --fs-serial: 34px;
+      --fs-model: 24px;
+    }
+
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      width: 100vw;
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      background: transparent;
       overflow: hidden;
-      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    .popup {
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      padding: 20px;
-      color: white;
-      text-align: center;
+
+    .popup-container {
+      width: var(--width);
+      height: var(--height);
+      background: var(--grad-none);
+      border-radius: var(--radius);
       position: relative;
-      width: calc(100vw - 40px);
-      max-width: 490px;
-      min-height: 300px;
-      animation: fadeInScale 0.5s ease-out forwards;
-      background: rgba(0, 0, 0, 0.1);
-      box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-        0 0 20px rgba(255, 255, 255, 0.05) inset;
-    }
-    .green {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-    }
-    .blue {
-      background: linear-gradient(135deg, #2196F3, #1976D2);
-    }
-    .red {
-      background: linear-gradient(135deg, #c0342a, #aa2626);
-    }
-    .yellow {
-      background: linear-gradient(135deg, #ffc107, #ffb300);
-    }
-    .content {
-      height: 100%;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    button {
-      margin-top: 15px;
-      padding: 12px 20px;
-      cursor: pointer;
-      background-color: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: inherit;
-      border-radius: 25px;
-      font-weight: 600;
-      font-size: 16.9px;
-      transition: all 0.3s ease;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    button:hover {
-      background-color: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    #status {
-      font-size: 28.6px;
-      font-weight: 700;
-      margin-bottom: 15px;
-      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
-      word-wrap: break-word;
-      max-width: 100%;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 15px;
-      padding: 12px 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      /* Changed animation to scale only to prevent clipping */
+      animation: zoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    #status-icon {
-      text-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
-    }
-    #serial {
-      font-size: 27.3px;
-      margin-bottom: 8px;
-      opacity: 0.9;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
-    }
-    #model, #color {
-      font-size: 27.3px;
-      opacity: 0.9;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
-    }
-    .info-row {
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      flex-wrap: nowrap;
-      width: 100%;
-    }
-    .info-row span {
-      vertical-align: middle;
-      white-space: normal;
-      word-wrap: break-word;
-      max-width: 300px;
-    }
-    #close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      background: none;
-      border: none;
-      color: inherit;
-      font-size: 26px;
-      cursor: pointer;
-      padding: 5px;
-      border-radius: 50%;
-      transition: background 0.3s;
-    }
-    #close-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-    #progress-bar {
-      position: absolute;
-      bottom: 10px;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #ffeb3b, #ffd700);
-      border-radius: 2px;
-      box-shadow: 0 0 10px rgba(255, 235, 59, 0.6), 0 0 20px rgba(255, 235, 59, 0.4);
-      animation: progressGlow 2s ease-in-out infinite alternate;
-    }
-    @keyframes progressGlow {
+
+    @keyframes zoomIn {
       from {
-        box-shadow: 0 0 10px rgba(255, 235, 59, 0.6), 0 0 20px rgba(255, 235, 59, 0.4);
+        transform: scale(0.8);
+        opacity: 0;
       }
+
       to {
-        box-shadow: 0 0 15px rgba(255, 235, 59, 0.8), 0 0 30px rgba(255, 235, 59, 0.6);
+        transform: scale(1);
+        opacity: 1;
       }
+    }
+
+    /* Status Specific Themes */
+    .theme-recci {
+      background: var(--grad-recci);
+    }
+
+    .theme-kvk {
+      background: var(--grad-kvk);
+    }
+
+    .theme-none {
+      background: var(--grad-none);
+    }
+
+    .theme-error {
+      background: var(--grad-error);
+    }
+
+    /* Close Button */
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      transform: rotate(90deg);
+    }
+
+    /* Status Pill */
+    .status-badge {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 10px 24px;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .check-icon {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .status-text {
+      color: white;
+      font-size: var(--fs-status);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Info Section */
+    .serial-number {
+      font-size: var(--fs-serial);
+      font-weight: 800;
+      color: white;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .model-info {
+      font-size: var(--fs-model);
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+
+    /* Copy Button */
+    .copy-button {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 12px 28px;
+      border-radius: 14px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s;
+      backdrop-filter: blur(5px);
+    }
+
+    .copy-button:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .copy-button:active {
+      transform: scale(0.95);
+    }
+
+    /* Progress Container */
+    .progress-wrapper {
+      position: absolute;
+      bottom: 8px;
+      /* Lifted from bottom to avoid rounding overlap */
+      left: 20px;
+      right: 20px;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.6);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+      transform-origin: left;
     }
   </style>
 </head>
+
 <body>
-  <div id="popup" class="popup">
-    <button id="close-btn">×</button>
-    <div class="content">
-      <div id="status">
-        <span id="status-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-          </svg>
-        </span>
-        <span id="status-text"></span>
-      </div>
-      <div class="info-row"> <span id="serial"></span></div>
-      <div class="info-row"> <span id="model"></span> - <span id="color"></span></div>
-      <div id="warranty-end" style="display: none; margin-top: 10px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;">
-          <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
-        </svg>
-        KVK Güvence Bitiş Tarihi: <span id="end-date"></span>
-      </div>
-      <button id="copy-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;">
-          <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-        </svg>
-        Kopyala
-      </button>
-      <div id="progress-bar"></div>
+  <div id="popup" class="popup-container">
+    <div class="close-btn" onclick="window.close()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 1L1 13M1 1L13 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+      </svg>
+    </div>
+
+    <div class="status-badge">
+      <svg class="check-icon" viewBox="0 0 24 24">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+      </svg>
+      <span id="status-text" class="status-text">Yükleniyor...</span>
+    </div>
+
+    <div id="serial" class="serial-number">...</div>
+    <div id="model" class="model-info">...</div>
+
+    <button id="copy-btn" class="copy-button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+      <span>Kopyala</span>
+    </button>
+
+    <div class="progress-wrapper">
+      <div id="progress" class="progress-bar"></div>
     </div>
   </div>
+
   <script>
-    let progressInterval;
-    let startTime;
-    let duration;
-    let currentWidth = 100;
-    document.addEventListener('DOMContentLoaded', () => {
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.on('popup-data', (event, info, timeoutDuration = 5000) => {
-        const statusText = document.getElementById('status-text');
-        const statusIcon = document.getElementById('status-icon');
-        if (statusText) statusText.textContent = info.warranty_status || 'Bilinmiyor';
-        if (statusIcon) {
-          if (info.warranty_status === 'RECCI GARANTILI') {
-            statusIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
-          } else if (info.warranty_status === 'KVK GARANTILI') {
-            statusIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>';
-          } else {
-            statusIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
-          }
-        }
-        const serial = document.getElementById('serial');
-        if (serial) serial.textContent = info.serial || 'Bilinmiyor';
-        const model = document.getElementById('model');
-        if (model) model.textContent = (info.model_name || 'Model Bulunamadi').replace(/SON[Iİ]C/g, '').trim();
-        const color = document.getElementById('color');
-        if (color) color.textContent = info.model_color || 'Renk Bulunamadi';
-        const warrantyEnd = document.getElementById('warranty-end');
-        const endDate = document.getElementById('end-date');
-        if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end && warrantyEnd && endDate) {
-          warrantyEnd.style.display = 'block';
-          endDate.textContent = info.warranty_end;
-        }
+    const { ipcRenderer } = require('electron');
 
-        const popup = document.getElementById('popup');
-        if (info.warranty_status === 'RECCI GARANTILI') {
-          popup.className = 'popup green';
-        } else if (info.warranty_status === 'KVK GARANTILI') {
-          popup.className = 'popup blue';
-        } else if (info.warranty_status === 'İnternet Bağlantı Hatası' || info.is_error) {
-          popup.className = 'popup yellow';
-        } else {
-          popup.className = 'popup red';
-        }
+    ipcRenderer.on('popup-data', (event, info, duration) => {
+      const popup = document.getElementById('popup');
+      const statusText = document.getElementById('status-text');
+      const serialDisplay = document.getElementById('serial');
+      const modelDisplay = document.getElementById('model');
+      const copyBtn = document.getElementById('copy-btn');
+      const progress = document.getElementById('progress');
 
-        const copyBtn = document.getElementById('copy-btn');
-        if (copyBtn) {
-          if (info.warranty_status === 'KVK GARANTILI' && info.warranty_end) {
-            copyBtn.style.display = 'block';
-            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Güvence Bitiş Tarihini Kopyala';
-            copyBtn.onclick = () => {
-              require('electron').clipboard.writeText(`GÜVENCE BİTİŞ TARİHİ : ${info.warranty_end}`);
-            };
-          } else if (info.warranty_status === 'RECCI GARANTILI' && info.model_name && info.model_name !== 'MODEL BULUNAMADI' && info.model_color && info.model_color !== 'RENK BULUNAMADI') {
-            copyBtn.style.display = 'block';
-            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 5px;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Kopyala';
-            copyBtn.onclick = () => {
-              require('electron').clipboard.writeText(`${info.model_name} - ${info.model_color}`);
-            };
-          } else {
-            copyBtn.style.display = 'none';
-          }
-        }
+      // Set Size class
+      popup.className = 'popup-container size-' + (info.sizeLevel || 3);
 
-        const closeBtn = document.getElementById('close-btn');
-        if (closeBtn) {
-          closeBtn.onclick = () => {
-            window.close();
-          };
-        }
+      // Set Content
+      serialDisplay.textContent = info.serial || 'Unknown Serial';
 
-        const progressBar = document.getElementById('progress-bar');
-        if (progressBar) {
-          progressBar.style.width = '100%';
-          startTime = Date.now();
-          duration = timeoutDuration;
-          progressInterval = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
-            progressBar.style.width = currentWidth + '%';
-            if (currentWidth <= 0) {
-              clearInterval(progressInterval);
-              window.close();
-            }
-          }, 50);
-        }
+      const status = (info.warranty_status || '').toUpperCase();
+      statusText.textContent = status;
 
-        if (popup) {
-          popup.addEventListener('mouseenter', () => {
-            if (progressInterval) {
-              clearInterval(progressInterval);
-            }
-            ipcRenderer.send('popup-hover-enter');
-          });
+      // Theme logic & Button Visibility
+      if (info.is_error) {
+        popup.classList.add('theme-error');
+        modelDisplay.textContent = 'Bağlantı kesildi';
+        copyBtn.style.display = 'none';
+      } else if (status.includes('RECCI')) {
+        popup.classList.add('theme-recci');
+        modelDisplay.textContent = (info.model_name || '') + ' - ' + (info.model_color || '');
+        copyBtn.style.display = 'flex';
+      } else if (status.includes('KVK')) {
+        popup.classList.add('theme-kvk');
+        modelDisplay.textContent = (info.model_name || '') + ' - ' + (info.model_color || '');
+        copyBtn.style.display = 'flex';
+      } else {
+        popup.classList.add('theme-none');
+        modelDisplay.textContent = 'Garanti Kapsamı Dışında';
+        copyBtn.style.display = 'none';
+      }
 
-          popup.addEventListener('mouseleave', () => {
-            startTime = Date.now() - ((100 - currentWidth) / 100 * duration);
-            progressInterval = setInterval(() => {
-              const elapsed = Date.now() - startTime;
-              currentWidth = Math.max(0, 100 - (elapsed / duration) * 100);
-              progressBar.style.width = currentWidth + '%';
-              if (currentWidth <= 0) {
-                clearInterval(progressInterval);
-                window.close();
-              }
-            }, 50);
-            ipcRenderer.send('popup-hover-leave');
-          });
+      // Copy logic
+      copyBtn.onclick = () => {
+        const textToCopy = `${info.serial}\n${info.model_name || ''} ${info.model_color || ''}\n${info.warranty_status}`;
+        navigator.clipboard.writeText(textToCopy);
+        const span = copyBtn.querySelector('span');
+        const originalText = span.textContent;
+        span.textContent = 'Kopyalandı!';
+        copyBtn.style.background = 'rgba(255, 255, 255, 0.4)';
+        setTimeout(() => {
+          span.textContent = originalText;
+          copyBtn.style.background = '';
+        }, 1500);
+      };
+
+      // Progress bar logic
+      let startTime = Date.now();
+      let progressInterval;
+
+      function updateProgress() {
+        const elapsed = Date.now() - startTime;
+        const currentProgress = Math.max(0, 100 - (elapsed / duration * 100));
+        progress.style.transform = `scaleX(${currentProgress / 100})`;
+
+        if (currentProgress <= 0) {
+          clearInterval(progressInterval);
         }
+      }
+
+      progressInterval = setInterval(updateProgress, 50);
+
+      // Hover handling (Sync with Main Process)
+      popup.addEventListener('mouseenter', () => {
+        clearInterval(progressInterval);
+        ipcRenderer.send('popup-hover-enter');
+      });
+      popup.addEventListener('mouseleave', () => {
+        const currentTransform = progress.style.transform || 'scaleX(1)';
+        const currentWidth = parseFloat(currentTransform.replace('scaleX(', '').replace(')', '')) * 100;
+        startTime = Date.now() - ((100 - currentWidth) / 100 * duration);
+        progressInterval = setInterval(updateProgress, 50);
+        ipcRenderer.send('popup-hover-leave');
       });
     });
   </script>
 </body>
+
 </html>

@@ -1,179 +1,132 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
   <title>Ayarlar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #f5f5f5;
-      --card-bg: white;
-      --text-color: #333;
-      --border-color: #ddd;
-      --button-bg: #4CAF50;
-      --button-hover: #45a049;
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
     }
 
-    .dark {
-      --bg-color: #2c2f33;
-      --card-bg: #36393f;
-      --text-color: #dcddde;
-      --border-color: #202225;
-      --button-bg: #4CAF50;
-      --button-hover: #45a049;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
     }
 
     body {
-      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 20px;
       background-color: var(--bg-color);
-      color: var(--text-color);
-      transition: background-color 0.3s, color 0.3s;
+      color: var(--text-main);
+      padding: 30px;
+      overflow: hidden;
+      background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), transparent 300px);
     }
 
-    .container {
-      max-width: 600px;
+    .settings-container {
+      max-width: 440px;
       margin: 0 auto;
     }
 
-    h1 {
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 25px;
       text-align: center;
-      margin-bottom: 30px;
-      color: var(--text-color);
-      font-weight: 500;
     }
 
-    .settings-card {
+    .setting-group {
       background: var(--card-bg);
-      border-radius: 15px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
     }
 
     .setting-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px 0;
-      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
     }
 
     .setting-item:last-child {
-      border-bottom: none;
+      margin-bottom: 0;
     }
 
     .setting-label {
       font-weight: 600;
-      font-size: 16px;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
     }
 
     .setting-description {
-      font-size: 14px;
-      opacity: 0.7;
-      margin-top: 5px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
 
-    select, input[type="number"] {
-      padding: 10px 15px;
-      border: 1px solid var(--border-color);
+    select,
+    input[type="number"] {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 8px 12px;
       border-radius: 10px;
-      font-size: 14px;
-      background: var(--card-bg);
-      color: var(--text-color);
-      cursor: pointer;
-    }
-
-    select:focus, input[type="number"]:focus {
       outline: none;
-      border-color: var(--button-bg);
+      font-size: 0.9rem;
+      transition: all 0.3s;
     }
 
-    .toggle-switch {
-      position: relative;
-      width: 50px;
-      height: 26px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: 0.4s;
-      border-radius: 26px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: 0.4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: var(--button-bg);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(24px);
+    select:focus,
+    input:focus {
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .save-btn {
-      display: block;
       width: 100%;
-      padding: 15px;
-      background: var(--button-bg);
-      color: white;
+      padding: 14px;
+      background: var(--accent);
+      color: #0f172a;
       border: none;
-      border-radius: 25px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 1rem;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 16px;
-      transition: all 0.3s ease;
-      margin-top: 20px;
+      transition: all 0.3s;
     }
 
     .save-btn:hover {
-      background: var(--button-hover);
       transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
     }
 
-    .close-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--text-color);
+    .save-btn:active {
+      transform: scale(0.98);
     }
   </style>
 </head>
-<body class="dark">
-  <div class="container">
-    <h1>⚙️ Ayarlar</h1>
 
-    <div class="settings-card">
+<body>
+  <div class="settings-container">
+    <h2>Uygulama Ayarları</h2>
+
+    <div class="setting-group">
       <div class="setting-item">
         <div>
           <div class="setting-label">Popup Boyutu</div>
-          <div class="setting-description">Bildirim penceresinin boyutunu ayarlayın</div>
+          <div class="setting-description">Bildirim penceresinin ölçeği</div>
         </div>
         <select id="popup-size">
           <option value="1">Küçük</option>
@@ -184,49 +137,35 @@
 
       <div class="setting-item">
         <div>
-          <div class="setting-label">Popup Süresi (ms)</div>
-          <div class="setting-description">Bildirim penceresinin ne kadar süre görüneceği</div>
+          <div class="setting-label">Görüntüleme Süresi</div>
+          <div class="setting-description">Kapanış zamanı (ms)</div>
         </div>
-        <input type="number" id="popup-timeout" min="1000" max="30000" step="500" value="5000">
-      </div>
-
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">Double-Copy</div>
-          <div class="setting-description">Ctrl+Shift+C ile hızlı kopyalama</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="double-copy-enabled">
-          <span class="slider"></span>
-        </label>
+        <input type="number" id="popup-timeout" min="1000" max="30000" step="500">
       </div>
     </div>
 
-    <button class="save-btn" id="save-btn">Kaydet</button>
+    <button class="save-btn" id="save-btn">Değişiklikleri Kaydet</button>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    // Load current settings
     ipcRenderer.invoke('get-settings').then((settings) => {
-      document.getElementById('popup-size').value = settings.popupSizeLevel || 3;
+      document.getElementById('popup-size').value = settings.popupSizeLevel || 2;
       document.getElementById('popup-timeout').value = settings.popupTimeout || 5000;
-      document.getElementById('double-copy-enabled').checked = settings.doubleCopyEnabled !== false;
     });
 
-    // Save settings
-    document.getElementById('save-btn').addEventListener('click', () => {
+    document.getElementById('save-btn').onclick = () => {
       const settings = {
         popupSizeLevel: parseInt(document.getElementById('popup-size').value),
-        popupTimeout: parseInt(document.getElementById('popup-timeout').value),
-        doubleCopyEnabled: document.getElementById('double-copy-enabled').checked
+        popupTimeout: parseInt(document.getElementById('popup-timeout').value)
       };
 
       ipcRenderer.invoke('save-settings', settings).then(() => {
-        alert('Ayarlar kaydedildi!');
+        window.close();
       });
-    });
+    };
   </script>
 </body>
+
 </html>

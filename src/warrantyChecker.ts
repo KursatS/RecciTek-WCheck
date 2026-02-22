@@ -25,6 +25,13 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
 
       request.on('response', (response) => {
         clearTimeout(timeout);
+
+        if (response.statusCode !== 200) {
+          request.abort();
+          reject(new Error(`HTTP Error: ${response.statusCode}`));
+          return;
+        }
+
         let buffers: Buffer[] = [];
         response.on('data', (chunk) => {
           buffers.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
