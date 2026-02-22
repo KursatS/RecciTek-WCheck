@@ -81,9 +81,11 @@ export class WindowManager {
             resizable: false,
             frame: true,
             webPreferences: { nodeIntegration: true, contextIsolation: false },
-            title: 'Ayarlar'
+            title: 'Ayarlar',
+            autoHideMenuBar: true
         });
 
+        this.settingsWindow.setMenuBarVisibility(false);
         this.settingsWindow.loadFile(path.join(this.appPath, 'settings.html'));
         this.settingsWindow.on('closed', () => {
             this.settingsWindow = null;

@@ -6,6 +6,7 @@ export interface AppSettings {
   popupTimeout: number;
   popupSizeLevel: number;
   doubleCopyEnabled: boolean;
+  autoStartEnabled: boolean;
 }
 
 export function getSettingsPath(): string {
@@ -22,7 +23,7 @@ export function loadSettings(): AppSettings {
   } catch (error) {
     console.error('Error loading settings:', error);
   }
-  return { popupTimeout: 5000, popupSizeLevel: 2, doubleCopyEnabled: true };
+  return { popupTimeout: 5000, popupSizeLevel: 2, doubleCopyEnabled: true, autoStartEnabled: false };
 }
 
 export function saveSettings(settings: AppSettings): void {

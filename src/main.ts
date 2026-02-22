@@ -6,7 +6,8 @@ import {
   nativeImage,
   clipboard,
   globalShortcut,
-  net
+  net,
+  dialog
 } from 'electron';
 import * as path from 'path';
 import { checkWarranty } from './warrantyChecker';
@@ -26,6 +27,22 @@ const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
   process.exit(0);
+} else {
+  app.on('second-instance', () => {
+    const mainWindow = windowManager?.getMainWindow();
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'RecciTek WCheck',
+        message: 'Uygulama zaten çalışıyor.',
+        detail: 'Lütfen sistem tepsisindeki (tray) simgeyi kontrol edin.',
+        buttons: ['Tamam']
+      });
+    }
+  });
 }
 
 let windowManager: WindowManager;
@@ -153,6 +170,13 @@ function setupIpcHandlers() {
   ipcMain.handle('save-settings', async (_, settings) => {
     currentSettings = { ...currentSettings, ...settings };
     saveSettings(currentSettings);
+
+    // Apply auto-start setting
+    app.setLoginItemSettings({
+      openAtLogin: currentSettings.autoStartEnabled,
+      path: app.getPath('exe')
+    });
+
     return true;
   });
 
@@ -227,6 +251,12 @@ function initializeApp() {
 
     clipboardMonitor.start();
     startServerStatusMonitor();
+
+    // Apply auto-start setting on launch
+    app.setLoginItemSettings({
+      openAtLogin: currentSettings.autoStartEnabled,
+      path: app.getPath('exe')
+    });
   }, 2500);
 
   setupIpcHandlers();
