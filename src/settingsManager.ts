@@ -16,7 +16,8 @@ export function loadSettings(): AppSettings {
   try {
     const p = getSettingsPath();
     if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, 'utf8'));
+      const settings = JSON.parse(fs.readFileSync(p, 'utf8'));
+      return { ...settings, doubleCopyEnabled: true };
     }
   } catch (error) {
     console.error('Error loading settings:', error);

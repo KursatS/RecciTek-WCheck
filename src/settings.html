@@ -78,20 +78,29 @@
 
     select,
     input[type="number"] {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(30, 41, 59, 0.8);
       border: 1px solid var(--glass-border);
       color: white;
-      padding: 8px 12px;
-      border-radius: 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
       outline: none;
-      font-size: 0.9rem;
-      transition: all 0.3s;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      appearance: none;
+      cursor: pointer;
+      min-width: 120px;
     }
 
-    select:focus,
-    input:focus {
-      border-color: var(--accent);
-      background: rgba(255, 255, 255, 0.08);
+    /* Styling for the dropdown options to ensure visibility */
+    select option {
+      background-color: #1e293b;
+      color: white;
+      padding: 10px;
+    }
+
+    select:hover,
+    input:hover {
+      border-color: rgba(56, 189, 248, 0.5);
     }
 
     .save-btn {

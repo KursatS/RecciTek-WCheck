@@ -151,8 +151,8 @@ function setupIpcHandlers() {
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
-    currentSettings = settings;
-    saveSettings(settings);
+    currentSettings = { ...currentSettings, ...settings };
+    saveSettings(currentSettings);
     return true;
   });
 
@@ -187,6 +187,10 @@ function setupIpcHandlers() {
     return await loadCache();
   });
 
+  ipcMain.on('manual-server-status-refresh', () => {
+    checkServerStatus();
+  });
+
   ipcMain.handle('delete-entry', async (_, s) => {
     await deleteEntry(s);
     return await loadCache();
@@ -207,7 +211,7 @@ function initializeApp() {
 
     const mainWindow = windowManager.createMainWindow();
 
-    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, '../logo.png')));
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, '../assets/logo.png')));
     tray.setToolTip('Warranty Monitor');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },

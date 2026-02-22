@@ -253,9 +253,11 @@
     </div>
 
     <div class="status-badge">
-      <svg class="check-icon" viewBox="0 0 24 24">
-        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-      </svg>
+      <div id="status-icon-container">
+        <svg class="check-icon" viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+        </svg>
+      </div>
       <span id="status-text" class="status-text">Yükleniyor...</span>
     </div>
 
@@ -296,23 +298,34 @@
       const status = (info.warranty_status || '').toUpperCase();
       statusText.textContent = status;
 
+      const iconContainer = document.getElementById('status-icon-container');
+      const icons = {
+        check: '<svg class="check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>',
+        info: '<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+        error: '<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+      };
+
       // Theme logic & Button Visibility
       if (info.is_error) {
         popup.classList.add('theme-error');
         modelDisplay.textContent = 'Bağlantı kesildi';
         copyBtn.style.display = 'none';
+        iconContainer.innerHTML = icons.error;
       } else if (status.includes('RECCI')) {
         popup.classList.add('theme-recci');
         modelDisplay.textContent = (info.model_name || '') + ' - ' + (info.model_color || '');
         copyBtn.style.display = 'flex';
+        iconContainer.innerHTML = icons.check;
       } else if (status.includes('KVK')) {
         popup.classList.add('theme-kvk');
         modelDisplay.textContent = (info.model_name || '') + ' - ' + (info.model_color || '');
         copyBtn.style.display = 'flex';
+        iconContainer.innerHTML = icons.check;
       } else {
         popup.classList.add('theme-none');
         modelDisplay.textContent = 'Garanti Kapsamı Dışında';
         copyBtn.style.display = 'none';
+        iconContainer.innerHTML = icons.info;
       }
 
       // Copy logic
