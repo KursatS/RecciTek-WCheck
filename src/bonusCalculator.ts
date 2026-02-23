@@ -13,26 +13,23 @@ export function parseBonusData(buffer: Buffer): BonusResult[] {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Convert to JSON (array of arrays for raw data)
+    // Raw veri için array of arrays formatına çeviriyoruz
     const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
     const monthlyStats: { [key: string]: { total: number, valid: number, overtime: number } } = {};
 
     rows.forEach(row => {
-        // We look for a cell that looks like "DD-MM-YYYY HH:mm" or "YYYY-MM-DD HH:mm"
-        // Based on user sample: "21-02-2026 11:27"
-        const dateCell = row.find(cell =>
-            typeof cell === 'string' &&
-            /\d{2,4}[-/]\d{2}[-/]\d{2,4}\s\d{2}:\d{2}/.test(cell)
-        );
+        // "O" sütunu 14. indekstir. Doğrudan bu hücredeki veriyi kontrol ediyoruz.
+        const dateCell = row[14]; 
 
-        if (dateCell) {
+        // Hücrenin string olduğundan ve beklenen tarih formatına uyduğundan emin oluyoruz
+        if (dateCell && typeof dateCell === 'string' && /\d{2,4}[-/]\d{2}[-/]\d{2,4}\s\d{2}:\d{2}/.test(dateCell)) {
             const [datePart, timePart] = dateCell.split(' ');
             const [hours, minutes] = timePart.split(':').map(Number);
 
-            // Normalize date for grouping (e.g., "February 2026")
+            // Tarihi "Ay-Yıl" (02-2026) şeklinde grupluyoruz
             const [day, month, year] = datePart.includes('-') ? datePart.split('-') : datePart.split('/');
-            const monthKey = `${month}-${year}`; // "02-2026"
+            const monthKey = `${month}-${year}`;
 
             if (!monthlyStats[monthKey]) {
                 monthlyStats[monthKey] = { total: 0, valid: 0, overtime: 0 };
@@ -40,7 +37,7 @@ export function parseBonusData(buffer: Buffer): BonusResult[] {
 
             monthlyStats[monthKey].total++;
 
-            // Working hours: 08:00 to 18:30
+            // Çalışma saatleri (İstediğiniz gibi değiştirilmedi): 08:00 - 18:30
             const minutesSinceMidnight = hours * 60 + minutes;
             const startLimit = 8 * 60; // 08:00
             const endLimit = 18 * 60 + 30; // 18:30
@@ -67,14 +64,14 @@ export function parseBonusData(buffer: Buffer): BonusResult[] {
         };
     });
 
-    // Sort by date (descending)
+    // Tarihe göre sırala (Azalan)
     const sortedResults = results.sort((a, b) => {
         const dateA = new Date(parseInt(a.month.split(' ')[1]), monthToNum(a.month.split(' ')[0]));
         const dateB = new Date(parseInt(b.month.split(' ')[1]), monthToNum(b.month.split(' ')[0]));
         return dateB.getTime() - dateA.getTime();
     });
 
-    // Exclude the oldest month (likely incomplete data)
+    // Eksik veri olma ihtimaline karşı en eski ayı listeden çıkar (TS mantığındaki kural)
     if (sortedResults.length > 1) {
         sortedResults.pop();
     }
