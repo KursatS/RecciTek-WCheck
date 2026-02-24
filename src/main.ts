@@ -105,10 +105,8 @@ async function checkServerStatus(): Promise<void> {
 function startServerStatusMonitor() {
   if (statusInterval) clearInterval(statusInterval);
 
-  // Initial check
   setTimeout(checkServerStatus, 5000);
 
-  // Interval check: 5 minutes + random jitter (up to 2 minutes)
   const baseInterval = 5 * 60000;
 
   const scheduleNext = () => {
@@ -132,7 +130,8 @@ function handleDoubleCopy(): void {
 }
 
 async function handleDetection(serial: string): Promise<void> {
-  if (serial === lastDetectedSerial) {
+  // AYAR KONTROLÜ: Eğer "aynı seriyi engelle" açıksa ve seri aynıysa durdur.
+  if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
     return;
   }
   lastDetectedSerial = serial;
@@ -166,14 +165,15 @@ function setupIpcHandlers() {
   ipcMain.handle('get-settings', async () => ({
     popupTimeout: currentSettings.popupTimeout,
     popupSizeLevel: currentSettings.popupSizeLevel,
-    doubleCopyEnabled: currentSettings.doubleCopyEnabled
+    doubleCopyEnabled: currentSettings.doubleCopyEnabled,
+    autoStartEnabled: currentSettings.autoStartEnabled,
+    preventDuplicatePopup: currentSettings.preventDuplicatePopup // Yeni ayar eklendi
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
     currentSettings = { ...currentSettings, ...settings };
     saveSettings(currentSettings);
 
-    // Apply auto-start setting
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: app.getPath('exe')
@@ -210,8 +210,7 @@ function setupIpcHandlers() {
     return enabled;
   });
 
-
-  ipcMain.handle('save-note', async () => { }); // No-op to prevent frontend errors if index.html isn't fully cleaned yet
+  ipcMain.handle('save-note', async () => { });
   ipcMain.handle('get-note', async () => null);
 
   ipcMain.on('popup-hover-enter', () => {
@@ -268,7 +267,6 @@ function initializeApp() {
     clipboardMonitor.start();
     startServerStatusMonitor();
 
-    // Apply auto-start setting on launch
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: app.getPath('exe')
