@@ -7,6 +7,7 @@ export interface AppSettings {
   popupSizeLevel: number;
   doubleCopyEnabled: boolean;
   autoStartEnabled: boolean;
+  preventDuplicatePopup: boolean;
 }
 
 export function getSettingsPath(): string {
@@ -14,16 +15,25 @@ export function getSettingsPath(): string {
 }
 
 export function loadSettings(): AppSettings {
+  const defaultSettings: AppSettings = {
+    popupTimeout: 5000,
+    popupSizeLevel: 2,
+    doubleCopyEnabled: true,
+    autoStartEnabled: false,
+    preventDuplicatePopup: true 
+  };
+
   try {
     const p = getSettingsPath();
     if (fs.existsSync(p)) {
-      const settings = JSON.parse(fs.readFileSync(p, 'utf8'));
-      return { ...settings, doubleCopyEnabled: true };
+      const savedSettings = JSON.parse(fs.readFileSync(p, 'utf8'));
+
+      return { ...defaultSettings, ...savedSettings };
     }
   } catch (error) {
     console.error('Error loading settings:', error);
   }
-  return { popupTimeout: 5000, popupSizeLevel: 2, doubleCopyEnabled: true, autoStartEnabled: false };
+  return defaultSettings;
 }
 
 export function saveSettings(settings: AppSettings): void {
