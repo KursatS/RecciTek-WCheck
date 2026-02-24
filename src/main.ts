@@ -104,11 +104,8 @@ async function checkServerStatus(): Promise<void> {
 
 function startServerStatusMonitor() {
   if (statusInterval) clearInterval(statusInterval);
-
   setTimeout(checkServerStatus, 5000);
-
   const baseInterval = 5 * 60000;
-
   const scheduleNext = () => {
     const jitter = Math.floor(Math.random() * 120000);
     statusInterval = setTimeout(() => {
@@ -116,7 +113,6 @@ function startServerStatusMonitor() {
       scheduleNext();
     }, baseInterval + jitter);
   };
-
   scheduleNext();
 }
 
@@ -130,7 +126,7 @@ function handleDoubleCopy(): void {
 }
 
 async function handleDetection(serial: string): Promise<void> {
-  // AYAR KONTROLÜ: Eğer "aynı seriyi engelle" açıksa ve seri aynıysa durdur.
+  // GÜNCELLENEN KISIM: Ayar aktifse ve seri aynıysa işlem yapma
   if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
     return;
   }
@@ -162,12 +158,13 @@ async function handleDetection(serial: string): Promise<void> {
 function setupIpcHandlers() {
   ipcMain.handle('get-cached-data', async () => await loadCache());
   ipcMain.handle('get-double-copy', async () => currentSettings.doubleCopyEnabled);
+  
   ipcMain.handle('get-settings', async () => ({
     popupTimeout: currentSettings.popupTimeout,
     popupSizeLevel: currentSettings.popupSizeLevel,
     doubleCopyEnabled: currentSettings.doubleCopyEnabled,
     autoStartEnabled: currentSettings.autoStartEnabled,
-    preventDuplicatePopup: currentSettings.preventDuplicatePopup // Yeni ayar eklendi
+    preventDuplicatePopup: currentSettings.preventDuplicatePopup // Yeni alan eklendi
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
@@ -178,7 +175,6 @@ function setupIpcHandlers() {
       openAtLogin: currentSettings.autoStartEnabled,
       path: app.getPath('exe')
     });
-
     return true;
   });
 
@@ -210,7 +206,7 @@ function setupIpcHandlers() {
     return enabled;
   });
 
-  ipcMain.handle('save-note', async () => { });
+  ipcMain.handle('save-note', async () => { }); 
   ipcMain.handle('get-note', async () => null);
 
   ipcMain.on('popup-hover-enter', () => {
