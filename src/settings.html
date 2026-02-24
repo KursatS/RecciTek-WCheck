@@ -91,7 +91,6 @@
       min-width: 120px;
     }
 
-    /* Styling for the dropdown options to ensure visibility */
     select option {
       background-color: #1e293b;
       color: white;
@@ -125,7 +124,6 @@
       transform: scale(0.98);
     }
 
-    /* Toggle Switch Styling */
     .switch {
       position: relative;
       display: inline-block;
@@ -209,6 +207,17 @@
           <span class="slider"></span>
         </label>
       </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Aynı Seriyi Engelle</div>
+          <div class="setting-description">Tekrar popup gösterilmesini önler</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="prevent-duplicate">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <button class="save-btn" id="save-btn">Değişiklikleri Kaydet</button>
@@ -221,13 +230,15 @@
       document.getElementById('popup-size').value = settings.popupSizeLevel || 2;
       document.getElementById('popup-timeout').value = settings.popupTimeout || 5000;
       document.getElementById('auto-start').checked = settings.autoStartEnabled || false;
+      document.getElementById('prevent-duplicate').checked = settings.preventDuplicatePopup || false;
     });
 
     document.getElementById('save-btn').onclick = () => {
       const settings = {
         popupSizeLevel: parseInt(document.getElementById('popup-size').value),
         popupTimeout: parseInt(document.getElementById('popup-timeout').value),
-        autoStartEnabled: document.getElementById('auto-start').checked
+        autoStartEnabled: document.getElementById('auto-start').checked,
+        preventDuplicatePopup: document.getElementById('prevent-duplicate').checked
       };
 
       ipcRenderer.invoke('save-settings', settings).then(() => {
