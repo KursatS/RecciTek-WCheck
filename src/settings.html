@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./input.css">
   <style>
     :root {
       --bg-color: #0f172a;
@@ -28,13 +29,14 @@
       background-color: var(--bg-color);
       color: var(--text-main);
       padding: 30px;
-      overflow: hidden;
+      overflow-y: auto;
       background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), transparent 300px);
     }
 
     .settings-container {
-      max-width: 440px;
+      max-width: 480px;
       margin: 0 auto;
+      padding-bottom: 20px;
     }
 
     h2 {
@@ -220,32 +222,54 @@
       </div>
     </div>
 
+    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Kısayol Yöneticisi
+    </h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Geçmişi Temizle</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+X)</div>
+        </div>
+        <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">İzlemeyi Aç/Kapat</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+M)</div>
+        </div>
+        <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
+      </div>
+    </div>
+
+    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Profil</h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Personel Adı</div>
+          <div class="setting-description">Taleplerde görünecek isminiz</div>
+        </div>
+        <input type="text" id="personnel-name" placeholder="Adınızı girin..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none;">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Rol</div>
+          <div class="setting-description">Bu cihazın kullanım amacı</div>
+        </div>
+        <select id="user-role"
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none; cursor: pointer;">
+          <option value="kargo_kabul" style="background: #1e293b;">Kargo Kabul</option>
+          <option value="mh" style="background: #1e293b;">Müşteri Hizmetleri</option>
+        </select>
+      </div>
+    </div>
+
     <button class="save-btn" id="save-btn">Değişiklikleri Kaydet</button>
   </div>
 
-  <script>
-    const { ipcRenderer } = require('electron');
-
-    ipcRenderer.invoke('get-settings').then((settings) => {
-      document.getElementById('popup-size').value = settings.popupSizeLevel || 2;
-      document.getElementById('popup-timeout').value = settings.popupTimeout || 5000;
-      document.getElementById('auto-start').checked = settings.autoStartEnabled || false;
-      document.getElementById('prevent-duplicate').checked = settings.preventDuplicatePopup || false;
-    });
-
-    document.getElementById('save-btn').onclick = () => {
-      const settings = {
-        popupSizeLevel: parseInt(document.getElementById('popup-size').value),
-        popupTimeout: parseInt(document.getElementById('popup-timeout').value),
-        autoStartEnabled: document.getElementById('auto-start').checked,
-        preventDuplicatePopup: document.getElementById('prevent-duplicate').checked
-      };
-
-      ipcRenderer.invoke('save-settings', settings).then(() => {
-        window.close();
-      });
-    };
-  </script>
+  <script type="module" src="./settings-renderer.ts"></script>
 </body>
 
 </html>

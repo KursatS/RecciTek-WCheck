@@ -10,6 +10,7 @@ import {
   dialog
 } from 'electron';
 import * as path from 'path';
+import { is } from '@electron-toolkit/utils';
 import { checkWarranty } from './warrantyChecker';
 import {
   getCachedData,
@@ -23,6 +24,8 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
+import { createTicket, claimTicket, completeTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails } from './ticketService';
+import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -51,9 +54,12 @@ let windowManager: WindowManager;
 let clipboardMonitor: ClipboardMonitor;
 let tray: Tray | null = null;
 let currentSettings: AppSettings;
+let monitoringEnabled = true;
 let currentPopupData: any = null;
 let lastDetectedSerial: string = '';
 let statusInterval: NodeJS.Timeout | null = null;
+let ticketUnsubscribe: Unsubscribe | null = null;
+let cachedTickets: any[] = [];
 
 function extractCopyText(data: any): string {
   if (!data) return '';
@@ -158,18 +164,23 @@ async function handleDetection(serial: string): Promise<void> {
 function setupIpcHandlers() {
   ipcMain.handle('get-cached-data', async () => await loadCache());
   ipcMain.handle('get-double-copy', async () => currentSettings.doubleCopyEnabled);
-  
+
   ipcMain.handle('get-settings', async () => ({
     popupTimeout: currentSettings.popupTimeout,
     popupSizeLevel: currentSettings.popupSizeLevel,
     doubleCopyEnabled: currentSettings.doubleCopyEnabled,
     autoStartEnabled: currentSettings.autoStartEnabled,
-    preventDuplicatePopup: currentSettings.preventDuplicatePopup // Yeni alan eklendi
+    preventDuplicatePopup: currentSettings.preventDuplicatePopup,
+    shortcuts: currentSettings.shortcuts,
+    role: currentSettings.role,
+    personnelName: currentSettings.personnelName
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
     currentSettings = { ...currentSettings, ...settings };
     saveSettings(currentSettings);
+    registerShortcuts();
+    startTicketListener(); // Restart listener if role changed
 
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
@@ -179,7 +190,9 @@ function setupIpcHandlers() {
   });
 
   ipcMain.on('toggle-monitoring', (_, enabled) => {
+    monitoringEnabled = enabled;
     clipboardMonitor.setEnabled(enabled);
+    windowManager.getMainWindow()?.webContents.send('monitoring-toggled', monitoringEnabled);
   });
 
   ipcMain.on('open-settings', () => {
@@ -206,7 +219,7 @@ function setupIpcHandlers() {
     return enabled;
   });
 
-  ipcMain.handle('save-note', async () => { }); 
+  ipcMain.handle('save-note', async () => { });
   ipcMain.handle('get-note', async () => null);
 
   ipcMain.on('popup-hover-enter', () => {
@@ -230,12 +243,163 @@ function setupIpcHandlers() {
     await deleteEntry(s);
     return await loadCache();
   });
+
+  // ── Ticket System IPC ─────────────────────────────────────────────
+  ipcMain.handle('get-tickets', async () => cachedTickets);
+
+  ipcMain.handle('create-ticket', async (_, data) => {
+    try {
+      const id = await createTicket(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('claim-ticket', async (_, id, name) => {
+    try {
+      await claimTicket(id, name);
+      return { success: true };
+    } catch (error) {
+      console.error('Error claiming ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('complete-ticket', async (_, id, response) => {
+    try {
+      await completeTicket(id, response);
+      return { success: true };
+    } catch (error) {
+      console.error('Error completing ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('update-ticket-details', async (_, id, details) => {
+    try {
+      await updateTicketDetails(id, details);
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating ticket details:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.on('open-tickets', () => {
+    windowManager.openTicketsWindow();
+  });
+}
+
+// Helper to create the system tray
+function createTray() {
+  const mainWindow = windowManager.getMainWindow();
+  const iconPath = is.dev
+    ? path.join(__dirname, '../../assets/logo.png')
+    : path.join(process.resourcesPath, 'assets/logo.png');
+
+  tray = new Tray(nativeImage.createFromPath(iconPath));
+  tray.setToolTip('Warranty Monitor');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
+    { label: 'Ayarlar', click: () => windowManager.openSettingsWindow() },
+    { type: 'separator' },
+    { label: 'Çıkış', click: () => windowManager.forceQuit() }
+  ]));
+
+  tray.on('double-click', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+}
+
+// Helper to register global shortcuts
+function registerShortcuts() {
+  globalShortcut.unregisterAll(); // Unregister all existing shortcuts
+
+  // Always register the double copy shortcut if enabled
+  if (currentSettings.doubleCopyEnabled) {
+    try {
+      globalShortcut.register('CommandOrControl+Shift+C', () => {
+        handleDoubleCopy();
+      });
+    } catch (e) {
+      console.error('Failed to register double copy shortcut:', e);
+    }
+  }
+
+  if (currentSettings.shortcuts) {
+    // Clear Cache Shortcut
+    if (currentSettings.shortcuts.clearCache) {
+      try {
+        globalShortcut.register(currentSettings.shortcuts.clearCache, async () => {
+          await clearCache();
+          const win = windowManager.getMainWindow();
+          if (win) {
+            win.webContents.send('cache-cleared');
+          }
+        });
+      } catch (e) {
+        console.error('Failed to register clearCache shortcut:', e);
+      }
+    }
+
+    // Toggle Monitoring Shortcut
+    if (currentSettings.shortcuts.toggleMonitoring) {
+      try {
+        globalShortcut.register(currentSettings.shortcuts.toggleMonitoring, () => {
+          monitoringEnabled = !monitoringEnabled;
+          clipboardMonitor.setEnabled(monitoringEnabled);
+          const win = windowManager.getMainWindow();
+          if (win) {
+            win.webContents.send('monitoring-toggled', monitoringEnabled);
+          }
+        });
+      } catch (e) {
+        console.error('Failed to register toggleMonitoring shortcut:', e);
+      }
+    }
+  }
+}
+
+function startTicketListener() {
+  // Unsubscribe from previous listener if exists
+  if (ticketUnsubscribe) {
+    ticketUnsubscribe();
+    ticketUnsubscribe = null;
+  }
+
+  const broadcastTickets = (tickets: any[]) => {
+    cachedTickets = tickets;
+    // Send to all open windows
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('ticket-update', tickets);
+    }
+    // Also broadcast to any BrowserWindow that might be tickets panel
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach((win: any) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('ticket-update', tickets);
+      }
+    });
+  };
+
+  if (currentSettings.role === 'mh') {
+    ticketUnsubscribe = subscribeAsMH(broadcastTickets);
+  } else {
+    const name = currentSettings.personnelName || 'İsimsiz Personel';
+    ticketUnsubscribe = subscribeAsKargoKabul(name, broadcastTickets);
+  }
 }
 
 function initializeApp() {
   currentSettings = loadSettings();
   windowManager = new WindowManager(__dirname);
   clipboardMonitor = new ClipboardMonitor(handleDetection);
+  registerShortcuts();
+  monitoringEnabled = true;
 
   const splash = windowManager.createSplashWindow();
 
@@ -246,22 +410,10 @@ function initializeApp() {
 
     const mainWindow = windowManager.createMainWindow();
 
-    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, '../assets/logo.png')));
-    tray.setToolTip('Warranty Monitor');
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-      { label: 'Ayarlar', click: () => windowManager.openSettingsWindow() },
-      { type: 'separator' },
-      { label: 'Çıkış', click: () => windowManager.forceQuit() }
-    ]));
-
-    tray.on('double-click', () => {
-      mainWindow?.show();
-      mainWindow?.focus();
-    });
-
+    createTray();
     clipboardMonitor.start();
     startServerStatusMonitor();
+    startTicketListener();
 
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
@@ -270,12 +422,6 @@ function initializeApp() {
   }, 2500);
 
   setupIpcHandlers();
-
-  globalShortcut.register('CommandOrControl+Shift+C', () => {
-    if (currentSettings.doubleCopyEnabled) {
-      handleDoubleCopy();
-    }
-  });
 }
 
 app.whenReady().then(() => {
@@ -285,6 +431,10 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  if (ticketUnsubscribe) {
+    ticketUnsubscribe();
+    ticketUnsubscribe = null;
+  }
 });
 
 app.on('window-all-closed', () => {

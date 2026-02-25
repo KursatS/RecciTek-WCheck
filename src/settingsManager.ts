@@ -8,6 +8,12 @@ export interface AppSettings {
   doubleCopyEnabled: boolean;
   autoStartEnabled: boolean;
   preventDuplicatePopup: boolean;
+  shortcuts?: {
+    clearCache: string;
+    toggleMonitoring: string;
+  };
+  role?: 'kargo_kabul' | 'mh';
+  personnelName?: string;
 }
 
 export function getSettingsPath(): string {
@@ -20,7 +26,13 @@ export function loadSettings(): AppSettings {
     popupSizeLevel: 2,
     doubleCopyEnabled: true,
     autoStartEnabled: false,
-    preventDuplicatePopup: true 
+    preventDuplicatePopup: true,
+    shortcuts: {
+      clearCache: 'CommandOrControl+Shift+X',
+      toggleMonitoring: 'CommandOrControl+Shift+C'
+    },
+    role: 'kargo_kabul',
+    personnelName: ''
   };
 
   try {

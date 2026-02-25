@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Ayarlar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 30px;
+      overflow-y: auto;
+      background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), transparent 300px);
+    }
+
+    .settings-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+
+    .setting-group {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .setting-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting-label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .setting-description {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    select,
+    input[type="number"] {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 12px;
+      outline: none;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      -webkit-appearance: none;
+         -moz-appearance: none;
+              appearance: none;
+      cursor: pointer;
+      min-width: 120px;
+    }
+
+    select option {
+      background-color: #1e293b;
+      color: white;
+      padding: 10px;
+    }
+
+    select:hover,
+    input:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .save-btn:active {
+      transform: scale(0.98);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background-color: var(--accent);
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(20px);
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/settings-Cn51Vlu6.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-DKrWKTEj.css">
+</head>
+
+<body>
+  <div class="settings-container">
+    <h2>Uygulama Ayarları</h2>
+
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Popup Boyutu</div>
+          <div class="setting-description">Bildirim penceresinin ölçeği</div>
+        </div>
+        <select id="popup-size">
+          <option value="1">Küçük</option>
+          <option value="2">Orta</option>
+          <option value="3">Büyük</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Görüntüleme Süresi</div>
+          <div class="setting-description">Kapanış zamanı (ms)</div>
+        </div>
+        <input type="number" id="popup-timeout" min="1000" max="30000" step="500">
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Otomatik Başlat</div>
+          <div class="setting-description">Windows açıldığında başlasın</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="auto-start">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Aynı Seriyi Engelle</div>
+          <div class="setting-description">Tekrar eden popup bildirimlerini önler</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="prevent-duplicate">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Kısayol Yöneticisi
+    </h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Geçmişi Temizle</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+X)</div>
+        </div>
+        <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">İzlemeyi Aç/Kapat</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+M)</div>
+        </div>
+        <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
+      </div>
+    </div>
+
+    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Profil</h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Personel Adı</div>
+          <div class="setting-description">Taleplerde görünecek isminiz</div>
+        </div>
+        <input type="text" id="personnel-name" placeholder="Adınızı girin..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none;">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Rol</div>
+          <div class="setting-description">Bu cihazın kullanım amacı</div>
+        </div>
+        <select id="user-role"
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none; cursor: pointer;">
+          <option value="kargo_kabul" style="background: #1e293b;">Kargo Kabul</option>
+          <option value="mh" style="background: #1e293b;">Müşteri Hizmetleri</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="save-btn" id="save-btn">Değişiklikleri Kaydet</button>
+  </div>
+
+</body>
+
+</html>

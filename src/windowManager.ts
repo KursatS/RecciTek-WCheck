@@ -1,5 +1,6 @@
-import { BrowserWindow, screen, app } from 'electron';
+import { BrowserWindow, screen, app, shell } from 'electron';
 import * as path from 'path';
+import { is } from '@electron-toolkit/utils';
 
 export interface PopupSize {
     level: number;
@@ -19,6 +20,7 @@ export class WindowManager {
     private mainWindow: BrowserWindow | null = null;
     private settingsWindow: BrowserWindow | null = null;
     private bonusWindow: BrowserWindow | null = null;
+    private ticketsWindow: BrowserWindow | null = null;
     private currentPopup: BrowserWindow | null = null;
     private popupTimeout: NodeJS.Timeout | null = null;
     private popupVisible: boolean = false;
@@ -26,7 +28,19 @@ export class WindowManager {
     private popupDuration: number = 0;
     private popupRemaining: number = 0;
 
-    constructor(private appPath: string) { }
+    private preloadPath: string = '';
+
+    constructor(private appPath: string) {
+        this.preloadPath = path.join(__dirname, '../preload/index.js');
+    }
+
+    private loadFile(win: BrowserWindow, fileName: string): void {
+        if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+            win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${fileName}`);
+        } else {
+            win.loadFile(path.join(__dirname, `../renderer/${fileName}`));
+        }
+    }
 
     createSplashWindow(): BrowserWindow {
         const splash = new BrowserWindow({
@@ -34,9 +48,13 @@ export class WindowManager {
             height: 400,
             frame: false,
             alwaysOnTop: true,
-            resizable: false
+            resizable: false,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false
+            }
         });
-        splash.loadFile(path.join(this.appPath, 'splash.html'));
+        this.loadFile(splash, 'splash.html');
         return splash;
     }
 
@@ -47,12 +65,16 @@ export class WindowManager {
             minWidth: 475,
             minHeight: 400,
             show: false,
-            webPreferences: { nodeIntegration: true, contextIsolation: false },
-            icon: path.join(this.appPath, '../logo.png'),
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            icon: path.join(__dirname, '../../assets/logo.png'),
             autoHideMenuBar: true
         });
 
-        this.mainWindow.loadFile(path.join(this.appPath, 'index.html'));
+        this.loadFile(this.mainWindow, 'index.html');
 
         this.mainWindow.on('close', (e) => {
             if (this.mainWindow) {
@@ -81,13 +103,17 @@ export class WindowManager {
             height: 450,
             resizable: false,
             frame: true,
-            webPreferences: { nodeIntegration: true, contextIsolation: false },
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
             title: 'Ayarlar',
             autoHideMenuBar: true
         });
 
         this.settingsWindow.setMenuBarVisibility(false);
-        this.settingsWindow.loadFile(path.join(this.appPath, 'settings.html'));
+        this.loadFile(this.settingsWindow, 'settings.html');
         this.settingsWindow.on('closed', () => {
             this.settingsWindow = null;
         });
@@ -104,15 +130,46 @@ export class WindowManager {
             height: 700,
             resizable: true,
             frame: true,
-            webPreferences: { nodeIntegration: true, contextIsolation: false },
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
             title: 'Prim Hesaplama',
             autoHideMenuBar: true
         });
 
         this.bonusWindow.setMenuBarVisibility(false);
-        this.bonusWindow.loadFile(path.join(this.appPath, 'bonus.html'));
+        this.loadFile(this.bonusWindow, 'bonus.html');
         this.bonusWindow.on('closed', () => {
             this.bonusWindow = null;
+        });
+    }
+
+    openTicketsWindow(): void {
+        if (this.ticketsWindow && !this.ticketsWindow.isDestroyed()) {
+            this.ticketsWindow.focus();
+            return;
+        }
+
+        this.ticketsWindow = new BrowserWindow({
+            width: 1000,
+            height: 700,
+            resizable: true,
+            frame: true,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            title: 'Bildirim Paneli',
+            autoHideMenuBar: true
+        });
+
+        this.ticketsWindow.setMenuBarVisibility(false);
+        this.loadFile(this.ticketsWindow, 'tickets.html');
+        this.ticketsWindow.on('closed', () => {
+            this.ticketsWindow = null;
         });
     }
 
@@ -132,10 +189,14 @@ export class WindowManager {
             resizable: false,
             x: width - size.width - 20,
             y: height - size.height - 40,
-            webPreferences: { nodeIntegration: true, contextIsolation: false }
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            }
         });
 
-        this.currentPopup.loadFile(path.join(this.appPath, size.file));
+        this.loadFile(this.currentPopup, size.file);
 
         this.currentPopup.once('ready-to-show', () => {
             if (this.currentPopup) {

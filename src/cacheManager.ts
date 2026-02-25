@@ -6,30 +6,42 @@ const { app } = electron;
 let db: any = null;
 
 export function initCache() {
-  const dbDir = path.join(app.getPath('documents'), 'RecciTek');
-  const fs = require('fs');
-
-  // Create RecciTek directory in Documents if it doesn't exist
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-  }
-
-  const dbPath = path.join(dbDir, 'cache.db');
-  db = new Database(dbPath);
-
-  db.exec(`CREATE TABLE IF NOT EXISTS cache (
-    serial TEXT PRIMARY KEY,
-    model_name TEXT,
-    model_color TEXT,
-    warranty_status TEXT,
-    copy_date TEXT,
-    warranty_end TEXT,
-    status TEXT
-  )`);
-
+  console.log('Initializing cache...');
   try {
-    db.exec(`ALTER TABLE cache ADD COLUMN status TEXT`);
+    const dbDir = path.join(app.getPath('documents'), 'RecciTek');
+    console.log('DB Directory:', dbDir);
+    const fs = require('fs');
+
+    // Create RecciTek directory in Documents if it doesn't exist
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    const dbPath = path.join(dbDir, 'cache.db');
+    db = new Database(dbPath);
+
+    db.exec(`CREATE TABLE IF NOT EXISTS cache (
+      serial TEXT PRIMARY KEY,
+      model_name TEXT,
+      model_color TEXT,
+      warranty_status TEXT,
+      copy_date TEXT,
+      warranty_end TEXT,
+      status TEXT
+    )`);
+
+    // Check if status column exists manually to avoid noisy SQLITE_ERROR
+    const tableInfo = db.prepare("PRAGMA table_info(cache)").all();
+    const hasStatus = tableInfo.some((col: any) => col.name === 'status');
+    if (!hasStatus) {
+      try {
+        db.exec(`ALTER TABLE cache ADD COLUMN status TEXT`);
+      } catch (err) {
+        console.error('Failed to add status column:', err);
+      }
+    }
   } catch (err) {
+    console.error('Error in initCache:', err);
   }
 }
 

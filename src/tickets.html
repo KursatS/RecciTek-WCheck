@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Bildirim Paneli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./input.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --pending: #f59e0b;
+            --progress: #3b82f6;
+            --completed: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 30px;
+            background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 400px);
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .stat-chip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .dot-pending {
+            background: var(--pending);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .dot-progress {
+            background: var(--progress);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .dot-completed {
+            background: var(--completed);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .ticket-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ticket-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .ticket-card.status-pending::before {
+            background: var(--pending);
+        }
+
+        .ticket-card.status-in_progress::before {
+            background: var(--progress);
+        }
+
+        .ticket-card.status-completed::before {
+            background: var(--completed);
+        }
+
+        .ticket-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .ticket-body {
+            flex: 1;
+        }
+
+        .ticket-serial {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .ticket-model {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .ticket-note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .ticket-note strong {
+            color: var(--text-main);
+        }
+
+        .ticket-missing-type {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--pending);
+        }
+
+        .ticket-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+            min-width: 160px;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 8px;
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--pending);
+        }
+
+        .badge-in_progress {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--progress);
+        }
+
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--completed);
+        }
+
+        .btn-sm {
+            padding: 8px 18px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-claim {
+            background: var(--progress);
+            color: white;
+        }
+
+        .btn-claim:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-complete {
+            background: var(--completed);
+            color: white;
+        }
+
+        .btn-complete:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .response-input {
+            width: 100%;
+            padding: 8px 14px;
+            margin-top: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .response-input:focus {
+            border-color: var(--accent);
+        }
+
+        .collab-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .collab-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .collab-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .btn-update {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 12px;
+            width: fit-content;
+            align-self: flex-start;
+        }
+
+        .btn-update:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ticket-response {
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(16, 185, 129, 0.08);
+            font-size: 0.85rem;
+        }
+
+        .ticket-response strong {
+            color: var(--completed);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .ticket-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Bildirim Paneli</h1>
+            <p class="subtitle">Eksik bilgi talepleri — gerçek zamanlı</p>
+        </header>
+
+        <div class="stats-bar" id="stats-bar">
+            <div class="stat-chip">
+                <div class="dot dot-pending"></div> Bekleyen: <span id="count-pending">0</span>
+            </div>
+            <div class="stat-chip">
+                <div class="dot dot-progress"></div> İşleniyor: <span id="count-progress">0</span>
+            </div>
+            <div class="stat-chip">
+                <div class="dot dot-completed"></div> Tamamlanan: <span id="count-completed">0</span>
+            </div>
+        </div>
+
+        <div class="ticket-list" id="ticket-list">
+            <div class="empty-state" id="empty-state">
+                <div class="icon">📭</div>
+                <h3>Henüz talep yok</h3>
+                <p>Yeni talepler otomatik olarak burada görünecek</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./tickets-renderer.ts"></script>
+</body>
+
+</html>

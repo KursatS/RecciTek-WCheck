@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./input.css">
   <style>
     :root {
       /* Base Dimensions */
@@ -279,9 +280,7 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
-    ipcRenderer.on('popup-data', (event, info, duration) => {
+    window.electronAPI.onPopupData((info, duration) => {
       const popup = document.getElementById('popup');
       const statusText = document.getElementById('status-text');
       const serialDisplay = document.getElementById('serial');
@@ -361,14 +360,14 @@
       // Hover handling (Sync with Main Process)
       popup.addEventListener('mouseenter', () => {
         clearInterval(progressInterval);
-        ipcRenderer.send('popup-hover-enter');
+        window.electronAPI.popupHoverEnter();
       });
       popup.addEventListener('mouseleave', () => {
         const currentTransform = progress.style.transform || 'scaleX(1)';
         const currentWidth = parseFloat(currentTransform.replace('scaleX(', '').replace(')', '')) * 100;
         startTime = Date.now() - ((100 - currentWidth) / 100 * duration);
         progressInterval = setInterval(updateProgress, 50);
-        ipcRenderer.send('popup-hover-leave');
+        window.electronAPI.popupHoverLeave();
       });
     });
   </script>
