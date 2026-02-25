@@ -18,7 +18,7 @@ const saveBtn = document.getElementById('save-btn') as HTMLButtonElement
         shortcutClear.value = settings.shortcuts?.clearCache || 'CommandOrControl+Shift+X'
         shortcutCopy.value = settings.shortcuts?.toggleMonitoring || 'CommandOrControl+Shift+C'
         personnelNameInput.value = settings.personnelName || ''
-        userRoleSelect.value = settings.role || 'kargo_kabul'
+        userRoleSelect.value = settings.role || ''
     })
 
 // Shortcut Recorder Logic
@@ -41,6 +41,12 @@ setupShortcutRecorder(shortcutClear)
 setupShortcutRecorder(shortcutCopy)
 
 saveBtn.onclick = () => {
+    if (!userRoleSelect.value) {
+        userRoleSelect.style.borderColor = '#ef4444'
+        alert('Lütfen bir rol seçin!')
+        return
+    }
+
     const settings = {
         popupSizeLevel: parseInt(popupSize.value),
         popupTimeout: parseInt(popupTimeout.value),
