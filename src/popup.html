@@ -20,7 +20,7 @@
       --glass-bg: rgba(255, 255, 255, 0.1);
       --glass-border: rgba(255, 255, 255, 0.2);
       --text-main: #FFFFFF;
-      --text-muted: rgba(255, 255, 255, 0.8);
+      --text-muted: #FFFFFF;
 
       /* Status Gradients */
       --grad-recci: linear-gradient(135deg, #059669 0%, #10b981 100%);
@@ -32,13 +32,6 @@
       --fs-status: 20px;
       --fs-serial: 32px;
       --fs-model: 22px;
-    }
-
-    .light {
-      --text-main: #020617;
-      --text-muted: rgba(0, 0, 0, 0.65);
-      --glass-bg: rgba(255, 255, 255, 0.3);
-      --glass-border: rgba(0, 0, 0, 0.1);
     }
 
     /* Size Overrides */
@@ -134,23 +127,6 @@
       background: var(--grad-error);
     }
 
-    /* Light Theme Overrides (no more inline JS) */
-    .light .theme-recci {
-      background: #d1fae5;
-    }
-
-    .light .theme-kvk {
-      background: #dbeafe;
-    }
-
-    .light .theme-none {
-      background: #f1f5f9;
-    }
-
-    .light .theme-error {
-      background: #fecaca;
-    }
-
     /* Close Button */
     .close-btn {
       position: absolute;
@@ -188,11 +164,6 @@
       margin-bottom: 25px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease;
-    }
-
-    .light .status-badge {
-      background: rgba(255, 255, 255, 0.4);
-      border-color: rgba(0, 0, 0, 0.1);
     }
 
     .check-icon {
@@ -358,10 +329,6 @@
         modelDisplay.textContent = 'Garanti Kapsamı Dışında';
         copyBtn.style.display = 'none';
         iconContainer.innerHTML = icons.info;
-      }
-
-      if (info.theme === 'light') {
-        document.body.classList.add('light');
       }
 
       // Copy logic
