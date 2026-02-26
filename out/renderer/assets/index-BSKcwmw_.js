@@ -1,4 +1,5 @@
 /* empty css               */
+/* empty css               */
 const cardsDiv = document.getElementById("cards");
 const searchInput = document.getElementById("search");
 const toggleBtn = document.getElementById("toggle");

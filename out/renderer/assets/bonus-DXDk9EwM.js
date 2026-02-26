@@ -1,4 +1,5 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-DXSZQyUM.js","./input-BGDsGc_V.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-CcsXNieQ.js","./input-B3ifAzdL.css","./theme-KfOaIftU.css"])))=>i.map(i=>d[i]);
+/* empty css               */
 /* empty css               */
 const scriptRel = /* @__PURE__ */ (function detectScriptRel() {
   const relList = typeof document !== "undefined" && document.createElement("link").relList;
@@ -7577,7 +7578,7 @@ function ee(t2) {
  */
 (function(t2) {
   function e() {
-    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-DXSZQyUM.js"), true ? __vite__mapDeps([0,1]) : void 0, import.meta.url)).catch((function(t3) {
+    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-CcsXNieQ.js"), true ? __vite__mapDeps([0,1,2]) : void 0, import.meta.url)).catch((function(t3) {
       return Promise.reject(new Error("Could not load canvg: " + t3));
     })).then((function(t3) {
       return t3.default ? t3.default : t3;
@@ -10993,6 +10994,10 @@ function showAnalytics(res) {
     return;
   }
   const maxVal = Math.max(...res.dailyStats.map((d2) => d2.validCount + d2.overtimeCount));
+  const yAxis = document.createElement("div");
+  yAxis.style.cssText = "display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:8px;font-size:10px;font-weight:600;color:var(--text-muted);height:240px;";
+  yAxis.innerHTML = `<span>${maxVal}</span><span>${Math.round(maxVal / 2)}</span><span>0</span>`;
+  chartContainer.insertBefore(yAxis, chartContainer.firstChild);
   res.dailyStats.forEach((day, i2) => {
     const dayTotal = day.validCount + day.overtimeCount;
     const normalHeight = maxVal > 0 ? day.validCount / maxVal * 240 : 0;

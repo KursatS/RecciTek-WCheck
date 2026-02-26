@@ -171,6 +171,12 @@ function showAnalytics(res: any) {
 
     const maxVal = Math.max(...res.dailyStats.map((d: any) => d.validCount + d.overtimeCount));
 
+    // ── Y-Axis Labels ──
+    const yAxis = document.createElement('div');
+    yAxis.style.cssText = 'display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:8px;font-size:10px;font-weight:600;color:var(--text-muted);height:240px;';
+    yAxis.innerHTML = `<span>${maxVal}</span><span>${Math.round(maxVal / 2)}</span><span>0</span>`;
+    chartContainer.insertBefore(yAxis, chartContainer.firstChild);
+
     res.dailyStats.forEach((day: any, i: number) => {
         const dayTotal = day.validCount + day.overtimeCount;
 

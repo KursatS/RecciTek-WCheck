@@ -8,35 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./input.css">
+    <link rel="stylesheet" href="./theme.css">
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #38bdf8;
-            --pending: #f59e0b;
-            --progress: #3b82f6;
-            --completed: #10b981;
-        }
-
-        .light {
-            --bg-color: #cbd5e1;
-            --card-bg: rgba(241, 245, 249, 0.9);
-            --glass-border: rgba(0, 0, 0, 0.15);
-            --text-main: #020617;
-            --text-muted: #334155;
-            --accent: #0369a1;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
-
         body {
             background: var(--bg-color);
             color: var(--text-main);
@@ -346,6 +319,46 @@
             color: var(--text-muted);
             margin-top: 6px;
         }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tab {
+            padding: 6px 16px;
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            border-color: var(--accent);
+            color: var(--text-main);
+        }
+
+        .filter-tab.active {
+            background: var(--accent);
+            color: #0f172a;
+            border-color: var(--accent);
+        }
+
+        .light .filter-tab {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .light .filter-tab.active {
+            background: var(--accent);
+            color: white;
+        }
     </style>
 </head>
 
@@ -368,11 +381,24 @@
             </div>
         </div>
 
+        <div class="filter-tabs" id="filter-tabs">
+            <button class="filter-tab active" data-filter="all">Tümü</button>
+            <button class="filter-tab" data-filter="pending">Bekleyen</button>
+            <button class="filter-tab" data-filter="in_progress">İşleniyor</button>
+            <button class="filter-tab" data-filter="completed">Tamamlanan</button>
+            <button class="filter-tab" data-filter="aras">📦 ARAS</button>
+        </div>
+
         <div class="ticket-list" id="ticket-list">
             <div class="empty-state" id="empty-state">
-                <div class="icon">📭</div>
+                <div class="icon" style="animation: pulse-soft 2s ease-in-out infinite;">📭</div>
                 <h3>Henüz talep yok</h3>
                 <p>Yeni talepler otomatik olarak burada görünecek</p>
+                <p style="margin-top: 12px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+                    💡 <strong style="color: var(--text-main);">Nasıl talep oluşturulur?</strong><br>
+                    Ana ekranda bir cihaz kartında "📩 MH'ye Sor" butonuna tıklayarak<br>
+                    eksik bilgi tipini seçin ve talep gönderin.
+                </p>
             </div>
         </div>
     </div>

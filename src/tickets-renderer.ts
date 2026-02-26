@@ -5,6 +5,20 @@ const emptyState = document.getElementById('empty-state')!
 const countPending = document.getElementById('count-pending')!
 const countProgress = document.getElementById('count-progress')!
 const countCompleted = document.getElementById('count-completed')!
+const filterTabs = document.getElementById('filter-tabs')!
+
+let allTickets: any[] = []
+let activeFilter = 'all'
+
+// Filter tab click handler
+filterTabs.addEventListener('click', (e) => {
+    const tab = (e.target as HTMLElement).closest('.filter-tab') as HTMLElement
+    if (!tab) return
+    filterTabs.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+    activeFilter = tab.dataset.filter || 'all'
+    renderTickets(allTickets)
+})
 
 const MISSING_TYPE_LABELS: Record<string, string> = {
     address: 'Adres Bilgisi',
@@ -43,11 +57,13 @@ Promise.all([
 })
 
 function renderTickets(tickets: any[]) {
+    allTickets = tickets
+
     // Clear previous cards but keep empty state
     const oldCards = ticketList.querySelectorAll('.ticket-card')
     oldCards.forEach(c => c.remove())
 
-    // Stats
+    // Stats (always from full list)
     const pending = tickets.filter(t => t.status === 'pending').length
     const inProgress = tickets.filter(t => t.status === 'in_progress').length
     const completed = tickets.filter(t => t.status === 'completed').length
@@ -56,14 +72,20 @@ function renderTickets(tickets: any[]) {
     countProgress.textContent = String(inProgress)
     countCompleted.textContent = String(completed)
 
-    if (tickets.length === 0) {
+    // Apply filter
+    let filtered = tickets
+    if (activeFilter === 'pending') filtered = tickets.filter(t => t.status === 'pending')
+    else if (activeFilter === 'in_progress') filtered = tickets.filter(t => t.status === 'in_progress')
+    else if (activeFilter === 'completed') filtered = tickets.filter(t => t.status === 'completed')
+    else if (activeFilter === 'aras') filtered = tickets.filter(t => t.aras_code && t.aras_code.trim() !== '')
+
+    if (filtered.length === 0) {
         emptyState.style.display = 'block'
         return
     }
 
     emptyState.style.display = 'none'
-
-    tickets.forEach(ticket => {
+    filtered.forEach(ticket => {
         const card = document.createElement('div')
         card.className = `ticket-card status-${ticket.status}`
 

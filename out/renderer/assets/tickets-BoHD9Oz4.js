@@ -1,10 +1,22 @@
 /* empty css               */
+/* empty css               */
 const api = window.electronAPI;
 const ticketList = document.getElementById("ticket-list");
 const emptyState = document.getElementById("empty-state");
 const countPending = document.getElementById("count-pending");
 const countProgress = document.getElementById("count-progress");
 const countCompleted = document.getElementById("count-completed");
+const filterTabs = document.getElementById("filter-tabs");
+let allTickets = [];
+let activeFilter = "all";
+filterTabs.addEventListener("click", (e) => {
+  const tab = e.target.closest(".filter-tab");
+  if (!tab) return;
+  filterTabs.querySelectorAll(".filter-tab").forEach((t) => t.classList.remove("active"));
+  tab.classList.add("active");
+  activeFilter = tab.dataset.filter || "all";
+  renderTickets(allTickets);
+});
 const MISSING_TYPE_LABELS = {
   address: "Adres Bilgisi",
   fault_form: "Arıza Beyanı",
@@ -35,6 +47,7 @@ Promise.all([
   if (tickets) renderTickets(tickets);
 });
 function renderTickets(tickets) {
+  allTickets = tickets;
   const oldCards = ticketList.querySelectorAll(".ticket-card");
   oldCards.forEach((c) => c.remove());
   const pending = tickets.filter((t) => t.status === "pending").length;
@@ -43,12 +56,17 @@ function renderTickets(tickets) {
   countPending.textContent = String(pending);
   countProgress.textContent = String(inProgress);
   countCompleted.textContent = String(completed);
-  if (tickets.length === 0) {
+  let filtered = tickets;
+  if (activeFilter === "pending") filtered = tickets.filter((t) => t.status === "pending");
+  else if (activeFilter === "in_progress") filtered = tickets.filter((t) => t.status === "in_progress");
+  else if (activeFilter === "completed") filtered = tickets.filter((t) => t.status === "completed");
+  else if (activeFilter === "aras") filtered = tickets.filter((t) => t.aras_code && t.aras_code.trim() !== "");
+  if (filtered.length === 0) {
     emptyState.style.display = "block";
     return;
   }
   emptyState.style.display = "none";
-  tickets.forEach((ticket) => {
+  filtered.forEach((ticket) => {
     const card = document.createElement("div");
     card.className = `ticket-card status-${ticket.status}`;
     const timeStr = ticket.created_at?.seconds ? new Date(ticket.created_at.seconds * 1e3).toLocaleString("tr-TR") : "";

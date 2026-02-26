@@ -1,4 +1,5 @@
 /* empty css               */
+/* empty css               */
 const popupSize = document.getElementById("popup-size");
 const popupTimeout = document.getElementById("popup-timeout");
 const autoStart = document.getElementById("auto-start");

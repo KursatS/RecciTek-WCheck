@@ -1,0 +1,62 @@
+/* ─── RecciTek Theme System ─── */
+/* Single source of truth for all CSS variables. Used by every page. */
+
+:root {
+    --bg-color: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --recci: #10b981;
+    --kvk: #3b82f6;
+    --none: #64748b;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --pending: #f59e0b;
+    --progress: #3b82f6;
+    --completed: #10b981;
+}
+
+.light {
+    --bg-color: #cbd5e1;
+    --card-bg: rgba(241, 245, 249, 0.9);
+    --glass-border: rgba(0, 0, 0, 0.15);
+    --text-main: #020617;
+    --text-muted: #334155;
+    --accent: #0369a1;
+}
+
+/* ─── Global Reset ─── */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* ─── Focus Accessibility ─── */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ─── Pulse Animation (Shared) ─── */
+@keyframes pulse-soft {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
