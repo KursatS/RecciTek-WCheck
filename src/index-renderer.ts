@@ -165,6 +165,17 @@ function loadCards() {
         const query = searchInput.value.toLowerCase()
         data.sort((a: any, b: any) => new Date(b.copy_date).getTime() - new Date(a.copy_date).getTime())
 
+        // FIX: PRECOMPUTE TICKET MAP (O(1) lookups)
+        const completedTicketsMap = new Map();
+        activeTickets.forEach(t => {
+            if (t.status === 'completed') {
+                completedTicketsMap.set(t.serial, t);
+            }
+        });
+
+        // FIX: BATCH DOM APPENDS
+        const fragment = document.createDocumentFragment();
+
         data.forEach((item: any) => {
             if (item.serial.toLowerCase().includes(query)) {
                 const card = document.createElement('div')
@@ -176,7 +187,7 @@ function loadCards() {
                 else cardClass += ' out-of-warranty'
 
                 // Check if this serial has a completed ticket to show MH response
-                const completedTicket = activeTickets.find(t => t.serial === item.serial && t.status === 'completed')
+                const completedTicket = completedTicketsMap.get(item.serial);
 
                 // MH'ye Sor button (STRICTLY only for kargo_kabul role)
                 const askMHBtn = (currentRole === 'kargo_kabul')
@@ -195,12 +206,14 @@ function loadCards() {
           ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ''}
           ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ''}
         `
-                cardsDiv.appendChild(card)
+                fragment.appendChild(card)
             }
         })
 
+        cardsDiv.appendChild(fragment)
+
         // Bind Ask MH buttons
-        document.querySelectorAll('.ask-mh-btn').forEach(btn => {
+        cardsDiv.querySelectorAll('.ask-mh-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation()
                 const el = btn as HTMLElement

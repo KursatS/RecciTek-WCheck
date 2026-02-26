@@ -112,7 +112,10 @@ async function checkWarranty(serial) {
     } else if (body && body.textContent.includes("Bu ürün Roborock Türkiye Garanti kapsamında değildir!")) {
     }
   } catch (error) {
-    throw new Error("TIMEOUT");
+    if (error.message && error.message.includes("HTTP Error:")) ;
+    else {
+      throw new Error("TIMEOUT");
+    }
   }
   try {
     const json = await makeRequest(`https://guvencesorgula.kvkteknikservis.com/api/device-data?imeiNo=${serial}`);
@@ -144,7 +147,10 @@ async function checkWarranty(serial) {
       };
     }
   } catch (error) {
-    throw new Error("TIMEOUT");
+    if (error.message && error.message.includes("HTTP Error:")) ;
+    else {
+      throw new Error("TIMEOUT");
+    }
   }
   return {
     serial,
@@ -190,7 +196,7 @@ function initCache() {
   }
 }
 function loadCache() {
-  const stmt = db$1.prepare("SELECT * FROM cache");
+  const stmt = db$1.prepare("SELECT * FROM cache ORDER BY copy_date DESC LIMIT 500");
   return Promise.resolve(stmt.all());
 }
 function getCachedData(serial) {
@@ -668,7 +674,9 @@ async function updateTicketDetails(ticketId, details) {
 }
 function subscribeAsKargoKabul(personnelName, callback) {
   const q = firestore.query(
-    firestore.collection(db, TICKETS_COLLECTION)
+    firestore.collection(db, TICKETS_COLLECTION),
+    firestore.orderBy("created_at", "desc"),
+    firestore.limit(200)
   );
   return firestore.onSnapshot(q, (snapshot) => {
     const tickets = snapshot.docs.map((d) => {
@@ -692,7 +700,9 @@ function subscribeAsKargoKabul(personnelName, callback) {
 }
 function subscribeAsMH(callback) {
   const q = firestore.query(
-    firestore.collection(db, TICKETS_COLLECTION)
+    firestore.collection(db, TICKETS_COLLECTION),
+    firestore.orderBy("created_at", "desc"),
+    firestore.limit(200)
   );
   return firestore.onSnapshot(q, (snapshot) => {
     const tickets = snapshot.docs.map((d) => {
@@ -758,7 +768,7 @@ async function checkServerStatus() {
   const start = Date.now();
   try {
     const request = electron$1.net.request({
-      method: "GET",
+      method: "HEAD",
       url: "https://garantibelgesi.recciteknoloji.com/",
       redirect: "follow"
     });

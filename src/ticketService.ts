@@ -9,7 +9,8 @@ import {
     orderBy,
     serverTimestamp,
     Timestamp,
-    Unsubscribe
+    Unsubscribe,
+    limit
 } from 'firebase/firestore'
 import { db } from './firebaseConfig'
 
@@ -91,7 +92,9 @@ export function subscribeAsKargoKabul(
     callback: (tickets: Ticket[]) => void
 ): Unsubscribe {
     const q = query(
-        collection(db, TICKETS_COLLECTION)
+        collection(db, TICKETS_COLLECTION),
+        orderBy('created_at', 'desc'),
+        limit(200)
     )
 
     return onSnapshot(q, (snapshot) => {
@@ -124,7 +127,9 @@ export function subscribeAsMH(
     callback: (tickets: Ticket[]) => void
 ): Unsubscribe {
     const q = query(
-        collection(db, TICKETS_COLLECTION)
+        collection(db, TICKETS_COLLECTION),
+        orderBy('created_at', 'desc'),
+        limit(200)
     )
 
     return onSnapshot(q, (snapshot) => {

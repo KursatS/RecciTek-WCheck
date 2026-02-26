@@ -79,7 +79,7 @@ async function checkServerStatus(): Promise<void> {
   const start = Date.now();
   try {
     const request = net.request({
-      method: 'GET',
+      method: 'HEAD',
       url: 'https://garantibelgesi.recciteknoloji.com/',
       redirect: 'follow'
     });

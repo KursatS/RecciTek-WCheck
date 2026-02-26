@@ -56,7 +56,7 @@ interface CacheEntry {
 }
 
 export function loadCache(): Promise<CacheEntry[]> {
-  const stmt = db.prepare('SELECT * FROM cache');
+  const stmt = db.prepare('SELECT * FROM cache ORDER BY copy_date DESC LIMIT 500');
   return Promise.resolve(stmt.all() as CacheEntry[]);
 }
 

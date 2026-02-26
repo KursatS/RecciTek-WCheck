@@ -109,10 +109,14 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
       };
     } else if (body && body.textContent.includes('Bu ürün Roborock Türkiye Garanti kapsamında değildir!')) {
     }
-  } catch (error) {
-    // Any error from the first API (timeout or connection error) should be treated as timeout
-    // because the second API will also fail with the same connection issue
-    throw new Error('TIMEOUT');
+  } catch (error: any) {
+    if (error.message && error.message.includes('HTTP Error:')) {
+      // Allow fallback if primary server has an HTTP error (e.g. 500)
+    } else {
+      // Any error from the first API (timeout or connection error) should be treated as timeout
+      // because the second API will also fail with the same connection issue
+      throw new Error('TIMEOUT');
+    }
   }
 
   try {
@@ -150,10 +154,14 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         warranty_end: deviceData.WARRANTYEND
       };
     }
-  } catch (error) {
-    // Any error from the first API (timeout or connection error) should be treated as timeout
-    // because the second API will also fail with the same connection issue
-    throw new Error('TIMEOUT');
+  } catch (error: any) {
+    if (error.message && error.message.includes('HTTP Error:')) {
+      // Ignore inner HTTP error 
+    } else {
+      // Any error from the first API (timeout or connection error) should be treated as timeout
+      // because the second API will also fail with the same connection issue
+      throw new Error('TIMEOUT');
+    }
   }
 
   return {
