@@ -91,8 +91,7 @@ export function subscribeAsKargoKabul(
     callback: (tickets: Ticket[]) => void
 ): Unsubscribe {
     const q = query(
-        collection(db, TICKETS_COLLECTION),
-        where('created_by', '==', personnelName)
+        collection(db, TICKETS_COLLECTION)
     )
 
     return onSnapshot(q, (snapshot) => {

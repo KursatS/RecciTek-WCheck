@@ -1,6 +1,7 @@
 "use strict";
 const electron = require("electron");
 electron.contextBridge.exposeInMainWorld("electronAPI", {
+  getPathForFile: (file) => electron.webUtils.getPathForFile(file),
   // Main Window Actions
   getCachedData: () => electron.ipcRenderer.invoke("get-cached-data"),
   deleteEntry: (serial) => electron.ipcRenderer.invoke("delete-entry", serial),
@@ -14,8 +15,9 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   openBonus: () => electron.ipcRenderer.send("open-bonus"),
   getSettings: () => electron.ipcRenderer.invoke("get-settings"),
   saveSettings: (settings) => electron.ipcRenderer.invoke("save-settings", settings),
+  restartApp: (settings) => electron.ipcRenderer.invoke("restart-app", settings),
   // Bonus Calculation
-  calculateBonus: (filePath) => electron.ipcRenderer.invoke("calculate-bonus", filePath),
+  calculateBonus: (filePath, customHours) => electron.ipcRenderer.invoke("calculate-bonus", filePath, customHours),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),

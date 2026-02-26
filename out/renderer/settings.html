@@ -17,6 +17,15 @@
       --accent: #38bdf8;
     }
 
+    .light {
+      --bg-color: #cbd5e1;
+      --card-bg: rgba(241, 245, 249, 0.9);
+      --glass-border: rgba(0, 0, 0, 0.15);
+      --text-main: #020617;
+      --text-muted: #334155;
+      --accent: #0369a1;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -33,7 +42,7 @@
     }
 
     .settings-container {
-      max-width: 480px;
+      max-width: 660px;
       margin: 0 auto;
       padding-bottom: 20px;
     }
@@ -78,10 +87,11 @@
     }
 
     select,
-    input[type="number"] {
-      background: rgba(30, 41, 59, 0.8);
+    input[type="number"],
+    input[type="text"] {
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-border);
-      color: white;
+      color: var(--text-main);
       padding: 10px 14px;
       border-radius: 12px;
       outline: none;
@@ -94,9 +104,15 @@
       min-width: 120px;
     }
 
+    .light select,
+    .light input[type="number"],
+    .light input[type="text"] {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
     select option {
-      background-color: #1e293b;
-      color: white;
+      background-color: var(--bg-color);
+      color: var(--text-main);
       padding: 10px;
     }
 
@@ -173,13 +189,62 @@
       transform: translateX(20px);
     }
   </style>
-  <script type="module" crossorigin src="./assets/settings-Cn51Vlu6.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/input-DKrWKTEj.css">
+  <script type="module" crossorigin src="./assets/settings-Dgnu6TON.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-BGDsGc_V.css">
 </head>
 
 <body>
   <div class="settings-container">
     <h2>Uygulama Ayarları</h2>
+
+    <h2 style="margin: 0 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Profil</h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Personel Adı</div>
+          <div class="setting-description">Taleplerde görünecek isminiz</div>
+        </div>
+        <input type="text" id="personnel-name" placeholder="ADINIZI GİRİN..."
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none;">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Rol</div>
+          <div class="setting-description">Bu cihazın kullanım amacı</div>
+        </div>
+        <select id="user-role"
+          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none; cursor: pointer;">
+          <option value="" disabled selected hidden>Lütfen Seçiniz</option>
+          <option value="kargo_kabul" style="background: #1e293b;">Kargo Kabul</option>
+          <option value="mh" style="background: #1e293b;">Müşteri Hizmetleri</option>
+        </select>
+      </div>
+      <p
+        style="grid-column: 1 / -1; font-size: 0.75rem; color: #f59e0b; margin-top: 4px; padding: 6px 10px; background: rgba(245,158,11,0.08); border-radius: 8px; border: 1px solid rgba(245,158,11,0.15);">
+        ⚠️ Rol değişikliği yapıldığında program otomatik olarak yeniden başlatılır.
+      </p>
+    </div>
+
+    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Kısayol Yöneticisi
+    </h2>
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Geçmişi Temizle</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+X)</div>
+        </div>
+        <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 280px; padding: 12px 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: var(--accent); font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; outline: none; border: 2px solid var(--glass-border);">
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">İzlemeyi Aç/Kapat</div>
+          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+M)</div>
+        </div>
+        <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..."
+          style="width: 280px; padding: 12px 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: var(--accent); font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; outline: none; border: 2px solid var(--glass-border);">
+      </div>
+    </div>
 
     <div class="setting-group">
       <div class="setting-item">
@@ -222,50 +287,6 @@
           <input type="checkbox" id="prevent-duplicate">
           <span class="slider"></span>
         </label>
-      </div>
-    </div>
-
-    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Kısayol Yöneticisi
-    </h2>
-    <div class="setting-group">
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">Geçmişi Temizle</div>
-          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+X)</div>
-        </div>
-        <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..."
-          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
-      </div>
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">İzlemeyi Aç/Kapat</div>
-          <div class="setting-description">Global kısayol (örn: Ctrl+Shift+M)</div>
-        </div>
-        <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..."
-          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; text-align: center; cursor: pointer; outline: none;">
-      </div>
-    </div>
-
-    <h2 style="margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Profil</h2>
-    <div class="setting-group">
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">Personel Adı</div>
-          <div class="setting-description">Taleplerde görünecek isminiz</div>
-        </div>
-        <input type="text" id="personnel-name" placeholder="Adınızı girin..."
-          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none;">
-      </div>
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">Rol</div>
-          <div class="setting-description">Bu cihazın kullanım amacı</div>
-        </div>
-        <select id="user-role"
-          style="width: 200px; padding: 8px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13px; outline: none; cursor: pointer;">
-          <option value="kargo_kabul" style="background: #1e293b;">Kargo Kabul</option>
-          <option value="mh" style="background: #1e293b;">Müşteri Hizmetleri</option>
-        </select>
       </div>
     </div>
 

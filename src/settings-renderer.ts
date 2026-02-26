@@ -9,17 +9,29 @@ const personnelNameInput = document.getElementById('personnel-name') as HTMLInpu
 const userRoleSelect = document.getElementById('user-role') as HTMLSelectElement
 const saveBtn = document.getElementById('save-btn') as HTMLButtonElement
 
+let initialRole = ''
+
     // Load Settings
     ; (window as any).electronAPI.getSettings().then((settings: any) => {
+        if (settings.theme === 'light') document.body.classList.add('light')
         popupSize.value = settings.popupSizeLevel || 2
         popupTimeout.value = settings.popupTimeout || 5000
         autoStart.checked = settings.autoStartEnabled || false
         preventDuplicate.checked = settings.preventDuplicatePopup || false
         shortcutClear.value = settings.shortcuts?.clearCache || 'CommandOrControl+Shift+X'
         shortcutCopy.value = settings.shortcuts?.toggleMonitoring || 'CommandOrControl+Shift+C'
-        personnelNameInput.value = settings.personnelName || ''
+        personnelNameInput.value = (settings.personnelName || '').toUpperCase()
         userRoleSelect.value = settings.role || ''
+        initialRole = settings.role || ''
     })
+
+// Personnel Name Validation (No spaces, Uppercase)
+personnelNameInput.addEventListener('input', () => {
+    const start = personnelNameInput.selectionStart
+    const end = personnelNameInput.selectionEnd
+    personnelNameInput.value = personnelNameInput.value.replace(/\s/g, '').toUpperCase()
+    personnelNameInput.setSelectionRange(start, end)
+})
 
 // Shortcut Recorder Logic
 function setupShortcutRecorder(input: HTMLInputElement) {
@@ -60,7 +72,15 @@ saveBtn.onclick = () => {
         role: userRoleSelect.value
     }
 
+    const roleChanged = userRoleSelect.value !== initialRole && initialRole !== ''
+
+    if (roleChanged) {
+        // Role changed → save and restart app
+        ; (window as any).electronAPI.restartApp(settings)
+    } else {
+        // Normal save → just close settings
         ; (window as any).electronAPI.saveSettings(settings).then(() => {
             window.close()
         })
+    }
 }

@@ -21,6 +21,15 @@
             --completed: #10b981;
         }
 
+        .light {
+            --bg-color: #cbd5e1;
+            --card-bg: rgba(241, 245, 249, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.15);
+            --text-main: #020617;
+            --text-muted: #334155;
+            --accent: #0369a1;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -34,6 +43,7 @@
             min-height: 100vh;
             padding: 30px;
             background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 400px);
+            transition: all 0.3s ease;
         }
 
         .container {
@@ -73,6 +83,10 @@
             font-size: 0.8rem;
             font-weight: 600;
             color: var(--text-muted);
+        }
+
+        .light .stat-chip {
+            background: rgba(0, 0, 0, 0.03);
         }
 
         .stat-chip .dot {
@@ -251,10 +265,14 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--glass-border);
             border-radius: 10px;
-            color: white;
+            color: var(--text-main);
             font-size: 0.85rem;
             outline: none;
             transition: border-color 0.2s;
+        }
+
+        .light .response-input {
+            background: rgba(0, 0, 0, 0.03);
         }
 
         .response-input:focus {
@@ -301,6 +319,10 @@
             border-radius: 10px;
             background: rgba(16, 185, 129, 0.08);
             font-size: 0.85rem;
+            max-height: 120px;
+            overflow-y: auto;
+            word-break: break-word;
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .ticket-response strong {

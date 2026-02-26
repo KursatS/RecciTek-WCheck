@@ -178,9 +178,9 @@ function loadCards() {
                 // Check if this serial has a completed ticket to show MH response
                 const completedTicket = activeTickets.find(t => t.serial === item.serial && t.status === 'completed')
 
-                // MH'ye Sor button (only for kargo_kabul role)
-                const askMHBtn = currentRole === 'kargo_kabul'
-                    ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;top:12px;right:64px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩</button>`
+                // MH'ye Sor button (STRICTLY only for kargo_kabul role)
+                const askMHBtn = (currentRole === 'kargo_kabul')
+                    ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;top:12px;right:88px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩</button>`
                     : ''
 
                 card.className = cardClass
@@ -193,7 +193,7 @@ function loadCards() {
           <p><strong>Model:</strong> ${item.model_name || 'Bilinmiyor'} ${item.model_color || ''}</p>
           <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
           ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ''}
-          ${completedTicket?.response ? `<p style="margin-top:6px;padding:6px 10px;background:rgba(16,185,129,0.08);border-radius:8px;font-size:0.8rem;"><strong style="color:#10b981;">MH Cevap:</strong> ${completedTicket.response}</p>` : ''}
+          ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ''}
         `
                 cardsDiv.appendChild(card)
             }
@@ -221,13 +221,29 @@ toggleBtn.onclick = () => {
     api.toggleMonitoring(monitoringEnabled)
 }
 
-// ── Theme Toggle ────────────────────────────────────────────────────
-themeBtn.onclick = () => {
-    document.body.classList.toggle('dark')
-    document.body.classList.toggle('light')
-    const isDark = document.body.classList.contains('dark')
+// ── Theme Management ────────────────────────────────────────────────
+function applyTheme(isDark: boolean) {
+    document.body.classList.toggle('dark', isDark)
+    document.body.classList.toggle('light', !isDark)
     themeBtn.textContent = isDark ? '🌙' : '☀️'
 }
+
+themeBtn.onclick = () => {
+    const isDark = document.body.classList.contains('dark')
+    const newDark = !isDark
+    applyTheme(newDark)
+
+    // Save to settings
+    api.getSettings().then((s: any) => {
+        api.saveSettings({ ...s, theme: newDark ? 'dark' : 'light' })
+    })
+}
+
+// Initial theme load
+api.getSettings().then((s: any) => {
+    const theme = s.theme || 'dark'
+    applyTheme(theme === 'dark')
+})
 
 // ── Search ──────────────────────────────────────────────────────────
 searchInput.oninput = () => loadCards()
@@ -290,7 +306,13 @@ statusRefreshBtn.addEventListener('click', () => {
 })
 
 // ── IPC Event Listeners ─────────────────────────────────────────────
-api.onRefreshCards(() => loadCards())
+api.onRefreshCards(() => {
+    api.getSettings().then((s: any) => {
+        currentRole = s.role || 'kargo_kabul'
+        personnelName = s.personnelName || ''
+        loadCards()
+    })
+})
 api.onCacheCleared(() => loadCards())
 
 api.onMonitoringToggled((enabled: boolean) => {

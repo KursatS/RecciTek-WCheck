@@ -7,7 +7,8 @@ import {
   clipboard,
   globalShortcut,
   net,
-  dialog
+  dialog,
+  Notification
 } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
@@ -189,6 +190,15 @@ function setupIpcHandlers() {
     return true;
   });
 
+  ipcMain.handle('restart-app', async (_, settings) => {
+    if (settings) {
+      currentSettings = { ...currentSettings, ...settings };
+      saveSettings(currentSettings);
+    }
+    app.relaunch();
+    app.exit(0);
+  });
+
   ipcMain.on('toggle-monitoring', (_, enabled) => {
     monitoringEnabled = enabled;
     clipboardMonitor.setEnabled(enabled);
@@ -203,10 +213,12 @@ function setupIpcHandlers() {
     windowManager.openBonusWindow();
   });
 
-  ipcMain.handle('calculate-bonus', async (_, filePath) => {
+  ipcMain.handle('calculate-bonus', async (_, filePath, customHours) => {
     try {
+      const settings = loadSettings();
       const buffer = fs.readFileSync(filePath);
-      return parseBonusData(buffer);
+      const workingHours = customHours || settings.workingHours || { start: '08:00', end: '18:30' };
+      return parseBonusData(buffer, workingHours);
     } catch (error) {
       console.error('Bonus calculation error:', error);
       throw error;
@@ -295,16 +307,20 @@ function setupIpcHandlers() {
 // Helper to create the system tray
 function createTray() {
   const mainWindow = windowManager.getMainWindow();
-  const iconPath = is.dev
-    ? path.join(__dirname, '../../assets/logo.png')
-    : path.join(process.resourcesPath, 'assets/logo.png');
 
-  tray = new Tray(nativeImage.createFromPath(iconPath));
-  tray.setToolTip('Warranty Monitor');
+  // Robust icon path for both dev and prod
+  let iconPath = path.join(__dirname, '../../assets/logo.png');
+
+  if (!fs.existsSync(iconPath)) {
+    // Fallback for some packaging structures
+    iconPath = path.join(process.resourcesPath, 'assets/logo.png');
+  }
+
+  const icon = nativeImage.createFromPath(iconPath);
+
+  tray = new Tray(icon);
+  tray.setToolTip('RecciTek WCheck');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Ana Menü', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-    { label: 'Ayarlar', click: () => windowManager.openSettingsWindow() },
-    { type: 'separator' },
     { label: 'Çıkış', click: () => windowManager.forceQuit() }
   ]));
 
@@ -371,6 +387,38 @@ function startTicketListener() {
   }
 
   const broadcastTickets = (tickets: any[]) => {
+    // ── Silent Desktop Notifications ──
+    if (cachedTickets.length > 0) {
+      const oldMap = new Map(cachedTickets.map((t: any) => [t.id, t]));
+
+      tickets.forEach((ticket: any) => {
+        const old = oldMap.get(ticket.id);
+
+        if (!old && ticket.status === 'pending' && currentSettings.role === 'mh') {
+          // New ticket → notify MH
+          new Notification({
+            title: 'Yeni Talep',
+            body: `${ticket.serial || 'Bilinmeyen'} için yeni bilgi talebi`,
+            silent: true
+          }).show();
+        } else if (old && old.status !== ticket.status) {
+          if (ticket.status === 'in_progress' && currentSettings.role === 'kargo_kabul') {
+            new Notification({
+              title: 'Talep Üstlenildi',
+              body: `${ticket.serial || 'Bilinmeyen'} talebiniz üstlenildi`,
+              silent: true
+            }).show();
+          } else if (ticket.status === 'completed' && currentSettings.role === 'kargo_kabul') {
+            new Notification({
+              title: 'Talep Tamamlandı',
+              body: `${ticket.serial || 'Bilinmeyen'} talebiniz tamamlandı`,
+              silent: true
+            }).show();
+          }
+        }
+      });
+    }
+
     cachedTickets = tickets;
     // Send to all open windows
     const mainWin = windowManager.getMainWindow();
@@ -389,7 +437,7 @@ function startTicketListener() {
   if (currentSettings.role === 'mh') {
     ticketUnsubscribe = subscribeAsMH(broadcastTickets);
   } else {
-    const name = currentSettings.personnelName || 'İsimsiz Personel';
+    const name = (currentSettings.personnelName || 'İsimsiz Personel').replace(/\s/g, '').toUpperCase();
     ticketUnsubscribe = subscribeAsKargoKabul(name, broadcastTickets);
   }
 }

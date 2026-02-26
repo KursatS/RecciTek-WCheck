@@ -1,6 +1,7 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
+    getPathForFile: (file: File) => webUtils.getPathForFile(file),
     // Main Window Actions
     getCachedData: () => ipcRenderer.invoke('get-cached-data'),
     deleteEntry: (serial: string) => ipcRenderer.invoke('delete-entry', serial),
@@ -16,9 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openBonus: () => ipcRenderer.send('open-bonus'),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
+    restartApp: (settings?: any) => ipcRenderer.invoke('restart-app', settings),
 
     // Bonus Calculation
-    calculateBonus: (filePath: string) => ipcRenderer.invoke('calculate-bonus', filePath),
+    calculateBonus: (filePath: string, customHours?: any) => ipcRenderer.invoke('calculate-bonus', filePath, customHours),
 
     // Popup Specific
     onPopupData: (callback: any) =>

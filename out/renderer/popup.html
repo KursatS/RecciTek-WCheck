@@ -32,6 +32,13 @@
       --fs-model: 22px;
     }
 
+    .light {
+      --text-main: #020617;
+      --text-muted: rgba(0, 0, 0, 0.65);
+      --glass-bg: rgba(255, 255, 255, 0.3);
+      --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
     /* Size Overrides */
     .size-1 {
       --width: 400px;
@@ -162,16 +169,23 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       margin-bottom: 25px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .light .status-badge {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(0, 0, 0, 0.1);
     }
 
     .check-icon {
       width: 20px;
       height: 20px;
-      fill: white;
+      fill: var(--text-main);
+      stroke: var(--text-main);
     }
 
     .status-text {
-      color: white;
+      color: var(--text-main);
       font-size: var(--fs-status);
       font-weight: 700;
       letter-spacing: 0.5px;
@@ -182,7 +196,7 @@
     .serial-number {
       font-size: var(--fs-serial);
       font-weight: 800;
-      color: white;
+      color: var(--text-main);
       margin-bottom: 8px;
       letter-spacing: -0.5px;
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -243,7 +257,7 @@
       transform-origin: left;
     }
   </style>
-  <link rel="stylesheet" crossorigin href="./assets/input-DKrWKTEj.css">
+  <link rel="stylesheet" crossorigin href="./assets/input-BGDsGc_V.css">
 </head>
 
 <body>
@@ -326,6 +340,19 @@
         modelDisplay.textContent = 'Garanti Kapsamı Dışında';
         copyBtn.style.display = 'none';
         iconContainer.innerHTML = icons.info;
+      }
+
+      if (info.theme === 'light') {
+        document.body.classList.add('light');
+        if (info.is_error) {
+          popup.style.background = '#fecaca'; // Light red
+        } else if (status.includes('RECCI')) {
+          popup.style.background = '#d1fae5'; // Light green
+        } else if (status.includes('KVK')) {
+          popup.style.background = '#dbeafe'; // Light blue
+        } else {
+          popup.style.background = '#f1f5f9'; // Light slate
+        }
       }
 
       // Copy logic

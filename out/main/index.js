@@ -27,14 +27,6 @@ function _interopNamespaceDefault(e) {
 const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path);
 const fs__namespace = /* @__PURE__ */ _interopNamespaceDefault(fs);
 const XLSX__namespace = /* @__PURE__ */ _interopNamespaceDefault(XLSX);
-const is = {
-  dev: !electron$1.app.isPackaged
-};
-({
-  isWindows: process.platform === "win32",
-  isMacOS: process.platform === "darwin",
-  isLinux: process.platform === "linux"
-});
 async function checkWarranty(serial) {
   function makeRequest(url) {
     return new Promise((resolve, reject) => {
@@ -234,6 +226,56 @@ function deleteEntry(serial) {
   stmt.run(serial);
   return Promise.resolve();
 }
+const is = {
+  dev: !electron$1.app.isPackaged
+};
+({
+  isWindows: process.platform === "win32",
+  isMacOS: process.platform === "darwin",
+  isLinux: process.platform === "linux"
+});
+function getSettingsPath() {
+  return path__namespace.join(electron$1.app.getPath("documents"), "RecciTek", "settings.json");
+}
+function loadSettings() {
+  const defaultSettings = {
+    popupTimeout: 5e3,
+    popupSizeLevel: 2,
+    doubleCopyEnabled: true,
+    autoStartEnabled: false,
+    preventDuplicatePopup: true,
+    shortcuts: {
+      clearCache: "CommandOrControl+Shift+X",
+      toggleMonitoring: "CommandOrControl+Shift+C"
+    },
+    role: "kargo_kabul",
+    personnelName: "",
+    theme: "dark",
+    workingHours: {
+      start: "08:00",
+      end: "18:30"
+    }
+  };
+  try {
+    const p = getSettingsPath();
+    if (fs__namespace.existsSync(p)) {
+      const savedSettings = JSON.parse(fs__namespace.readFileSync(p, "utf8"));
+      return { ...defaultSettings, ...savedSettings };
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  }
+  return defaultSettings;
+}
+function saveSettings(settings) {
+  try {
+    const settingsPath = getSettingsPath();
+    fs__namespace.mkdirSync(path__namespace.dirname(settingsPath), { recursive: true });
+    fs__namespace.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  } catch (error) {
+    console.error("Error saving settings:", error);
+  }
+}
 const POPUP_SIZE_LEVELS = [
   { level: 1, file: "popup.html", width: 400, height: 300, label: "Küçük" },
   { level: 2, file: "popup.html", width: 460, height: 330, label: "Orta" },
@@ -311,8 +353,8 @@ class WindowManager {
       return;
     }
     this.settingsWindow = new electron$1.BrowserWindow({
-      width: 500,
-      height: 450,
+      width: 720,
+      height: 520,
       resizable: false,
       frame: true,
       webPreferences: {
@@ -402,7 +444,8 @@ class WindowManager {
       if (this.currentPopup) {
         this.currentPopup.show();
         this.popupVisible = true;
-        const infoWithSize = { ...info, sizeLevel };
+        const settings = loadSettings();
+        const infoWithSize = { ...info, sizeLevel, theme: settings.theme || "dark" };
         this.currentPopup.webContents.send("popup-data", infoWithSize, timeoutDuration);
         this.popupDuration = timeoutDuration;
         this.popupStartTime = Date.now();
@@ -459,43 +502,6 @@ class WindowManager {
     electron$1.app.exit(0);
   }
 }
-function getSettingsPath() {
-  return path__namespace.join(electron$1.app.getPath("documents"), "RecciTek", "settings.json");
-}
-function loadSettings() {
-  const defaultSettings = {
-    popupTimeout: 5e3,
-    popupSizeLevel: 2,
-    doubleCopyEnabled: true,
-    autoStartEnabled: false,
-    preventDuplicatePopup: true,
-    shortcuts: {
-      clearCache: "CommandOrControl+Shift+X",
-      toggleMonitoring: "CommandOrControl+Shift+C"
-    },
-    role: "kargo_kabul",
-    personnelName: ""
-  };
-  try {
-    const p = getSettingsPath();
-    if (fs__namespace.existsSync(p)) {
-      const savedSettings = JSON.parse(fs__namespace.readFileSync(p, "utf8"));
-      return { ...defaultSettings, ...savedSettings };
-    }
-  } catch (error) {
-    console.error("Error loading settings:", error);
-  }
-  return defaultSettings;
-}
-function saveSettings(settings) {
-  try {
-    const settingsPath = getSettingsPath();
-    fs__namespace.mkdirSync(path__namespace.dirname(settingsPath), { recursive: true });
-    fs__namespace.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-  } catch (error) {
-    console.error("Error saving settings:", error);
-  }
-}
 function isSerialNumber(text) {
   return /^R[A-Za-z0-9]{13}$/.test(text);
 }
@@ -528,74 +534,97 @@ class ClipboardMonitor {
     this.isEnabled = enabled;
   }
 }
-function parseBonusData(buffer) {
-  const workbook = XLSX__namespace.read(buffer, { type: "buffer" });
+function parseBonusData(buffer, workingHours) {
+  const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1 });
   const monthlyStats = {};
+  const [startH, startM] = workingHours.start.split(":").map(Number);
+  const [endH, endM] = workingHours.end.split(":").map(Number);
   rows.forEach((row) => {
-    const dateCell = row[14];
-    if (dateCell && typeof dateCell === "string") {
+    let dateCell = row[14];
+    if (dateCell) {
+      let date;
       try {
-        const formatStr = dateCell.includes("/") ? "dd/MM/yyyy HH:mm" : "dd-MM-yyyy HH:mm";
-        const date = dateFns.parse(dateCell, formatStr, /* @__PURE__ */ new Date());
+        if (dateCell instanceof Date) {
+          date = dateCell;
+        } else if (typeof dateCell === "string") {
+          const formatStr = dateCell.includes("/") ? "dd/MM/yyyy HH:mm" : "dd-MM-yyyy HH:mm";
+          date = dateFns.parse(dateCell, formatStr, /* @__PURE__ */ new Date());
+        } else if (typeof dateCell === "number") {
+          date = XLSX__namespace.SSF.parse_date_code(dateCell);
+          date = new Date(Date.UTC(date.y, date.m - 1, date.d, date.H, date.M, date.S));
+        } else {
+          return;
+        }
         if (isNaN(date.getTime())) return;
         const monthKey = dateFns.format(date, "MM-yyyy");
+        const dayKey = dateFns.format(date, "yyyy-MM-dd");
         if (!monthlyStats[monthKey]) {
-          monthlyStats[monthKey] = { total: 0, valid: 0, overtime: 0, date: dateFns.startOfMonth(date) };
+          monthlyStats[monthKey] = {
+            total: 0,
+            valid: 0,
+            overtime: 0,
+            date: dateFns.startOfMonth(date),
+            days: {}
+          };
+        }
+        if (!monthlyStats[monthKey].days[dayKey]) {
+          monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
         }
         monthlyStats[monthKey].total++;
-        const startLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), 8), 0);
-        const endLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), 18), 30);
+        const startLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), startH), startM);
+        const endLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), endH), endM);
         if (dateFns.isWithinInterval(date, { start: startLimit, end: endLimit })) {
           monthlyStats[monthKey].valid++;
+          monthlyStats[monthKey].days[dayKey].valid++;
         } else {
           monthlyStats[monthKey].overtime++;
+          monthlyStats[monthKey].days[dayKey].overtime++;
         }
       } catch (e) {
       }
     }
   });
-  const results = Object.keys(monthlyStats).map((key) => {
+  const monthNamesTr = {
+    "01": "Ocak",
+    "02": "Şubat",
+    "03": "Mart",
+    "04": "Nisan",
+    "05": "Mayıs",
+    "06": "Haziran",
+    "07": "Temmuz",
+    "08": "Ağustos",
+    "09": "Eylül",
+    "10": "Ekim",
+    "11": "Kasım",
+    "12": "Aralık"
+  };
+  const sortedMonthKeys = Object.keys(monthlyStats).sort(
+    (a, b) => dateFns.compareDesc(monthlyStats[a].date, monthlyStats[b].date)
+  );
+  const results = sortedMonthKeys.map((key) => {
     const stats = monthlyStats[key];
-    const monthNamesTr = {
-      "01": "Ocak",
-      "02": "Şubat",
-      "03": "Mart",
-      "04": "Nisan",
-      "05": "Mayıs",
-      "06": "Haziran",
-      "07": "Temmuz",
-      "08": "Ağustos",
-      "09": "Eylül",
-      "10": "Ekim",
-      "11": "Kasım",
-      "12": "Aralık"
-    };
     const [m, y] = key.split("-");
+    const dailyStats = Object.keys(stats.days).sort().map((dKey) => ({
+      date: dKey,
+      validCount: stats.days[dKey].valid,
+      overtimeCount: stats.days[dKey].overtime
+    }));
     return {
       month: `${monthNamesTr[m]} ${y}`,
       totalCount: stats.total,
       validCount: stats.valid,
       overtimeCount: stats.overtime,
-      isEligible: stats.valid >= 850
+      isEligible: stats.valid >= 850,
+      dailyStats
     };
   });
-  const sortedKeys = Object.keys(monthlyStats).sort(
-    (a, b) => dateFns.compareDesc(monthlyStats[a].date, monthlyStats[b].date)
-  );
-  const finalResults = sortedKeys.map((key) => {
-    const res = results.find((r) => {
-      const [m, y] = key.split("-");
-      return r.month.includes(y) && key.startsWith(m);
-    });
-    return res;
-  });
-  if (finalResults.length > 1) {
-    finalResults.pop();
+  if (results.length > 1) {
+    results.pop();
   }
-  return finalResults;
+  return results;
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBbKdmGohakaU5woTt90BSNeH2DoVD3XNo",
@@ -639,8 +668,7 @@ async function updateTicketDetails(ticketId, details) {
 }
 function subscribeAsKargoKabul(personnelName, callback) {
   const q = firestore.query(
-    firestore.collection(db, TICKETS_COLLECTION),
-    firestore.where("created_by", "==", personnelName)
+    firestore.collection(db, TICKETS_COLLECTION)
   );
   return firestore.onSnapshot(q, (snapshot) => {
     const tickets = snapshot.docs.map((d) => {
@@ -827,6 +855,14 @@ function setupIpcHandlers() {
     });
     return true;
   });
+  electron$1.ipcMain.handle("restart-app", async (_, settings) => {
+    if (settings) {
+      currentSettings = { ...currentSettings, ...settings };
+      saveSettings(currentSettings);
+    }
+    electron$1.app.relaunch();
+    electron$1.app.exit(0);
+  });
   electron$1.ipcMain.on("toggle-monitoring", (_, enabled) => {
     monitoringEnabled = enabled;
     clipboardMonitor.setEnabled(enabled);
@@ -838,10 +874,12 @@ function setupIpcHandlers() {
   electron$1.ipcMain.on("open-bonus", () => {
     windowManager.openBonusWindow();
   });
-  electron$1.ipcMain.handle("calculate-bonus", async (_, filePath) => {
+  electron$1.ipcMain.handle("calculate-bonus", async (_, filePath, customHours) => {
     try {
+      const settings = loadSettings();
       const buffer = fs__namespace.readFileSync(filePath);
-      return parseBonusData(buffer);
+      const workingHours = customHours || settings.workingHours || { start: "08:00", end: "18:30" };
+      return parseBonusData(buffer, workingHours);
     } catch (error) {
       console.error("Bonus calculation error:", error);
       throw error;
@@ -915,16 +953,14 @@ function setupIpcHandlers() {
 }
 function createTray() {
   const mainWindow = windowManager.getMainWindow();
-  const iconPath = is.dev ? path__namespace.join(__dirname, "../../assets/logo.png") : path__namespace.join(process.resourcesPath, "assets/logo.png");
-  tray = new electron$1.Tray(electron$1.nativeImage.createFromPath(iconPath));
-  tray.setToolTip("Warranty Monitor");
+  let iconPath = path__namespace.join(__dirname, "../../assets/logo.png");
+  if (!fs__namespace.existsSync(iconPath)) {
+    iconPath = path__namespace.join(process.resourcesPath, "assets/logo.png");
+  }
+  const icon = electron$1.nativeImage.createFromPath(iconPath);
+  tray = new electron$1.Tray(icon);
+  tray.setToolTip("RecciTek WCheck");
   tray.setContextMenu(electron$1.Menu.buildFromTemplate([
-    { label: "Ana Menü", click: () => {
-      mainWindow?.show();
-      mainWindow?.focus();
-    } },
-    { label: "Ayarlar", click: () => windowManager.openSettingsWindow() },
-    { type: "separator" },
     { label: "Çıkış", click: () => windowManager.forceQuit() }
   ]));
   tray.on("double-click", () => {
@@ -979,6 +1015,33 @@ function startTicketListener() {
     ticketUnsubscribe = null;
   }
   const broadcastTickets = (tickets) => {
+    if (cachedTickets.length > 0) {
+      const oldMap = new Map(cachedTickets.map((t) => [t.id, t]));
+      tickets.forEach((ticket) => {
+        const old = oldMap.get(ticket.id);
+        if (!old && ticket.status === "pending" && currentSettings.role === "mh") {
+          new electron$1.Notification({
+            title: "Yeni Talep",
+            body: `${ticket.serial || "Bilinmeyen"} için yeni bilgi talebi`,
+            silent: true
+          }).show();
+        } else if (old && old.status !== ticket.status) {
+          if (ticket.status === "in_progress" && currentSettings.role === "kargo_kabul") {
+            new electron$1.Notification({
+              title: "Talep Üstlenildi",
+              body: `${ticket.serial || "Bilinmeyen"} talebiniz üstlenildi`,
+              silent: true
+            }).show();
+          } else if (ticket.status === "completed" && currentSettings.role === "kargo_kabul") {
+            new electron$1.Notification({
+              title: "Talep Tamamlandı",
+              body: `${ticket.serial || "Bilinmeyen"} talebiniz tamamlandı`,
+              silent: true
+            }).show();
+          }
+        }
+      });
+    }
     cachedTickets = tickets;
     const mainWin = windowManager.getMainWindow();
     if (mainWin && !mainWin.isDestroyed()) {
@@ -994,7 +1057,7 @@ function startTicketListener() {
   if (currentSettings.role === "mh") {
     ticketUnsubscribe = subscribeAsMH(broadcastTickets);
   } else {
-    const name = currentSettings.personnelName || "İsimsiz Personel";
+    const name = (currentSettings.personnelName || "İsimsiz Personel").replace(/\s/g, "").toUpperCase();
     ticketUnsubscribe = subscribeAsKargoKabul(name, broadcastTickets);
   }
 }

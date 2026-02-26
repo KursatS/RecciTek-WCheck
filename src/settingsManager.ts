@@ -14,6 +14,11 @@ export interface AppSettings {
   };
   role?: 'kargo_kabul' | 'mh';
   personnelName?: string;
+  theme?: 'dark' | 'light';
+  workingHours?: {
+    start: string;
+    end: string;
+  };
 }
 
 export function getSettingsPath(): string {
@@ -32,7 +37,12 @@ export function loadSettings(): AppSettings {
       toggleMonitoring: 'CommandOrControl+Shift+C'
     },
     role: 'kargo_kabul',
-    personnelName: ''
+    personnelName: '',
+    theme: 'dark',
+    workingHours: {
+      start: '08:00',
+      end: '18:30'
+    }
   };
 
   try {

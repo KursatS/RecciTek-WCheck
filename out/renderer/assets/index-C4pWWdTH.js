@@ -142,7 +142,7 @@ function loadCards() {
         else if (statusLabel.includes("KVK")) cardClass += " kvk";
         else cardClass += " out-of-warranty";
         const completedTicket = activeTickets.find((t) => t.serial === item.serial && t.status === "completed");
-        const askMHBtn = currentRole === "kargo_kabul" ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;top:12px;right:48px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩</button>` : "";
+        const askMHBtn = currentRole === "kargo_kabul" ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;top:12px;right:88px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩</button>` : "";
         card.className = cardClass;
         card.style.position = "relative";
         card.innerHTML = `
@@ -153,7 +153,7 @@ function loadCards() {
           <p><strong>Model:</strong> ${item.model_name || "Bilinmiyor"} ${item.model_color || ""}</p>
           <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
           ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ""}
-          ${completedTicket?.response ? `<p style="margin-top:6px;padding:6px 10px;background:rgba(16,185,129,0.08);border-radius:8px;font-size:0.8rem;"><strong style="color:#10b981;">MH Cevap:</strong> ${completedTicket.response}</p>` : ""}
+          ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ""}
         `;
         cardsDiv.appendChild(card);
       }
@@ -176,12 +176,23 @@ toggleBtn.onclick = () => {
   toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
   api.toggleMonitoring(monitoringEnabled);
 };
-themeBtn.onclick = () => {
-  document.body.classList.toggle("dark");
-  document.body.classList.toggle("light");
-  const isDark = document.body.classList.contains("dark");
+function applyTheme(isDark) {
+  document.body.classList.toggle("dark", isDark);
+  document.body.classList.toggle("light", !isDark);
   themeBtn.textContent = isDark ? "🌙" : "☀️";
+}
+themeBtn.onclick = () => {
+  const isDark = document.body.classList.contains("dark");
+  const newDark = !isDark;
+  applyTheme(newDark);
+  api.getSettings().then((s) => {
+    api.saveSettings({ ...s, theme: newDark ? "dark" : "light" });
+  });
 };
+api.getSettings().then((s) => {
+  const theme = s.theme || "dark";
+  applyTheme(theme === "dark");
+});
 searchInput.oninput = () => loadCards();
 settingsBtn.onclick = () => api.openSettings();
 bonusBtn.onclick = () => api.openBonus();
@@ -227,7 +238,13 @@ statusRefreshBtn.addEventListener("click", () => {
   statusRefreshBtn.classList.add("rotating");
   api.manualServerStatusRefresh();
 });
-api.onRefreshCards(() => loadCards());
+api.onRefreshCards(() => {
+  api.getSettings().then((s) => {
+    currentRole = s.role || "kargo_kabul";
+    personnelName = s.personnelName || "";
+    loadCards();
+  });
+});
 api.onCacheCleared(() => loadCards());
 api.onMonitoringToggled((enabled) => {
   monitoringEnabled = enabled;

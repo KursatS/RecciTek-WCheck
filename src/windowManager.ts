@@ -1,6 +1,7 @@
 import { BrowserWindow, screen, app, shell } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
+import { loadSettings } from './settingsManager';
 
 export interface PopupSize {
     level: number;
@@ -99,8 +100,8 @@ export class WindowManager {
         }
 
         this.settingsWindow = new BrowserWindow({
-            width: 500,
-            height: 450,
+            width: 720,
+            height: 520,
             resizable: false,
             frame: true,
             webPreferences: {
@@ -203,8 +204,9 @@ export class WindowManager {
                 this.currentPopup.show();
                 this.popupVisible = true;
 
-                // Pass the size level so the popup can adjust its styling
-                const infoWithSize = { ...info, sizeLevel };
+                // Pass the size level and theme so the popup can adjust its styling
+                const settings = loadSettings();
+                const infoWithSize = { ...info, sizeLevel, theme: settings.theme || 'dark' };
                 this.currentPopup.webContents.send('popup-data', infoWithSize, timeoutDuration);
 
                 this.popupDuration = timeoutDuration;

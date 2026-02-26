@@ -16,19 +16,29 @@ const MISSING_TYPE_LABELS: Record<string, string> = {
 let currentRole = 'mh'
 let personnelName = ''
 
-// Load settings to determine role
-api.getSettings().then((settings: any) => {
-    currentRole = settings.role || 'mh'
-    personnelName = settings.personnelName || 'Bilinmeyen'
-})
-
 // Listen for real-time ticket updates from main process
 api.onTicketUpdate((tickets: any[]) => {
     renderTickets(tickets)
 })
 
-// Load initial tickets
-api.getTickets().then((tickets: any[]) => {
+api.onRefreshCards(() => {
+    api.getSettings().then((s: any) => {
+        currentRole = s.role || 'mh'
+        personnelName = s.personnelName || 'Bilinmeyen'
+        api.getTickets().then((tickets: any[]) => {
+            if (tickets) renderTickets(tickets)
+        })
+    })
+})
+
+// Initialize: Load settings first, then tickets
+Promise.all([
+    api.getSettings(),
+    api.getTickets()
+]).then(([settings, tickets]: [any, any[]]) => {
+    if (settings.theme === 'light') document.body.classList.add('light')
+    currentRole = settings.role || 'mh'
+    personnelName = settings.personnelName || 'Bilinmeyen'
     if (tickets) renderTickets(tickets)
 })
 
@@ -71,15 +81,32 @@ function renderTickets(tickets: any[]) {
         `
             } else if (ticket.status === 'in_progress') {
                 if (ticket.responded_by === personnelName) {
+                    // Structured response inputs based on missing_type
+                    const types = ticket.missing_type.split(',').map((t: string) => t.trim());
+                    let structuredInputs = '<div class="structured-responses" style="display:flex;flex-direction:column;gap:8px w-full;">';
+
+                    types.forEach((type: string, idx: number) => {
+                        structuredInputs += `
+                            <div class="collab-group">
+                                <span class="collab-label">${type}</span>
+                                <input type="text" class="response-input structured-input" 
+                                    data-type="${type}" 
+                                    id="resp-${ticket.id}-${idx}" 
+                                    placeholder="${type} cevabını girin...">
+                            </div>
+                        `;
+                    });
+                    structuredInputs += '</div>';
+
                     actionsHtml = `
-            <span class="badge badge-in_progress">Üstlenildi</span>
-            <input type="text" class="response-input" id="resp-${ticket.id}" placeholder="Cevabınızı yazın...">
-            <button class="btn-sm btn-complete" data-id="${ticket.id}">Tamamla</button>
-          `
+                        <span class="badge badge-in_progress">Üstlenildi</span>
+                        ${structuredInputs}
+                        <button class="btn-sm btn-complete" data-id="${ticket.id}" style="margin-top:8px;">Tamamla</button>
+                    `;
                 } else {
                     actionsHtml = `
-            <span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>
-          `
+                        <span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>
+                    `;
                 }
             } else {
                 actionsHtml = `<span class="badge badge-completed">Tamamlandı</span>`
@@ -158,14 +185,27 @@ function renderTickets(tickets: any[]) {
     document.querySelectorAll('.btn-complete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = (btn as HTMLElement).dataset.id!
-            const input = document.getElementById(`resp-${id}`) as HTMLInputElement
-            const response = input?.value?.trim()
-            if (!response) {
-                input.style.borderColor = '#ef4444'
-                input.placeholder = 'Lütfen bir cevap yazın!'
-                return
-            }
-            await api.completeTicket(id, response)
+            const inputs = document.querySelectorAll(`[id^="resp-${id}-"]`) as NodeListOf<HTMLInputElement>
+
+            const responses: string[] = []
+            let allFilled = true
+
+            inputs.forEach(input => {
+                const val = input.value.trim()
+                const label = input.dataset.type
+                if (!val) {
+                    input.style.borderColor = '#ef4444'
+                    allFilled = false
+                } else {
+                    input.style.borderColor = ''
+                    responses.push(`${label}: ${val}`)
+                }
+            })
+
+            if (!allFilled) return
+
+            const finalResponse = responses.join(' | ')
+            await api.completeTicket(id, finalResponse)
         })
     })
 

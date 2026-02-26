@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-CmaqdH1M.js","./input-DKrWKTEj.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-DXSZQyUM.js","./input-BGDsGc_V.css"])))=>i.map(i=>d[i]);
 /* empty css               */
 const scriptRel = /* @__PURE__ */ (function detectScriptRel() {
   const relList = typeof document !== "undefined" && document.createElement("link").relList;
@@ -7577,7 +7577,7 @@ function ee(t2) {
  */
 (function(t2) {
   function e() {
-    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-CmaqdH1M.js"), true ? __vite__mapDeps([0,1]) : void 0, import.meta.url)).catch((function(t3) {
+    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-DXSZQyUM.js"), true ? __vite__mapDeps([0,1]) : void 0, import.meta.url)).catch((function(t3) {
       return Promise.reject(new Error("Could not load canvg: " + t3));
     })).then((function(t3) {
       return t3.default ? t3.default : t3;
@@ -10725,52 +10725,185 @@ function requireJspdf_plugin_autotable() {
   return jspdf_plugin_autotable$1.exports;
 }
 requireJspdf_plugin_autotable();
+function trSafe(text) {
+  const map = {
+    "ı": "i",
+    "İ": "I",
+    "ğ": "g",
+    "Ğ": "G",
+    "ü": "u",
+    "Ü": "U",
+    "ş": "s",
+    "Ş": "S",
+    "ö": "o",
+    "Ö": "O",
+    "ç": "c",
+    "Ç": "C"
+  };
+  return text.replace(/[ıİğĞüÜşŞöÖçÇ]/g, (c2) => map[c2] || c2);
+}
 function generatePDF(data) {
   const doc = new E();
-  doc.setFontSize(18);
-  doc.text(data.title, 14, 22);
-  doc.setFontSize(11);
-  doc.setTextColor(100);
-  doc.text(`Oluşturulma Tarihi: ${(/* @__PURE__ */ new Date()).toLocaleString("tr-TR")}`, 14, 30);
-  doc.autoTable({
-    startY: 35,
-    head: [data.headers],
-    body: data.rows,
-    theme: "striped",
-    headStyles: { fillColor: [56, 189, 248] },
-    // Accent color
-    styles: { font: "helvetica", fontSize: 10 }
-  });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageWidth, 40, "F");
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text(trSafe(data.title), pageWidth / 2, 18, { align: "center" });
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(148, 163, 184);
+  doc.text(trSafe(`Olusturulma Tarihi: ${(/* @__PURE__ */ new Date()).toLocaleString("tr-TR")}`), pageWidth / 2, 30, { align: "center" });
+  if (data.monthlyData && data.monthlyData.length > 0) {
+    const totalDevices = data.monthlyData.reduce((a2, m2) => a2 + m2.totalCount, 0);
+    const totalValid = data.monthlyData.reduce((a2, m2) => a2 + m2.validCount, 0);
+    const totalOvertime = data.monthlyData.reduce((a2, m2) => a2 + m2.overtimeCount, 0);
+    const eligibleCount = data.monthlyData.filter((m2) => m2.isEligible).length;
+    const statsY = 50;
+    const boxW = (pageWidth - 28) / 4;
+    const boxH = 28;
+    const stats = [
+      { label: "TOPLAM CIHAZ", value: String(totalDevices), color: [56, 189, 248] },
+      { label: "MESAI ICI", value: String(totalValid), color: [16, 185, 129] },
+      { label: "FAZLA MESAI", value: String(totalOvertime), color: [245, 158, 11] },
+      { label: "PRIM AYI", value: `${eligibleCount}/${data.monthlyData.length}`, color: [139, 92, 246] }
+    ];
+    stats.forEach((stat, i2) => {
+      const x2 = 14 + i2 * (boxW + 2);
+      doc.setFillColor(30, 41, 59);
+      doc.roundedRect(x2, statsY, boxW - 2, boxH, 4, 4, "F");
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(stat.color[0], stat.color[1], stat.color[2]);
+      doc.text(stat.value, x2 + (boxW - 2) / 2, statsY + 12, { align: "center" });
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(148, 163, 184);
+      doc.text(stat.label, x2 + (boxW - 2) / 2, statsY + 20, { align: "center" });
+    });
+    const chartY = statsY + boxH + 10;
+    const chartW = pageWidth - 28;
+    const chartH = 50;
+    const barCount = data.monthlyData.length;
+    const barW = Math.min(30, chartW / barCount - 4);
+    const maxVal = Math.max(...data.monthlyData.map((m2) => m2.totalCount));
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(14, chartY, chartW, chartH + 20, 4, 4, "F");
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(trSafe("Aylik Performans Grafigi"), 20, chartY + 10);
+    data.monthlyData.forEach((m2, i2) => {
+      const x2 = 20 + i2 * (chartW / barCount);
+      const barMaxH = chartH - 5;
+      const validH = maxVal > 0 ? m2.validCount / maxVal * barMaxH : 0;
+      doc.setFillColor(16, 185, 129);
+      doc.rect(x2, chartY + 15 + (barMaxH - validH), barW * 0.45, validH, "F");
+      const otH = maxVal > 0 ? m2.overtimeCount / maxVal * barMaxH : 0;
+      doc.setFillColor(245, 158, 11);
+      doc.rect(x2 + barW * 0.5, chartY + 15 + (barMaxH - otH), barW * 0.45, otH, "F");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      const monthShort = trSafe(m2.month.split(" ")[0].substring(0, 3));
+      doc.text(monthShort, x2 + barW * 0.25, chartY + chartH + 12, { align: "center" });
+    });
+    doc.autoTable({
+      startY: chartY + chartH + 25,
+      head: [data.headers.map(trSafe)],
+      body: data.rows.map((row) => row.map((cell) => trSafe(String(cell)))),
+      theme: "grid",
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [56, 189, 248],
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 10
+      },
+      bodyStyles: {
+        halign: "center",
+        fontSize: 9
+      },
+      alternateRowStyles: {
+        fillColor: [241, 245, 249]
+      },
+      columnStyles: {
+        4: {
+          fontStyle: "bold"
+        }
+      }
+    });
+  } else {
+    doc.autoTable({
+      startY: 50,
+      head: [data.headers.map(trSafe)],
+      body: data.rows.map((row) => row.map((cell) => trSafe(String(cell)))),
+      theme: "striped",
+      headStyles: { fillColor: [56, 189, 248] },
+      styles: { font: "helvetica", fontSize: 10 }
+    });
+  }
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, pageH - 12, pageWidth, 12, "F");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text("RecciTek WCheck - Prim Raporu", pageWidth / 2, pageH - 4, { align: "center" });
   doc.save(data.fileName);
 }
 const dropZone = document.getElementById("drop-zone");
 const fileInput = document.getElementById("file-input");
 const resultsDiv = document.getElementById("results");
 const loading = document.getElementById("loading");
+const analyticsPanel = document.getElementById("analytics");
+const chartContainer = document.getElementById("day-chart");
+const chartTitle = document.getElementById("chart-title");
+const monthTotal = document.getElementById("month-total");
+const workStart = document.getElementById("work-start");
+const workEnd = document.getElementById("work-end");
 let currentResults = [];
+let lastFilePath = "";
 dropZone.onclick = () => fileInput.click();
 dropZone.ondragover = (e) => {
   e.preventDefault();
   dropZone.classList.add("dragover");
 };
 dropZone.ondragleave = () => dropZone.classList.remove("dragover");
-dropZone.ondrop = (e) => {
+dropZone.ondrop = async (e) => {
   e.preventDefault();
   dropZone.classList.remove("dragover");
   const file = e.dataTransfer?.files[0];
-  if (file) handleFile(file.path);
+  if (file) {
+    const path = await window.electronAPI.getPathForFile(file);
+    lastFilePath = path;
+    handleFile(path);
+  }
 };
-fileInput.onchange = (e) => {
+fileInput.onchange = async (e) => {
   const file = e.target.files?.[0];
-  if (file) handleFile(file.path);
+  if (file) {
+    const path = await window.electronAPI.getPathForFile(file);
+    lastFilePath = path;
+    handleFile(path);
+  }
 };
+const triggerRecalculate = () => {
+  if (lastFilePath) handleFile(lastFilePath);
+};
+workStart.onchange = triggerRecalculate;
+workEnd.onchange = triggerRecalculate;
 async function handleFile(path) {
+  if (!path) return;
   loading.style.display = "flex";
+  resultsDiv.innerHTML = "";
+  analyticsPanel.style.display = "none";
   try {
-    const results = await window.electronAPI.calculateBonus(path);
+    const customHours = { start: workStart.value, end: workEnd.value };
+    const results = await window.electronAPI.calculateBonus(path, customHours);
     currentResults = results;
     displayResults(results);
   } catch (err2) {
+    console.error(err2);
     alert("Dosya okunurken bir hata oluştu. Lütfen formatı kontrol edin.");
   } finally {
     loading.style.display = "none";
@@ -10785,25 +10918,28 @@ function displayResults(results) {
   const headerAction = document.createElement("div");
   headerAction.className = "flex justify-end mb-4";
   headerAction.innerHTML = `
-        <button id="export-pdf" class="bg-accent text-slate-900 px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-2">
-            📄 PDF Raporu Oluştur
+        <button id="export-pdf" style="background: var(--accent); color: #0f172a; padding: 10px 20px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; margin-left: auto;">
+            <span>📄</span> PDF Raporu Oluştur
         </button>
     `;
   resultsDiv.appendChild(headerAction);
-  document.getElementById("export-pdf").onclick = () => {
-    const headers = ["Ay", "Geçerli", "Mesai Dışı", "Toplam", "Durum"];
+  const exportBtn = document.getElementById("export-pdf");
+  exportBtn.onclick = (e) => {
+    e.stopPropagation();
+    const headers = ["Ay", "Gecerli", "Mesai Disi", "Toplam", "Durum"];
     const rows = results.map((res) => [
       res.month,
       res.validCount,
       res.overtimeCount,
       res.totalCount,
-      res.isEligible ? "TAMAM" : "EKSİK"
+      res.isEligible ? "TAMAM" : "EKSIK"
     ]);
     generatePDF({
-      title: "Personel Prim Hakediş Raporu",
+      title: "Personel Prim Hakedis Raporu",
       headers,
       rows,
-      fileName: `Prim_Raporu_${(/* @__PURE__ */ new Date()).toLocaleDateString("tr-TR")}.pdf`
+      fileName: `Prim_Raporu_${(/* @__PURE__ */ new Date()).toLocaleDateString("tr-TR")}.pdf`,
+      monthlyData: results
     });
   };
   results.forEach((res, index) => {
@@ -10827,19 +10963,68 @@ function displayResults(results) {
     }
     card.innerHTML = `
             <div class="result-info">
-                <h3 class="text-white font-bold">${res.month}</h3>
-                <div class="result-stats flex gap-4 text-sm text-slate-400">
-                    <div class="stat-item">Geçerli: <strong class="text-white">${res.validCount}</strong></div>
-                    <div class="stat-item">Mesai Dışı: <strong class="text-white">${res.overtimeCount}</strong></div>
+                <h3>${res.month}</h3>
+                <div class="result-stats">
+                    <div class="stat-item">Geçerli: <strong>${res.validCount}</strong></div>
+                    <div class="stat-item">Mesai Dışı: <strong>${res.overtimeCount}</strong></div>
                     <div class="stat-item">Toplam: ${res.totalCount}</div>
                 </div>
             </div>
-            <div class="status-badge ${statusClass} px-4 py-2 rounded-xl font-bold text-xs uppercase">
+            <div class="status-badge ${statusClass}">
                 ${statusText}
             </div>
         `;
+    card.onclick = () => {
+      document.querySelectorAll(".result-card").forEach((c2) => c2.classList.remove("active"));
+      card.classList.add("active");
+      showAnalytics(res);
+    };
     resultsDiv.appendChild(card);
+    if (index === 0) card.click();
   });
+}
+function showAnalytics(res) {
+  analyticsPanel.style.display = "block";
+  chartTitle.textContent = `${res.month} Günlük Dağılım`;
+  monthTotal.textContent = String(res.totalCount);
+  chartContainer.innerHTML = "";
+  if (!res.dailyStats || res.dailyStats.length === 0) {
+    chartContainer.innerHTML = '<p style="color: var(--text-muted); width: 100%; text-align: center;">Veri yok</p>';
+    return;
+  }
+  const maxVal = Math.max(...res.dailyStats.map((d2) => d2.validCount + d2.overtimeCount));
+  res.dailyStats.forEach((day, i2) => {
+    const dayTotal = day.validCount + day.overtimeCount;
+    const normalHeight = maxVal > 0 ? day.validCount / maxVal * 240 : 0;
+    const overtimeHeight = maxVal > 0 ? day.overtimeCount / maxVal * 240 : 0;
+    const group = document.createElement("div");
+    group.className = "day-bar-group";
+    const dayNum = day.date.split("-")[2];
+    group.innerHTML = `
+            <div class="bar-stack" data-total="${dayTotal}" style="height: 0px; position: relative;">
+                ${overtimeHeight > 0 ? `<div class="day-bar bar-overtime" style="height: ${overtimeHeight}px"></div>` : ""}
+                <div class="day-bar bar-normal" style="height: ${normalHeight}px"></div>
+                <span class="bar-tooltip">${dayTotal}</span>
+            </div>
+            <div class="day-label">${dayNum}</div>
+        `;
+    chartContainer.appendChild(group);
+    setTimeout(() => {
+      const stack = group.querySelector(".bar-stack");
+      stack.style.height = `${normalHeight + overtimeHeight}px`;
+    }, 30 + i2 * 20);
+  });
+  const numDays = res.dailyStats.length;
+  const dailyTarget = Math.ceil(850 / numDays);
+  const targetPx = maxVal > 0 ? dailyTarget / maxVal * 240 : 0;
+  if (targetPx > 0 && targetPx <= 300) {
+    const line = document.createElement("div");
+    line.className = "target-line";
+    line.style.bottom = `${targetPx}px`;
+    line.innerHTML = `<span class="target-line-label">Hedef: ${dailyTarget}/gün</span>`;
+    chartContainer.appendChild(line);
+  }
+  analyticsPanel.scrollIntoView({ behavior: "smooth" });
 }
 export {
   _typeof as _,
