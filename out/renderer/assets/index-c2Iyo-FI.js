@@ -143,7 +143,7 @@ function loadCards() {
         else if (statusLabel.includes("KVK")) cardClass += " kvk";
         else cardClass += " out-of-warranty";
         const completedTicket = activeTickets.find((t) => t.serial === item.serial && t.status === "completed");
-        const askMHBtn = currentRole === "kargo_kabul" ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;top:12px;right:88px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩</button>` : "";
+        const askMHBtn = currentRole === "kargo_kabul" ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>` : "";
         card.className = cardClass;
         card.style.position = "relative";
         card.innerHTML = `
