@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecciTek - Giriş Yap</title>
+  <link rel="stylesheet" href="./input.css">
+  <link rel="stylesheet" href="./theme.css">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .login-container {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      padding: 40px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 320px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin: 0 0 24px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    .input-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .input-group input:focus {
+      border-color: #38bdf8;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-login:hover {
+      background: #0ea5e9;
+    }
+    .btn-login:active {
+      transform: scale(0.98);
+    }
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 30px;
+      -webkit-app-region: drag;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .window-controls {
+      -webkit-app-region: no-drag;
+      display: flex;
+    }
+    .ctrl-btn {
+      width: 40px;
+      height: 30px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    .ctrl-btn.close:hover {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="window-controls">
+      <button class="ctrl-btn" id="btn-min">─</button>
+      <button class="ctrl-btn close" id="btn-close">✕</button>
+    </div>
+  </header>
+
+  <div class="login-container">
+    <img src="../assets/logo.png" alt="Logo" class="logo">
+    <h2>RecciTek WCheck</h2>
+    
+    <div class="input-group">
+      <label>Kullanıcı Adı</label>
+      <input type="text" id="username" placeholder="Kullanıcı adınızı girin">
+    </div>
+    
+    <div class="input-group">
+      <label>Şifre</label>
+      <input type="password" id="password" placeholder="Şifrenizi girin">
+    </div>
+
+    <button class="btn-login" id="login-btn">Giriş Yap</button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <script src="./login-renderer.ts" type="module"></script>
+</body>
+</html>

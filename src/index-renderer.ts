@@ -7,6 +7,8 @@ const themeBtn = document.getElementById('theme-toggle')!
 const clearCacheBtn = document.getElementById('clear-cache')!
 const settingsBtn = document.getElementById('settings-btn')!
 const bonusBtn = document.getElementById('bonus-btn')!
+const profileBtn = document.getElementById('profile-btn')!
+const adminBtn = document.getElementById('admin-btn')!
 const ticketsBtn = document.getElementById('tickets-btn')!
 const ticketBadge = document.getElementById('ticket-badge')!
 const dcBtn = document.getElementById('double-copy-toggle')!
@@ -189,8 +191,8 @@ function loadCards() {
                 // Check if this serial has a completed ticket to show MH response
                 const completedTicket = completedTicketsMap.get(item.serial);
 
-                // MH'ye Sor button (STRICTLY only for kargo_kabul role)
-                const askMHBtn = (currentRole === 'kargo_kabul')
+                // MH'ye Sor button (STRICTLY only for kargo_kabul role and if no completed response exists)
+                const askMHBtn = (currentRole === 'kargo_kabul' && !completedTicket?.response)
                     ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>`
                     : ''
 
@@ -265,6 +267,8 @@ searchInput.oninput = () => loadCards()
 settingsBtn.onclick = () => api.openSettings()
 bonusBtn.onclick = () => api.openBonus()
 ticketsBtn.onclick = () => api.openTickets()
+profileBtn.onclick = () => api.openProfile()
+adminBtn.onclick = () => api.openAdmin()
 
 // ── Clear Cache ─────────────────────────────────────────────────────
 clearCacheBtn.onclick = async () => {
@@ -323,6 +327,17 @@ api.onRefreshCards(() => {
     api.getSettings().then((s: any) => {
         currentRole = s.role || 'kargo_kabul'
         personnelName = s.personnelName || ''
+
+        if (bonusBtn) {
+            bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
+        }
+        if (adminBtn) {
+            adminBtn.style.display = s.isAdmin ? 'flex' : 'none'
+        }
+        if (profileBtn) {
+            profileBtn.style.display = s.isLoggedIn ? 'flex' : 'none'
+        }
+
         loadCards()
     })
 })
@@ -363,7 +378,14 @@ Promise.all([
     currentRole = s.role || 'kargo_kabul'
     personnelName = s.personnelName || ''
 
-    // Uygulama ilk kez açılıyorsa veya isim girilmediyse Ayarlar penceresini aç
+    if (bonusBtn) {
+        bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
+    }
+    if (adminBtn) {
+        adminBtn.style.display = s.isAdmin ? 'flex' : 'none'
+    }
+
+    // Login kontrolü
     if (!personnelName.trim()) {
         setTimeout(() => {
             api.openSettings()

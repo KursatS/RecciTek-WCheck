@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, app, shell } from 'electron';
+import { BrowserWindow, screen, app, shell, ipcMain } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { loadSettings } from './settingsManager';
@@ -22,6 +22,9 @@ export class WindowManager {
     private settingsWindow: BrowserWindow | null = null;
     private bonusWindow: BrowserWindow | null = null;
     private ticketsWindow: BrowserWindow | null = null;
+    private loginWindow: BrowserWindow | null = null;
+    private adminWindow: BrowserWindow | null = null;
+    private profileWindow: BrowserWindow | null = null;
     private currentPopup: BrowserWindow | null = null;
     private popupTimeout: NodeJS.Timeout | null = null;
     private popupVisible: boolean = false;
@@ -87,6 +90,46 @@ export class WindowManager {
         this.mainWindow.once('ready-to-show', () => this.mainWindow?.show());
 
         return this.mainWindow;
+    }
+
+    createLoginWindow(): BrowserWindow {
+        this.loginWindow = new BrowserWindow({
+            width: 400,
+            height: 500,
+            frame: false,
+            resizable: false,
+            show: false,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            icon: path.join(__dirname, '../../assets/logo.png'),
+        });
+
+        this.loadFile(this.loginWindow, 'login.html');
+        this.loginWindow.once('ready-to-show', () => this.loginWindow?.show());
+
+        this.loginWindow.on('closed', () => {
+            if (!this.mainWindow?.isVisible() && this.loginWindow) {
+                // If login window is closed and main is not active, quit app
+                app.quit();
+            }
+            this.loginWindow = null;
+        });
+
+        return this.loginWindow;
+    }
+
+    onLoginSuccess(): void {
+        if (this.loginWindow && !this.loginWindow.isDestroyed()) {
+            this.loginWindow.close();
+        }
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.show();
+            this.mainWindow.focus();
+            this.mainWindow.webContents.send('refresh-cards');
+        }
     }
 
     getMainWindow(): BrowserWindow | null {
@@ -171,6 +214,60 @@ export class WindowManager {
         this.loadFile(this.ticketsWindow, 'tickets.html');
         this.ticketsWindow.on('closed', () => {
             this.ticketsWindow = null;
+        });
+    }
+
+    openAdminWindow(): void {
+        if (this.adminWindow && !this.adminWindow.isDestroyed()) {
+            this.adminWindow.focus();
+            return;
+        }
+
+        this.adminWindow = new BrowserWindow({
+            width: 900,
+            height: 600,
+            resizable: true,
+            frame: true,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            title: 'Admin Paneli',
+            autoHideMenuBar: true
+        });
+
+        this.adminWindow.setMenuBarVisibility(false);
+        this.loadFile(this.adminWindow, 'admin.html');
+        this.adminWindow.on('closed', () => {
+            this.adminWindow = null;
+        });
+    }
+
+    openProfileWindow(): void {
+        if (this.profileWindow && !this.profileWindow.isDestroyed()) {
+            this.profileWindow.focus();
+            return;
+        }
+
+        this.profileWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            resizable: true,
+            frame: true,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            title: 'Profil ve Liderlik Tablosu',
+            autoHideMenuBar: true
+        });
+
+        this.profileWindow.setMenuBarVisibility(false);
+        this.loadFile(this.profileWindow, 'profile.html');
+        this.profileWindow.on('closed', () => {
+            this.profileWindow = null;
         });
     }
 

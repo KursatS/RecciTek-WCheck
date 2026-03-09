@@ -8,7 +8,8 @@ import {
   globalShortcut,
   net,
   dialog,
-  Notification
+  Notification,
+  BrowserWindow
 } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
@@ -25,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 
@@ -213,6 +214,29 @@ function setupIpcHandlers() {
     windowManager.openBonusWindow();
   });
 
+  ipcMain.on('open-admin', () => {
+    windowManager.openAdminWindow();
+  });
+
+  ipcMain.on('open-profile', () => {
+    windowManager.openProfileWindow();
+  });
+
+  ipcMain.handle('login-success', async () => {
+    windowManager.onLoginSuccess();
+    return true;
+  });
+
+  ipcMain.on('minimize-window', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    win?.minimize();
+  });
+
+  ipcMain.on('close-window', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    win?.close();
+  });
+
   ipcMain.handle('calculate-bonus', async (_, filePath, customHours) => {
     try {
       const settings = loadSettings();
@@ -285,6 +309,16 @@ function setupIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error('Error completing ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('reopen-ticket', async (_, id) => {
+    try {
+      await reopenTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error reopening ticket:', error);
       return { success: false, error: String(error) };
     }
   });
@@ -456,7 +490,9 @@ function initializeApp() {
       splash.close();
     } catch { }
 
-    const mainWindow = windowManager.createMainWindow();
+    // Instead of showing the main window directly, create it hidden and show the login window
+    windowManager.createMainWindow(); // It starts hidden
+    windowManager.createLoginWindow();
 
     createTray();
     clipboardMonitor.start();
@@ -473,6 +509,9 @@ function initializeApp() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('RecciTek WCheck');
+  }
   initCache();
   initializeApp();
 });

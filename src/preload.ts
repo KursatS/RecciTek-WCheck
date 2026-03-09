@@ -12,9 +12,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDoubleCopy: () => ipcRenderer.invoke('get-double-copy'),
     toggleDoubleCopy: (enabled: boolean) => ipcRenderer.invoke('toggle-double-copy', enabled),
 
-    // Settings & Bonus Windows
+    // Settings, Admin, Profile, Bonus Windows
     openSettings: () => ipcRenderer.send('open-settings'),
     openBonus: () => ipcRenderer.send('open-bonus'),
+    openAdmin: () => ipcRenderer.send('open-admin'),
+    openProfile: () => ipcRenderer.send('open-profile'),
+    loginSuccess: () => ipcRenderer.invoke('login-success'),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
     restartApp: (settings?: any) => ipcRenderer.invoke('restart-app', settings),
@@ -27,7 +30,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('popup-data', (_event, info, duration) => callback(info, duration)),
     popupHoverEnter: () => ipcRenderer.send('popup-hover-enter'),
     popupHoverLeave: () => ipcRenderer.send('popup-hover-leave'),
-    closeWindow: () => window.close(),
+    closeWindow: () => ipcRenderer.send('close-window'),
+    minimizeWindow: () => ipcRenderer.send('minimize-window'),
 
     // Server Status
     manualServerStatusRefresh: () => ipcRenderer.send('manual-server-status-refresh'),
@@ -49,6 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createTicket: (data: any) => ipcRenderer.invoke('create-ticket', data),
     claimTicket: (id: string, name: string) => ipcRenderer.invoke('claim-ticket', id, name),
     completeTicket: (id: string, response: string) => ipcRenderer.invoke('complete-ticket', id, response),
+    reopenTicket: (id: string) => ipcRenderer.invoke('reopen-ticket', id),
     updateTicketDetails: (id: string, details: any) => ipcRenderer.invoke('update-ticket-details', id, details),
     onTicketUpdate: (callback: any) =>
         ipcRenderer.on('ticket-update', (_event, tickets) => callback(tickets)),

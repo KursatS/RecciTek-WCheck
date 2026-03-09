@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecciTek - Profil ve Liderlik Tablosu</title>
+    <link rel="stylesheet" href="./input.css">
+    <link rel="stylesheet" href="./theme.css">
+    <style>
+        body {
+            padding: 24px;
+            margin: 0;
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 16px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #38bdf8;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+            margin-top: 24px;
+        }
+
+        .profile-banner {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.05) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .level-badge {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #38bdf8 0%, #0369a1 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .level-badge span:first-child {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .level-badge span:last-child {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: white;
+            display: block;
+            margin-top: -4px;
+        }
+
+        .profile-details h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .profile-details p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .xp-bar-container {
+            margin-top: 16px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            height: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .xp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+            width: 0%;
+            border-radius: 10px;
+            transition: width 1s ease-out;
+        }
+
+        .xp-text {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Scoreboard */
+        .scoreboard {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .score-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .score-row:last-child {
+            border-bottom: none;
+        }
+
+        .score-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .score-rank {
+            width: 40px;
+            font-weight: bold;
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .rank-1 .score-rank {
+            color: #fbbf24;
+            font-size: 1.3rem;
+        }
+
+        /* Gold */
+        .rank-2 .score-rank {
+            color: #94a3b8;
+            font-size: 1.2rem;
+        }
+
+        /* Silver */
+        .rank-3 .score-rank {
+            color: #b45309;
+            font-size: 1.15rem;
+        }
+
+        /* Bronze */
+
+        .score-name {
+            flex: 1;
+            font-weight: 500;
+            font-size: 1rem;
+            color: #f8fafc;
+        }
+
+        .score-role {
+            width: 150px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+        }
+
+        .score-level {
+            width: 100px;
+            font-weight: bold;
+            color: #38bdf8;
+            text-align: right;
+        }
+
+        .score-xp {
+            width: 80px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>🏆 Profiliniz</h1>
+    </div>
+
+    <div class="profile-banner">
+        <div class="level-badge">
+            <span>Level</span>
+            <span id="my-level">1</span>
+        </div>
+        <div class="profile-details" style="flex:1;">
+            <h3 id="my-name">Yükleniyor...</h3>
+            <p id="my-role">Yükleniyor...</p>
+
+            <div class="xp-bar-container">
+                <div class="xp-bar-fill" id="my-xp-fill"></div>
+            </div>
+            <div class="xp-text">
+                <span>Mevcut XP: <strong id="my-xp">0</strong></span>
+                <span>Sonraki Seviye: <strong id="next-level-xp">100</strong> XP</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>Liderlik Tablosu</h2>
+    <div class="scoreboard" id="scoreboard">
+        <!-- Loading state -->
+        <div style="padding: 16px; color: #64748b; text-align: center;">Yükleniyor...</div>
+    </div>
+
+    <script src="./profile-renderer.ts" type="module"></script>
+</body>
+
+</html>

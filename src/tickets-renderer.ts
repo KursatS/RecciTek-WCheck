@@ -131,7 +131,10 @@ function renderTickets(tickets: any[]) {
                     `;
                 }
             } else {
-                actionsHtml = `<span class="badge badge-completed">Tamamlandı</span>`
+                actionsHtml = `
+                    <span class="badge badge-completed">Tamamlandı</span>
+                    <button class="btn-sm btn-reopen" data-id="${ticket.id}" style="margin-top:8px;">Düzenle</button>
+                `
             }
         } else {
             // Kargo Kabul view
@@ -155,24 +158,23 @@ function renderTickets(tickets: any[]) {
         }
 
         const isCompleted = ticket.status === 'completed'
-        const disabledAttr = isCompleted ? 'disabled' : ''
-
+        // For kargo_kabul, we want them to edit even if completed. For MH, we also allow updating details if needed.
         const collabHtml = `
             <div class="collab-container">
                 <div class="collab-group">
                     <span class="collab-label">Müşteri İsmi</span>
-                    <input type="text" class="response-input collab-input" id="cust-${ticket.id}" value="${ticket.customer_name || ''}" placeholder="İsim Girin..." ${disabledAttr}>
+                    <input type="text" class="response-input collab-input" id="cust-${ticket.id}" value="${ticket.customer_name || ''}" placeholder="İsim Girin...">
                 </div>
                 <div class="collab-group">
                     <span class="collab-label">Aras Kodu</span>
-                    <input type="text" class="response-input collab-input" id="aras-${ticket.id}" value="${ticket.aras_code || ''}" placeholder="Aras Kodu..." ${disabledAttr}>
+                    <input type="text" class="response-input collab-input" id="aras-${ticket.id}" value="${ticket.aras_code || ''}" placeholder="Aras Kodu...">
                 </div>
                 <div class="collab-group">
                     <span class="collab-label">Telefon Numarası</span>
-                    <input type="text" class="response-input collab-input" id="phone-${ticket.id}" value="${ticket.phone_number || ''}" placeholder="05XX..." ${disabledAttr}>
+                    <input type="text" class="response-input collab-input" id="phone-${ticket.id}" value="${ticket.phone_number || ''}" placeholder="05XX...">
                 </div>
             </div>
-            ${!isCompleted ? `<button class="btn-sm btn-update" data-id="${ticket.id}" style="margin-top: 12px;">Güncelle</button>` : ''}
+            <button class="btn-sm btn-update" data-id="${ticket.id}" style="margin-top: 12px;">Güncelle</button>
         `
 
         card.innerHTML = `
@@ -228,6 +230,14 @@ function renderTickets(tickets: any[]) {
 
             const finalResponse = responses.join(' | ')
             await api.completeTicket(id, finalResponse)
+        })
+    })
+
+    // Bind reopen buttons
+    document.querySelectorAll('.btn-reopen').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = (btn as HTMLElement).dataset.id!
+            await api.reopenTicket(id)
         })
     })
 

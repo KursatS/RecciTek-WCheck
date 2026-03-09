@@ -294,6 +294,9 @@ class WindowManager {
     this.settingsWindow = null;
     this.bonusWindow = null;
     this.ticketsWindow = null;
+    this.loginWindow = null;
+    this.adminWindow = null;
+    this.profileWindow = null;
     this.currentPopup = null;
     this.popupTimeout = null;
     this.popupVisible = false;
@@ -349,6 +352,40 @@ class WindowManager {
     });
     this.mainWindow.once("ready-to-show", () => this.mainWindow?.show());
     return this.mainWindow;
+  }
+  createLoginWindow() {
+    this.loginWindow = new electron$1.BrowserWindow({
+      width: 400,
+      height: 500,
+      frame: false,
+      resizable: false,
+      show: false,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      },
+      icon: path__namespace.join(__dirname, "../../assets/logo.png")
+    });
+    this.loadFile(this.loginWindow, "login.html");
+    this.loginWindow.once("ready-to-show", () => this.loginWindow?.show());
+    this.loginWindow.on("closed", () => {
+      if (!this.mainWindow?.isVisible() && this.loginWindow) {
+        electron$1.app.quit();
+      }
+      this.loginWindow = null;
+    });
+    return this.loginWindow;
+  }
+  onLoginSuccess() {
+    if (this.loginWindow && !this.loginWindow.isDestroyed()) {
+      this.loginWindow.close();
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.show();
+      this.mainWindow.focus();
+      this.mainWindow.webContents.send("refresh-cards");
+    }
   }
   getMainWindow() {
     return this.mainWindow;
@@ -423,6 +460,54 @@ class WindowManager {
     this.loadFile(this.ticketsWindow, "tickets.html");
     this.ticketsWindow.on("closed", () => {
       this.ticketsWindow = null;
+    });
+  }
+  openAdminWindow() {
+    if (this.adminWindow && !this.adminWindow.isDestroyed()) {
+      this.adminWindow.focus();
+      return;
+    }
+    this.adminWindow = new electron$1.BrowserWindow({
+      width: 900,
+      height: 600,
+      resizable: true,
+      frame: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      },
+      title: "Admin Paneli",
+      autoHideMenuBar: true
+    });
+    this.adminWindow.setMenuBarVisibility(false);
+    this.loadFile(this.adminWindow, "admin.html");
+    this.adminWindow.on("closed", () => {
+      this.adminWindow = null;
+    });
+  }
+  openProfileWindow() {
+    if (this.profileWindow && !this.profileWindow.isDestroyed()) {
+      this.profileWindow.focus();
+      return;
+    }
+    this.profileWindow = new electron$1.BrowserWindow({
+      width: 800,
+      height: 600,
+      resizable: true,
+      frame: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      },
+      title: "Profil ve Liderlik Tablosu",
+      autoHideMenuBar: true
+    });
+    this.profileWindow.setMenuBarVisibility(false);
+    this.loadFile(this.profileWindow, "profile.html");
+    this.profileWindow.on("closed", () => {
+      this.profileWindow = null;
     });
   }
   showPopup(info, timeoutDuration, sizeLevel) {
@@ -652,6 +737,18 @@ async function createTicket(data) {
     responded_by: "",
     responded_at: null
   });
+  try {
+    const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", data.created_by));
+    const snapshot = await firestore.getDocs(q);
+    if (!snapshot.empty) {
+      const userId = snapshot.docs[0].id;
+      await firestore.updateDoc(firestore.doc(db, "users", userId), {
+        xp: firestore.increment(5)
+      });
+    }
+  } catch (e) {
+    console.error("Error adding xp:", e);
+  }
   return docRef.id;
 }
 async function claimTicket(ticketId, personnelName) {
@@ -661,10 +758,36 @@ async function claimTicket(ticketId, personnelName) {
   });
 }
 async function completeTicket(ticketId, response) {
+  const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
+  let respondedBy = "";
+  if (!ticketDoc.empty) {
+    respondedBy = ticketDoc.docs[0].data().responded_by;
+  }
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
     status: "completed",
     response,
     responded_at: firestore.serverTimestamp()
+  });
+  if (respondedBy) {
+    try {
+      const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", respondedBy));
+      const snapshot = await firestore.getDocs(q);
+      if (!snapshot.empty) {
+        const userId = snapshot.docs[0].id;
+        await firestore.updateDoc(firestore.doc(db, "users", userId), {
+          xp: firestore.increment(10)
+        });
+      }
+    } catch (e) {
+      console.error("Error adding xp:", e);
+    }
+  }
+}
+async function reopenTicket(ticketId) {
+  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
+    status: "in_progress",
+    response: ""
+    // Cevabı boşaltıyoruz ki tekrar düzenleyebilsin
   });
 }
 async function updateTicketDetails(ticketId, details) {
@@ -884,6 +1007,24 @@ function setupIpcHandlers() {
   electron$1.ipcMain.on("open-bonus", () => {
     windowManager.openBonusWindow();
   });
+  electron$1.ipcMain.on("open-admin", () => {
+    windowManager.openAdminWindow();
+  });
+  electron$1.ipcMain.on("open-profile", () => {
+    windowManager.openProfileWindow();
+  });
+  electron$1.ipcMain.handle("login-success", async () => {
+    windowManager.onLoginSuccess();
+    return true;
+  });
+  electron$1.ipcMain.on("minimize-window", (e) => {
+    const win = electron$1.BrowserWindow.fromWebContents(e.sender);
+    win?.minimize();
+  });
+  electron$1.ipcMain.on("close-window", (e) => {
+    const win = electron$1.BrowserWindow.fromWebContents(e.sender);
+    win?.close();
+  });
   electron$1.ipcMain.handle("calculate-bonus", async (_, filePath, customHours) => {
     try {
       const settings = loadSettings();
@@ -945,6 +1086,15 @@ function setupIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error("Error completing ticket:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("reopen-ticket", async (_, id) => {
+    try {
+      await reopenTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error reopening ticket:", error);
       return { success: false, error: String(error) };
     }
   });
@@ -1057,8 +1207,8 @@ function startTicketListener() {
     if (mainWin && !mainWin.isDestroyed()) {
       mainWin.webContents.send("ticket-update", tickets);
     }
-    const { BrowserWindow } = require("electron");
-    BrowserWindow.getAllWindows().forEach((win) => {
+    const { BrowserWindow: BrowserWindow2 } = require("electron");
+    BrowserWindow2.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) {
         win.webContents.send("ticket-update", tickets);
       }
@@ -1084,6 +1234,7 @@ function initializeApp() {
     } catch {
     }
     windowManager.createMainWindow();
+    windowManager.createLoginWindow();
     createTray();
     clipboardMonitor.start();
     startServerStatusMonitor();
@@ -1096,6 +1247,9 @@ function initializeApp() {
   setupIpcHandlers();
 }
 electron$1.app.whenReady().then(() => {
+  if (process.platform === "win32") {
+    electron$1.app.setAppUserModelId("RecciTek WCheck");
+  }
   initCache();
   initializeApp();
 });

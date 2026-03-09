@@ -10,9 +10,12 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // Double Copy
   getDoubleCopy: () => electron.ipcRenderer.invoke("get-double-copy"),
   toggleDoubleCopy: (enabled) => electron.ipcRenderer.invoke("toggle-double-copy", enabled),
-  // Settings & Bonus Windows
+  // Settings, Admin, Profile, Bonus Windows
   openSettings: () => electron.ipcRenderer.send("open-settings"),
   openBonus: () => electron.ipcRenderer.send("open-bonus"),
+  openAdmin: () => electron.ipcRenderer.send("open-admin"),
+  openProfile: () => electron.ipcRenderer.send("open-profile"),
+  loginSuccess: () => electron.ipcRenderer.invoke("login-success"),
   getSettings: () => electron.ipcRenderer.invoke("get-settings"),
   saveSettings: (settings) => electron.ipcRenderer.invoke("save-settings", settings),
   restartApp: (settings) => electron.ipcRenderer.invoke("restart-app", settings),
@@ -22,7 +25,8 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),
   popupHoverLeave: () => electron.ipcRenderer.send("popup-hover-leave"),
-  closeWindow: () => window.close(),
+  closeWindow: () => electron.ipcRenderer.send("close-window"),
+  minimizeWindow: () => electron.ipcRenderer.send("minimize-window"),
   // Server Status
   manualServerStatusRefresh: () => electron.ipcRenderer.send("manual-server-status-refresh"),
   // Event Listeners
@@ -36,6 +40,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   createTicket: (data) => electron.ipcRenderer.invoke("create-ticket", data),
   claimTicket: (id, name) => electron.ipcRenderer.invoke("claim-ticket", id, name),
   completeTicket: (id, response) => electron.ipcRenderer.invoke("complete-ticket", id, response),
+  reopenTicket: (id) => electron.ipcRenderer.invoke("reopen-ticket", id),
   updateTicketDetails: (id, details) => electron.ipcRenderer.invoke("update-ticket-details", id, details),
   onTicketUpdate: (callback) => electron.ipcRenderer.on("ticket-update", (_event, tickets) => callback(tickets)),
   // Tickets Window

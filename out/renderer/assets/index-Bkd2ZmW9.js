@@ -7,6 +7,8 @@ const themeBtn = document.getElementById("theme-toggle");
 const clearCacheBtn = document.getElementById("clear-cache");
 const settingsBtn = document.getElementById("settings-btn");
 const bonusBtn = document.getElementById("bonus-btn");
+const profileBtn = document.getElementById("profile-btn");
+const adminBtn = document.getElementById("admin-btn");
 const ticketsBtn = document.getElementById("tickets-btn");
 const ticketBadge = document.getElementById("ticket-badge");
 const dcBtn = document.getElementById("double-copy-toggle");
@@ -150,7 +152,7 @@ function loadCards() {
         else if (statusLabel.includes("KVK")) cardClass += " kvk";
         else cardClass += " out-of-warranty";
         const completedTicket = completedTicketsMap.get(item.serial);
-        const askMHBtn = currentRole === "kargo_kabul" ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>` : "";
+        const askMHBtn = currentRole === "kargo_kabul" && !completedTicket?.response ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>` : "";
         card.className = cardClass;
         card.style.position = "relative";
         card.innerHTML = `
@@ -206,6 +208,8 @@ searchInput.oninput = () => loadCards();
 settingsBtn.onclick = () => api.openSettings();
 bonusBtn.onclick = () => api.openBonus();
 ticketsBtn.onclick = () => api.openTickets();
+profileBtn.onclick = () => api.openProfile();
+adminBtn.onclick = () => api.openAdmin();
 clearCacheBtn.onclick = async () => {
   const confirmed = await showConfirm(
     "Tüm Geçmişi Temizle",
@@ -251,6 +255,15 @@ api.onRefreshCards(() => {
   api.getSettings().then((s) => {
     currentRole = s.role || "kargo_kabul";
     personnelName = s.personnelName || "";
+    if (bonusBtn) {
+      bonusBtn.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+    }
+    if (adminBtn) {
+      adminBtn.style.display = s.isAdmin ? "flex" : "none";
+    }
+    if (profileBtn) {
+      profileBtn.style.display = s.isLoggedIn ? "flex" : "none";
+    }
     loadCards();
   });
 });
@@ -280,6 +293,12 @@ Promise.all([
 ]).then(([s, tickets]) => {
   currentRole = s.role || "kargo_kabul";
   personnelName = s.personnelName || "";
+  if (bonusBtn) {
+    bonusBtn.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+  }
+  if (adminBtn) {
+    adminBtn.style.display = s.isAdmin ? "flex" : "none";
+  }
   if (!personnelName.trim()) {
     setTimeout(() => {
       api.openSettings();
