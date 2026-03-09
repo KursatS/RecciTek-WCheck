@@ -39,7 +39,7 @@ function renderUsers(users: any[]) {
         let badgeClass = 'badge-kargo'
         let roleDisplay = 'Kargo Kabul'
 
-        if (user.role === 'admin') { badgeClass = 'badge-admin'; roleDisplay = 'Yönetici' }
+        if (user.role === 'admin' || user.username === 'KursatS') { badgeClass = 'badge-admin'; roleDisplay = 'Yönetici' }
         else if (user.role === 'mh') { badgeClass = 'badge-mh'; roleDisplay = 'Müşteri Hizmetleri' }
 
         card.innerHTML = `
@@ -52,6 +52,7 @@ function renderUsers(users: any[]) {
             <div class="actions">
                 <button class="btn-sm btn-edit" data-id="${user.id}">Düzenle</button>
                 <button class="btn-sm btn-delete" data-id="${user.id}">Sil</button>
+                <button class="btn-sm btn-reset-xp" data-id="${user.id}" title="XP ve Level sıfırla" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">XP Sıfırla</button>
             </div>
         `
         usersGrid.appendChild(card)
@@ -73,6 +74,18 @@ function renderUsers(users: any[]) {
             const user = usersCache.find(u => u.id === id)
             if (confirm(`"${user?.username}" kullanıcısını silmek istediğinize emin misiniz?`)) {
                 await deleteDoc(doc(db, 'users', id))
+                loadUsers()
+            }
+        })
+    })
+
+    // Bind XP reset buttons
+    document.querySelectorAll('.btn-reset-xp').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = (e.target as HTMLElement).dataset.id!
+            const user = usersCache.find(u => u.id === id)
+            if (confirm(`"${user?.username}" kullanıcısının XP ve Level bilgisi sıfırlanacak. Emin misiniz?`)) {
+                await updateDoc(doc(db, 'users', id), { xp: 0, level: 1 })
                 loadUsers()
             }
         })
@@ -148,25 +161,4 @@ btnSaveUser.onclick = async () => {
     }
 }
 
-// Ensure Admin account exists (For initial setup if database is empty)
-async function ensureAdminExists() {
-    try {
-        const q = query(collection(db, 'users'))
-        const snapshot = await getDocs(q)
-        if (snapshot.empty) {
-            await addDoc(collection(db, 'users'), {
-                username: 'KursatS',
-                password: 'Krst123456.',
-                fullName: 'Kürşat Sinan',
-                role: 'admin',
-                level: 99,
-                xp: 9999,
-                createdAt: serverTimestamp()
-            })
-        }
-    } catch { }
-}
-
-ensureAdminExists().then(() => {
-    loadUsers()
-})
+loadUsers()

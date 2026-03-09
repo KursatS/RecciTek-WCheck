@@ -14,12 +14,77 @@
             background: #0f172a;
             color: #f8fafc;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ── Entrance animations ── */
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulseGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 36px rgba(56, 189, 248, 0.8), 0 0 60px rgba(56, 189, 248, 0.3);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+
+            100% {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes rankPop {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            70% {
+                transform: scale(1.15);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .header {
             margin-bottom: 24px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 16px;
+            animation: fadeInUp 0.5s ease both;
         }
 
         h1 {
@@ -36,6 +101,7 @@
             margin-top: 24px;
         }
 
+        /* ── Profile Banner ── */
         .profile-banner {
             background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.05) 100%);
             border: 1px solid rgba(56, 189, 248, 0.3);
@@ -44,6 +110,7 @@
             display: flex;
             align-items: center;
             gap: 24px;
+            animation: fadeInUp 0.5s ease 0.1s both;
         }
 
         .level-badge {
@@ -56,7 +123,13 @@
             align-items: center;
             justify-content: center;
             border: 4px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+            animation: pulseGlow 3s ease-in-out infinite;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .level-badge:hover {
+            transform: scale(1.08);
         }
 
         .level-badge span:first-child {
@@ -86,6 +159,7 @@
             font-size: 0.9rem;
         }
 
+        /* ── XP Bar ── */
         .xp-bar-container {
             margin-top: 16px;
             width: 100%;
@@ -98,10 +172,12 @@
 
         .xp-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc);
+            background-size: 200% 100%;
             width: 0%;
             border-radius: 10px;
-            transition: width 1s ease-out;
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: shimmer 2.5s linear infinite;
         }
 
         .xp-text {
@@ -112,12 +188,54 @@
             justify-content: space-between;
         }
 
-        /* Scoreboard */
+        /* ── Scoreboard Header with Filter ── */
+        .scoreboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .scoreboard-header h2 {
+            margin: 0;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .filter-btn {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
+
+        .filter-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
+
+        /* ── Scoreboard ── */
         .scoreboard {
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             overflow: hidden;
+            animation: fadeInUp 0.5s ease 0.3s both;
         }
 
         .score-row {
@@ -125,6 +243,9 @@
             align-items: center;
             padding: 12px 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            opacity: 0;
+            animation: slideInLeft 0.4s ease calc(var(--i, 0) * 60ms) both;
+            transition: background 0.2s;
         }
 
         .score-row:last-child {
@@ -132,7 +253,7 @@
         }
 
         .score-row:hover {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(255, 255, 255, 0.04);
         }
 
         .score-rank {
@@ -145,21 +266,20 @@
         .rank-1 .score-rank {
             color: #fbbf24;
             font-size: 1.3rem;
+            animation: rankPop 0.6s ease both;
         }
 
-        /* Gold */
         .rank-2 .score-rank {
-            color: #94a3b8;
+            color: #9ca3af;
             font-size: 1.2rem;
+            animation: rankPop 0.6s ease 0.1s both;
         }
 
-        /* Silver */
         .rank-3 .score-rank {
             color: #b45309;
             font-size: 1.15rem;
+            animation: rankPop 0.6s ease 0.2s both;
         }
-
-        /* Bronze */
 
         .score-name {
             flex: 1;
@@ -187,6 +307,25 @@
             font-size: 0.9rem;
             text-align: right;
         }
+
+        .rank-1 {
+            background: rgba(251, 191, 36, 0.04);
+        }
+
+        .rank-2 {
+            background: rgba(156, 163, 175, 0.02);
+        }
+
+        .rank-3 {
+            background: rgba(180, 83, 9, 0.03);
+        }
+
+        .empty-filter {
+            padding: 32px 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -202,8 +341,8 @@
             <span id="my-level">1</span>
         </div>
         <div class="profile-details" style="flex:1;">
-            <h3 id="my-name">Yükleniyor...</h3>
-            <p id="my-role">Yükleniyor...</p>
+            <h3 id="my-name">—</h3>
+            <p id="my-role">—</p>
 
             <div class="xp-bar-container">
                 <div class="xp-bar-fill" id="my-xp-fill"></div>
@@ -215,11 +354,16 @@
         </div>
     </div>
 
-    <h2>Liderlik Tablosu</h2>
-    <div class="scoreboard" id="scoreboard">
-        <!-- Loading state -->
-        <div style="padding: 16px; color: #64748b; text-align: center;">Yükleniyor...</div>
+    <div class="scoreboard-header">
+        <h2>Liderlik Tablosu</h2>
+        <div class="filter-group">
+            <button class="filter-btn active" data-role="all">Tüm Çalışanlar</button>
+            <button class="filter-btn" data-role="mh">Müşteri Hizmetleri</button>
+            <button class="filter-btn" data-role="kargo_kabul">Kargo Kabul</button>
+        </div>
     </div>
+
+    <div class="scoreboard" id="scoreboard"></div>
 
     <script src="./profile-renderer.ts" type="module"></script>
 </body>

@@ -1,16 +1,36 @@
 export { }
 const api = (window as any).electronAPI
+
+// ── DOM Refs ─────────────────────────────────────────────────────────
 const ticketList = document.getElementById('ticket-list')!
 const emptyState = document.getElementById('empty-state')!
 const countPending = document.getElementById('count-pending')!
 const countProgress = document.getElementById('count-progress')!
 const countCompleted = document.getElementById('count-completed')!
 const filterTabs = document.getElementById('filter-tabs')!
+const searchInput = document.getElementById('ticket-search') as HTMLInputElement
+const priorityList = document.getElementById('priority-list')!
+const priorityFormSection = document.getElementById('priority-form-section')!
+const btnAddPriority = document.getElementById('btn-add-priority') as HTMLButtonElement
+const pdCustomer = document.getElementById('pd-customer') as HTMLInputElement
+const pdSerial = document.getElementById('pd-serial') as HTMLInputElement
+const pdDesc = document.getElementById('pd-desc') as HTMLTextAreaElement
 
 let allTickets: any[] = []
+let allPriorityDevices: any[] = []
 let activeFilter = 'all'
+let searchQuery = ''
+let currentRole = 'mh'
+let personnelName = ''
 
-// Filter tab click handler
+const MISSING_TYPE_LABELS: Record<string, string> = {
+    address: 'Adres Bilgisi',
+    fault_form: 'Arıza Beyanı',
+    contact: 'Müşteri İletişim',
+    other: 'Diğer'
+}
+
+// ── Filter tab clicks ────────────────────────────────────────────────
 filterTabs.addEventListener('click', (e) => {
     const tab = (e.target as HTMLElement).closest('.filter-tab') as HTMLElement
     if (!tab) return
@@ -20,50 +40,59 @@ filterTabs.addEventListener('click', (e) => {
     renderTickets(allTickets)
 })
 
-const MISSING_TYPE_LABELS: Record<string, string> = {
-    address: 'Adres Bilgisi',
-    fault_form: 'Arıza Beyanı',
-    contact: 'Müşteri İletişim',
-    other: 'Diğer'
-}
-
-let currentRole = 'mh'
-let personnelName = ''
-
-// Listen for real-time ticket updates from main process
-api.onTicketUpdate((tickets: any[]) => {
-    renderTickets(tickets)
+// ── Search ───────────────────────────────────────────────────────────
+searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value.toLowerCase().trim()
+    renderTickets(allTickets)
 })
+
+// ── Ticket real-time updates ─────────────────────────────────────────
+api.onTicketUpdate((tickets: any[]) => renderTickets(tickets))
 
 api.onRefreshCards(() => {
     api.getSettings().then((s: any) => {
         currentRole = s.role || 'mh'
         personnelName = s.personnelName || 'Bilinmeyen'
-        api.getTickets().then((tickets: any[]) => {
-            if (tickets) renderTickets(tickets)
-        })
+        syncRoleUI()
+        api.getTickets().then((tickets: any[]) => { if (tickets) renderTickets(tickets) })
     })
 })
 
-// Initialize: Load settings first, then tickets
+// ── Priority devices real-time ───────────────────────────────────────
+api.onPriorityDevicesUpdate((devices: any[]) => {
+    allPriorityDevices = devices
+    renderPriorityDevices(devices)
+})
+
+// ── Init ─────────────────────────────────────────────────────────────
 Promise.all([
     api.getSettings(),
-    api.getTickets()
-]).then(([settings, tickets]: [any, any[]]) => {
+    api.getTickets(),
+    api.getPriorityDevices()
+]).then(([settings, tickets, devices]: [any, any[], any[]]) => {
     if (settings.theme === 'light') document.body.classList.add('light')
     currentRole = settings.role || 'mh'
     personnelName = settings.personnelName || 'Bilinmeyen'
+    syncRoleUI()
     if (tickets) renderTickets(tickets)
+    if (devices) {
+        allPriorityDevices = devices
+        renderPriorityDevices(devices)
+    }
 })
 
+function syncRoleUI() {
+    // Only MH can add priority devices
+    priorityFormSection.style.display = currentRole === 'mh' ? 'block' : 'none'
+}
+
+// ── Render Tickets ───────────────────────────────────────────────────
 function renderTickets(tickets: any[]) {
     allTickets = tickets
 
-    // Clear previous cards but keep empty state
     const oldCards = ticketList.querySelectorAll('.ticket-card')
     oldCards.forEach(c => c.remove())
 
-    // Stats (always from full list)
     const pending = tickets.filter(t => t.status === 'pending').length
     const inProgress = tickets.filter(t => t.status === 'in_progress').length
     const completed = tickets.filter(t => t.status === 'completed').length
@@ -72,25 +101,32 @@ function renderTickets(tickets: any[]) {
     countProgress.textContent = String(inProgress)
     countCompleted.textContent = String(completed)
 
-    // Apply filter
-    let filtered = tickets
-    if (activeFilter === 'pending') filtered = tickets.filter(t => t.status === 'pending')
-    else if (activeFilter === 'in_progress') filtered = tickets.filter(t => t.status === 'in_progress')
-    else if (activeFilter === 'completed') filtered = tickets.filter(t => t.status === 'completed')
-    else if (activeFilter === 'aras') filtered = tickets.filter(t => t.aras_code && t.aras_code.trim() !== '')
+    let filtered = [...tickets]
+    if (activeFilter === 'pending') filtered = filtered.filter(t => t.status === 'pending')
+    else if (activeFilter === 'in_progress') filtered = filtered.filter(t => t.status === 'in_progress')
+    else if (activeFilter === 'completed') filtered = filtered.filter(t => t.status === 'completed')
+    else if (activeFilter === 'aras') filtered = filtered.filter(t => t.aras_code && t.aras_code.trim() !== '')
+
+    // Search filter
+    if (searchQuery) {
+        filtered = filtered.filter(t =>
+            (t.serial || '').toLowerCase().includes(searchQuery) ||
+            (t.customer_name || '').toLowerCase().includes(searchQuery)
+        )
+    }
 
     if (filtered.length === 0) {
         emptyState.style.display = 'block'
         return
     }
-
     emptyState.style.display = 'none'
+
     filtered.forEach(ticket => {
         const card = document.createElement('div')
         card.className = `ticket-card status-${ticket.status}`
 
-        const timeStr = ticket.created_at?.seconds
-            ? new Date(ticket.created_at.seconds * 1000).toLocaleString('tr-TR')
+        const timeStr = ticket.created_at
+            ? new Date(ticket.created_at).toLocaleString('tr-TR')
             : ''
 
         let actionsHtml = ''
@@ -103,32 +139,27 @@ function renderTickets(tickets: any[]) {
         `
             } else if (ticket.status === 'in_progress') {
                 if (ticket.responded_by === personnelName) {
-                    // Structured response inputs based on missing_type
-                    const types = ticket.missing_type.split(',').map((t: string) => t.trim());
-                    let structuredInputs = '<div class="structured-responses" style="display:flex;flex-direction:column;gap:8px w-full;">';
-
+                    const types = ticket.missing_type.split(',').map((t: string) => t.trim())
+                    let structuredInputs = '<div class="structured-responses" style="display:flex;flex-direction:column;gap:8px;">'
                     types.forEach((type: string, idx: number) => {
                         structuredInputs += `
                             <div class="collab-group">
                                 <span class="collab-label">${type}</span>
-                                <input type="text" class="response-input structured-input" 
-                                    data-type="${type}" 
-                                    id="resp-${ticket.id}-${idx}" 
+                                <input type="text" class="response-input structured-input"
+                                    data-type="${type}"
+                                    id="resp-${ticket.id}-${idx}"
                                     placeholder="${type} cevabını girin...">
                             </div>
-                        `;
-                    });
-                    structuredInputs += '</div>';
-
+                        `
+                    })
+                    structuredInputs += '</div>'
                     actionsHtml = `
                         <span class="badge badge-in_progress">Üstlenildi</span>
                         ${structuredInputs}
                         <button class="btn-sm btn-complete" data-id="${ticket.id}" style="margin-top:8px;">Tamamla</button>
-                    `;
+                    `
                 } else {
-                    actionsHtml = `
-                        <span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>
-                    `;
+                    actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>`
                 }
             } else {
                 actionsHtml = `
@@ -137,14 +168,9 @@ function renderTickets(tickets: any[]) {
                 `
             }
         } else {
-            // Kargo Kabul view
-            if (ticket.status === 'pending') {
-                actionsHtml = `<span class="badge badge-pending">Bekliyor</span>`
-            } else if (ticket.status === 'in_progress') {
-                actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} bakıyor</span>`
-            } else {
-                actionsHtml = `<span class="badge badge-completed">✅ Tamamlandı</span>`
-            }
+            if (ticket.status === 'pending') actionsHtml = `<span class="badge badge-pending">Bekliyor</span>`
+            else if (ticket.status === 'in_progress') actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} bakıyor</span>`
+            else actionsHtml = `<span class="badge badge-completed">✅ Tamamlandı</span>`
         }
 
         let responseHtml = ''
@@ -157,8 +183,6 @@ function renderTickets(tickets: any[]) {
       `
         }
 
-        const isCompleted = ticket.status === 'completed'
-        // For kargo_kabul, we want them to edit even if completed. For MH, we also allow updating details if needed.
         const collabHtml = `
             <div class="collab-container">
                 <div class="collab-group">
@@ -183,9 +207,7 @@ function renderTickets(tickets: any[]) {
         <div class="ticket-model">${ticket.model_name || ''} ${ticket.model_color || ''}</div>
         <span class="ticket-missing-type">${MISSING_TYPE_LABELS[ticket.missing_type] || ticket.missing_type}</span>
         ${ticket.note ? `<div class="ticket-note" style="margin-top:8px;"><strong>Not:</strong> ${ticket.note}</div>` : ''}
-        
         ${collabHtml}
-
         ${responseHtml}
         <div class="ticket-time" style="margin-top:12px;">${timeStr} — ${ticket.created_by}</div>
       </div>
@@ -193,73 +215,119 @@ function renderTickets(tickets: any[]) {
         ${actionsHtml}
       </div>
     `
-
         ticketList.appendChild(card)
     })
 
-    // Bind claim buttons
+    bindTicketActions()
+}
+
+function bindTicketActions() {
     document.querySelectorAll('.btn-claim').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const id = (btn as HTMLElement).dataset.id!
-            await api.claimTicket(id, personnelName)
+            await api.claimTicket((btn as HTMLElement).dataset.id!, personnelName)
         })
     })
 
-    // Bind complete buttons
     document.querySelectorAll('.btn-complete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = (btn as HTMLElement).dataset.id!
             const inputs = document.querySelectorAll(`[id^="resp-${id}-"]`) as NodeListOf<HTMLInputElement>
-
             const responses: string[] = []
             let allFilled = true
-
             inputs.forEach(input => {
                 const val = input.value.trim()
-                const label = input.dataset.type
-                if (!val) {
-                    input.style.borderColor = '#ef4444'
-                    allFilled = false
-                } else {
-                    input.style.borderColor = ''
-                    responses.push(`${label}: ${val}`)
-                }
+                if (!val) { input.style.borderColor = '#ef4444'; allFilled = false }
+                else { input.style.borderColor = ''; responses.push(`${input.dataset.type}: ${val}`) }
             })
-
             if (!allFilled) return
-
-            const finalResponse = responses.join(' | ')
-            await api.completeTicket(id, finalResponse)
+            await api.completeTicket(id, responses.join(' | '))
         })
     })
 
-    // Bind reopen buttons
     document.querySelectorAll('.btn-reopen').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const id = (btn as HTMLElement).dataset.id!
-            await api.reopenTicket(id)
+            await api.reopenTicket((btn as HTMLElement).dataset.id!)
         })
     })
 
-    // Bind update buttons (collab)
     document.querySelectorAll('.btn-update').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = (btn as HTMLElement).dataset.id!
-            const custInput = document.getElementById(`cust-${id}`) as HTMLInputElement
-            const arasInput = document.getElementById(`aras-${id}`) as HTMLInputElement
-            const phoneInput = document.getElementById(`phone-${id}`) as HTMLInputElement
-
             btn.textContent = 'Güncelleniyor...'
                 ; (btn as HTMLButtonElement).disabled = true
-
             await api.updateTicketDetails(id, {
-                customer_name: custInput?.value?.trim() || '',
-                aras_code: arasInput?.value?.trim() || '',
-                phone_number: phoneInput?.value?.trim() || ''
+                customer_name: (document.getElementById(`cust-${id}`) as HTMLInputElement)?.value?.trim() || '',
+                aras_code: (document.getElementById(`aras-${id}`) as HTMLInputElement)?.value?.trim() || '',
+                phone_number: (document.getElementById(`phone-${id}`) as HTMLInputElement)?.value?.trim() || ''
             })
-
             btn.textContent = 'Güncelle'
                 ; (btn as HTMLButtonElement).disabled = false
         })
     })
 }
+
+// ── Priority Devices ─────────────────────────────────────────────────
+function renderPriorityDevices(devices: any[]) {
+    priorityList.innerHTML = ''
+    if (devices.length === 0) {
+        priorityList.innerHTML = '<div class="priority-empty">Henüz kayıt yok.</div>'
+        return
+    }
+    devices.forEach(device => {
+        const item = document.createElement('div')
+        item.className = 'priority-item'
+        item.innerHTML = `
+            <div class="priority-item-body">
+                <div class="priority-item-name">${device.customer_name}</div>
+                ${device.serial ? `<div class="priority-item-serial">📦 ${device.serial}</div>` : ''}
+                <div class="priority-item-desc">${device.description}</div>
+            </div>
+            ${currentRole === 'mh' ? `<button class="btn-del-priority" data-id="${device.id}" title="Sil">✕</button>` : ''}
+        `
+        priorityList.appendChild(item)
+    })
+
+    // Only MH can delete
+    if (currentRole === 'mh') {
+        priorityList.querySelectorAll('.btn-del-priority').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = (btn as HTMLElement).dataset.id!
+                await api.deletePriorityDevice(id)
+            })
+        })
+    }
+}
+
+btnAddPriority?.addEventListener('click', async () => {
+    const customer = pdCustomer.value.trim()
+    const serial = pdSerial.value.trim()
+    const desc = pdDesc.value.trim()
+
+    if (!customer || !desc) {
+        if (!customer) pdCustomer.style.borderColor = '#ef4444'
+        if (!desc) pdDesc.style.borderColor = '#ef4444'
+        return
+    }
+
+    pdCustomer.style.borderColor = ''
+    pdDesc.style.borderColor = ''
+    btnAddPriority.textContent = 'Kaydediliyor...'
+    btnAddPriority.disabled = true
+
+    try {
+        await api.addPriorityDevice({
+            customer_name: customer,
+            serial: serial.toUpperCase(),
+            description: desc,
+            created_by: personnelName
+        })
+        pdCustomer.value = ''
+        pdSerial.value = ''
+        pdDesc.value = ''
+    } catch (e) {
+        console.error('Error adding priority device:', e)
+    } finally {
+        btnAddPriority.textContent = '➕ Kaydet'
+        btnAddPriority.disabled = false
+    }
+})

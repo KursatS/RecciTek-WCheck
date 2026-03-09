@@ -1,4 +1,4 @@
-import { collection, query, getDocs, orderBy, updateDoc, doc, where } from 'firebase/firestore'
+import { collection, query, getDocs, orderBy, updateDoc, doc } from 'firebase/firestore'
 import { db } from './firebaseConfig'
 
 const api = (window as any).electronAPI
@@ -10,91 +10,121 @@ const elMyXp = document.getElementById('my-xp')!
 const elNextLevelXp = document.getElementById('next-level-xp')!
 const elXpFill = document.getElementById('my-xp-fill')!
 const scoreboardContainer = document.getElementById('scoreboard')!
+const filterBtns = document.querySelectorAll<HTMLButtonElement>('.filter-btn')
 
-// Level Calculation Logic: Level 1 = 0-100 XP, Level 2 = 100-250 XP, Level 3 = 250-450 XP, Level 4 = 450-700
-function calculateLevel(xp: number): { level: number, currentXp: number, nextXp: number } {
+let allUsers: any[] = []
+let currentUsername = ''
+let roleFilter: 'all' | 'mh' | 'kargo_kabul' = 'all'
+
+const ROLE_LABELS: Record<string, string> = {
+    admin: 'Yönetici',
+    mh: 'Müşteri Hizmetleri',
+    kargo_kabul: 'Kargo Kabul'
+}
+
+const RANK_ICONS = ['🥇', '🥈', '🥉']
+
+function calculateLevel(xp: number): { level: number, nextXp: number } {
     let level = 1
     let threshold = 100
-    let lastThreshold = 0
 
     while (xp >= threshold) {
         level++
-        lastThreshold = threshold
-        threshold += 100 * (level * 0.5) // Her seviye gitgide zorlaşır
+        threshold += 100 * (level * 0.5)
+    }
+    return { level, nextXp: threshold }
+}
+
+function renderScoreboard(users: any[]) {
+    const filtered = roleFilter === 'all'
+        ? users
+        : users.filter(u => {
+            // Admin is treated as kargo_kabul for display
+            const r = u.role === 'admin' ? 'kargo_kabul' : u.role
+            return r === roleFilter
+        })
+
+    scoreboardContainer.innerHTML = ''
+
+    if (filtered.length === 0) {
+        scoreboardContainer.innerHTML = `<div class="empty-filter">Bu rol için kayıtlı çalışan yok.</div>`
+        return
     }
 
-    return {
-        level,
-        currentXp: xp,
-        nextXp: threshold
-    }
+    filtered.forEach((user, index) => {
+        const rank = users.indexOf(user) + 1 // global rank (by XP desc)
+        const isMe = user.username === currentUsername
+
+        const row = document.createElement('div')
+        const rankClass = rank <= 3 ? `rank-${rank}` : ''
+        row.className = `score-row ${rankClass}`
+        row.style.setProperty('--i', String(index))
+
+        if (isMe) {
+            row.style.background = 'rgba(56, 189, 248, 0.08)'
+            row.style.borderLeft = '3px solid #38bdf8'
+        }
+
+        const icon = rank <= 3 ? RANK_ICONS[rank - 1] : `#${rank}`
+        const roleLabel = ROLE_LABELS[user.role] || 'Kargo Kabul'
+        const calcLvl = calculateLevel(user.xp || 0).level
+
+        row.innerHTML = `
+            <div class="score-rank">${icon}</div>
+            <div class="score-name">${user.fullName || user.username} ${isMe ? '<span style="font-size:0.75rem;color:#38bdf8;">(Sen)</span>' : ''}</div>
+            <div class="score-role">${roleLabel}</div>
+            <div class="score-level">Lvl ${calcLvl}</div>
+            <div class="score-xp">${user.xp || 0} XP</div>
+        `
+        scoreboardContainer.appendChild(row)
+    })
 }
+
+// Filter button click handlers
+filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        roleFilter = (btn.dataset.role || 'all') as typeof roleFilter
+        renderScoreboard(allUsers)
+    })
+})
 
 async function loadProfile() {
     const settings = await api.getSettings()
-    const currentUsername = settings.username
+    currentUsername = settings.username || ''
 
     try {
-        // Fetch all users to display scoreboard and find own user
         const q = query(collection(db, 'users'))
         const snapshot = await getDocs(q)
 
         const users: any[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
-
-        // Sort by XP descending
         users.sort((a, b) => (b.xp || 0) - (a.xp || 0))
+        allUsers = users
 
         const me = users.find(u => u.username === currentUsername)
         if (me) {
-            const xpInfo = calculateLevel(me.xp || 0)
+            const { level, nextXp } = calculateLevel(me.xp || 0)
 
-            // Auto-update level in DB if it changed
-            if (me.level !== xpInfo.level) {
-                await updateDoc(doc(db, 'users', me.id), { level: xpInfo.level })
+            // Auto-sync level in DB if changed
+            if (me.level !== level) {
+                await updateDoc(doc(db, 'users', me.id), { level })
             }
 
-            elMyLevel.textContent = String(xpInfo.level)
+            elMyLevel.textContent = String(level)
             elMyName.textContent = me.fullName || me.username
+            elMyRole.textContent = ROLE_LABELS[me.role] || 'Kargo Kabul'
+            elMyXp.textContent = String(me.xp || 0)
+            elNextLevelXp.textContent = String(nextXp)
 
-            let roleDisplay = 'Kargo Kabul'
-            if (me.role === 'admin') roleDisplay = 'Yönetici'
-            else if (me.role === 'mh') roleDisplay = 'Müşteri Hizmetleri'
-
-            elMyRole.textContent = roleDisplay
-            elMyXp.textContent = String(xpInfo.currentXp)
-            elNextLevelXp.textContent = String(xpInfo.nextXp)
-
-            const progress = (xpInfo.currentXp / xpInfo.nextXp) * 100
-            elXpFill.style.width = `${Math.min(100, progress)}%`
+            const progress = ((me.xp || 0) / nextXp) * 100
+            // Delay for entrance animation
+            setTimeout(() => {
+                elXpFill.style.width = `${Math.min(100, progress)}%`
+            }, 400)
         }
 
-        // Render Scoreboard
-        scoreboardContainer.innerHTML = ''
-        users.forEach((user, index) => {
-            const rank = index + 1
-            const isMe = user.username === currentUsername
-
-            const row = document.createElement('div')
-            row.className = `score-row rank-${rank}`
-            if (isMe) {
-                row.style.background = 'rgba(56, 189, 248, 0.1)'
-            }
-
-            let roleDisplay = 'Kargo Kabul'
-            if (user.role === 'admin') roleDisplay = 'Admin'
-            else if (user.role === 'mh') roleDisplay = 'MH'
-
-            const calculatedLvl = calculateLevel(user.xp || 0).level
-
-            row.innerHTML = `
-                <div class="score-rank">#${rank}</div>
-                <div class="score-name">${user.fullName || user.username} ${isMe ? '(Sen)' : ''}</div>
-                <div class="score-role">${roleDisplay}</div>
-                <div class="score-level">Lvl ${calculatedLvl}</div>
-                <div class="score-xp">${user.xp || 0} XP</div>
-            `
-            scoreboardContainer.appendChild(row)
-        })
+        renderScoreboard(allUsers)
 
     } catch (e) {
         console.error('Error loading profile/scoreboard:', e)

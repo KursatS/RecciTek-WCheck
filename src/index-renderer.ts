@@ -328,14 +328,17 @@ api.onRefreshCards(() => {
         currentRole = s.role || 'kargo_kabul'
         personnelName = s.personnelName || ''
 
+        const isAdmin = s.isAdmin === true || s.username === 'KursatS'
+        const isLoggedIn = s.isLoggedIn === true || !!s.personnelName?.trim()
+
         if (bonusBtn) {
             bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
         }
         if (adminBtn) {
-            adminBtn.style.display = s.isAdmin ? 'flex' : 'none'
+            adminBtn.style.display = isAdmin ? 'flex' : 'none'
         }
         if (profileBtn) {
-            profileBtn.style.display = s.isLoggedIn ? 'flex' : 'none'
+            profileBtn.style.display = isLoggedIn ? 'flex' : 'none'
         }
 
         loadCards()
@@ -369,7 +372,57 @@ api.onTicketUpdate((tickets: any[]) => {
     loadCards()
 })
 
-// ── Initial Load ────────────────────────────────────────────────────
+// ── Priority Device Match ───────────────────────────────────────────
+api.onPriorityDeviceMatch((device: any) => {
+    const alertDiv = document.createElement('div')
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background: #ef4444;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 300px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        animation: slideDownIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    `
+
+    alertDiv.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:1.1rem;">⚠️ ÖNCELİKLİ CİHAZ!</strong>
+            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
+        </div>
+        <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
+        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+    `
+
+    if (!document.getElementById('priority-animations')) {
+        const style = document.createElement('style')
+        style.id = 'priority-animations'
+        style.textContent = `
+            @keyframes slideDownIn {
+                from { opacity: 0; transform: translate(-50%, -40px); }
+                to { opacity: 1; transform: translate(-50%, 0); }
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    document.body.appendChild(alertDiv)
+
+    const closeBtn = alertDiv.querySelector('#close-priority-alert') as HTMLElement
+    closeBtn.onclick = () => alertDiv.remove()
+
+    setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove() }, 15000)
+})
+
 // ── Initial Load ────────────────────────────────────────────────────
 Promise.all([
     api.getSettings(),
@@ -378,11 +431,17 @@ Promise.all([
     currentRole = s.role || 'kargo_kabul'
     personnelName = s.personnelName || ''
 
+    const isAdmin = s.isAdmin === true || s.username === 'KursatS'
+    const isLoggedIn = s.isLoggedIn === true || !!s.personnelName?.trim()
+
     if (bonusBtn) {
         bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
     }
     if (adminBtn) {
-        adminBtn.style.display = s.isAdmin ? 'flex' : 'none'
+        adminBtn.style.display = isAdmin ? 'flex' : 'none'
+    }
+    if (profileBtn) {
+        profileBtn.style.display = isLoggedIn ? 'flex' : 'none'
     }
 
     // Login kontrolü

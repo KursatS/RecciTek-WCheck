@@ -26,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 
@@ -61,7 +61,9 @@ let currentPopupData: any = null;
 let lastDetectedSerial: string = '';
 let statusInterval: NodeJS.Timeout | null = null;
 let ticketUnsubscribe: Unsubscribe | null = null;
+let priorityUnsubscribe: Unsubscribe | null = null;
 let cachedTickets: any[] = [];
+let cachedPriorityDevices: any[] = [];
 
 function extractCopyText(data: any): string {
   if (!data) return '';
@@ -134,7 +136,6 @@ function handleDoubleCopy(): void {
 }
 
 async function handleDetection(serial: string): Promise<void> {
-  // GÜNCELLENEN KISIM: Ayar aktifse ve seri aynıysa işlem yapma
   if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
     return;
   }
@@ -145,6 +146,7 @@ async function handleDetection(serial: string): Promise<void> {
     currentPopupData = cached;
     windowManager.showPopup(cached, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send('refresh-cards');
+    checkPriorityMatch(serial);
     return;
   }
 
@@ -154,12 +156,28 @@ async function handleDetection(serial: string): Promise<void> {
     currentPopupData = warrantyInfo;
     windowManager.showPopup(warrantyInfo, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send('refresh-cards');
+    checkPriorityMatch(serial);
   } catch {
     windowManager.showPopup({
       serial,
       warranty_status: 'İnternet Bağlantı Hatası',
       is_error: true
     }, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
+  }
+}
+
+function checkPriorityMatch(serial: string): void {
+  if (!serial) return;
+  const match = cachedPriorityDevices.find(
+    (d: any) => d.serial && d.serial.toUpperCase() === serial.toUpperCase()
+  );
+  if (match) {
+    new Notification({
+      title: '⚠️ Öncelikli Cihaz!',
+      body: `${match.customer_name}: ${match.description}`,
+      silent: false
+    }).show();
+    windowManager.getMainWindow()?.webContents.send('priority-device-match', match);
   }
 }
 
@@ -175,7 +193,12 @@ function setupIpcHandlers() {
     preventDuplicatePopup: currentSettings.preventDuplicatePopup,
     shortcuts: currentSettings.shortcuts,
     role: currentSettings.role,
-    personnelName: currentSettings.personnelName
+    personnelName: currentSettings.personnelName,
+    username: currentSettings.username,
+    isAdmin: currentSettings.isAdmin,
+    isLoggedIn: currentSettings.isLoggedIn,
+    theme: currentSettings.theme,
+    workingHours: currentSettings.workingHours
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
@@ -336,6 +359,29 @@ function setupIpcHandlers() {
   ipcMain.on('open-tickets', () => {
     windowManager.openTicketsWindow();
   });
+
+  // ── Priority Devices IPC ──────────────────────────────────────────
+  ipcMain.handle('get-priority-devices', async () => cachedPriorityDevices);
+
+  ipcMain.handle('add-priority-device', async (_, data) => {
+    try {
+      const id = await addPriorityDevice(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error('Error adding priority device:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('delete-priority-device', async (_, id) => {
+    try {
+      await deletePriorityDevice(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting priority device:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 // Helper to create the system tray
@@ -411,6 +457,23 @@ function registerShortcuts() {
       }
     }
   }
+}
+
+function startPriorityDevicesListener() {
+  if (priorityUnsubscribe) {
+    priorityUnsubscribe();
+    priorityUnsubscribe = null;
+  }
+  priorityUnsubscribe = subscribeToPriorityDevices((devices: any[]) => {
+    cachedPriorityDevices = devices;
+    // Broadcast update to all windows
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach((win: any) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('priority-devices-update', devices);
+      }
+    });
+  });
 }
 
 function startTicketListener() {
@@ -498,6 +561,7 @@ function initializeApp() {
     clipboardMonitor.start();
     startServerStatusMonitor();
     startTicketListener();
+    startPriorityDevicesListener();
 
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
@@ -521,6 +585,10 @@ app.on('will-quit', () => {
   if (ticketUnsubscribe) {
     ticketUnsubscribe();
     ticketUnsubscribe = null;
+  }
+  if (priorityUnsubscribe) {
+    priorityUnsubscribe();
+    priorityUnsubscribe = null;
   }
 });
 

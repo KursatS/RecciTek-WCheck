@@ -6,7 +6,7 @@ const preventDuplicate = document.getElementById('prevent-duplicate') as HTMLInp
 const shortcutClear = document.getElementById('shortcut-clear') as HTMLInputElement
 const shortcutCopy = document.getElementById('shortcut-copy') as HTMLInputElement
 const personnelNameInput = document.getElementById('personnel-name') as HTMLInputElement
-const userRoleSelect = document.getElementById('user-role') as HTMLSelectElement
+const userRoleInput = document.getElementById('user-role') as HTMLInputElement
 const saveBtn = document.getElementById('save-btn') as HTMLButtonElement
 
 let initialRole = ''
@@ -21,7 +21,13 @@ let initialRole = ''
         shortcutClear.value = settings.shortcuts?.clearCache || 'CommandOrControl+Shift+X'
         shortcutCopy.value = settings.shortcuts?.toggleMonitoring || 'CommandOrControl+Shift+C'
         personnelNameInput.value = (settings.personnelName || '').toUpperCase()
-        userRoleSelect.value = settings.role || ''
+
+        let displayRole = settings.role
+        if (displayRole === 'kargo_kabul') displayRole = 'Kargo Kabul'
+        else if (displayRole === 'mh') displayRole = 'Müşteri Hizmetleri'
+        else if (displayRole === 'admin') displayRole = 'Yönetici'
+
+        userRoleInput.value = displayRole || ''
         initialRole = settings.role || ''
     })
 
@@ -53,12 +59,6 @@ setupShortcutRecorder(shortcutClear)
 setupShortcutRecorder(shortcutCopy)
 
 saveBtn.onclick = () => {
-    if (!userRoleSelect.value) {
-        userRoleSelect.style.borderColor = '#ef4444'
-        alert('Lütfen bir rol seçin!')
-        return
-    }
-
     const settings = {
         popupSizeLevel: parseInt(popupSize.value),
         popupTimeout: parseInt(popupTimeout.value),
@@ -69,18 +69,11 @@ saveBtn.onclick = () => {
             toggleMonitoring: shortcutCopy.value
         },
         personnelName: personnelNameInput.value.trim(),
-        role: userRoleSelect.value
+        role: initialRole
     }
 
-    const roleChanged = userRoleSelect.value !== initialRole && initialRole !== ''
-
-    if (roleChanged) {
-        // Role changed → save and restart app
-        ; (window as any).electronAPI.restartApp(settings)
-    } else {
         // Normal save → just close settings
         ; (window as any).electronAPI.saveSettings(settings).then(() => {
             window.close()
         })
-    }
 }

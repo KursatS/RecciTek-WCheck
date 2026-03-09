@@ -7,8 +7,24 @@ const countPending = document.getElementById("count-pending");
 const countProgress = document.getElementById("count-progress");
 const countCompleted = document.getElementById("count-completed");
 const filterTabs = document.getElementById("filter-tabs");
+const searchInput = document.getElementById("ticket-search");
+const priorityList = document.getElementById("priority-list");
+const priorityFormSection = document.getElementById("priority-form-section");
+const btnAddPriority = document.getElementById("btn-add-priority");
+const pdCustomer = document.getElementById("pd-customer");
+const pdSerial = document.getElementById("pd-serial");
+const pdDesc = document.getElementById("pd-desc");
 let allTickets = [];
 let activeFilter = "all";
+let searchQuery = "";
+let currentRole = "mh";
+let personnelName = "";
+const MISSING_TYPE_LABELS = {
+  address: "Adres Bilgisi",
+  fault_form: "Arıza Beyanı",
+  contact: "Müşteri İletişim",
+  other: "Diğer"
+};
 filterTabs.addEventListener("click", (e) => {
   const tab = e.target.closest(".filter-tab");
   if (!tab) return;
@@ -17,35 +33,41 @@ filterTabs.addEventListener("click", (e) => {
   activeFilter = tab.dataset.filter || "all";
   renderTickets(allTickets);
 });
-const MISSING_TYPE_LABELS = {
-  address: "Adres Bilgisi",
-  fault_form: "Arıza Beyanı",
-  contact: "Müşteri İletişim",
-  other: "Diğer"
-};
-let currentRole = "mh";
-let personnelName = "";
-api.onTicketUpdate((tickets) => {
-  renderTickets(tickets);
+searchInput.addEventListener("input", () => {
+  searchQuery = searchInput.value.toLowerCase().trim();
+  renderTickets(allTickets);
 });
+api.onTicketUpdate((tickets) => renderTickets(tickets));
 api.onRefreshCards(() => {
   api.getSettings().then((s) => {
     currentRole = s.role || "mh";
     personnelName = s.personnelName || "Bilinmeyen";
+    syncRoleUI();
     api.getTickets().then((tickets) => {
       if (tickets) renderTickets(tickets);
     });
   });
 });
+api.onPriorityDevicesUpdate((devices) => {
+  renderPriorityDevices(devices);
+});
 Promise.all([
   api.getSettings(),
-  api.getTickets()
-]).then(([settings, tickets]) => {
+  api.getTickets(),
+  api.getPriorityDevices()
+]).then(([settings, tickets, devices]) => {
   if (settings.theme === "light") document.body.classList.add("light");
   currentRole = settings.role || "mh";
   personnelName = settings.personnelName || "Bilinmeyen";
+  syncRoleUI();
   if (tickets) renderTickets(tickets);
+  if (devices) {
+    renderPriorityDevices(devices);
+  }
 });
+function syncRoleUI() {
+  priorityFormSection.style.display = currentRole === "mh" ? "block" : "none";
+}
 function renderTickets(tickets) {
   allTickets = tickets;
   const oldCards = ticketList.querySelectorAll(".ticket-card");
@@ -56,11 +78,16 @@ function renderTickets(tickets) {
   countPending.textContent = String(pending);
   countProgress.textContent = String(inProgress);
   countCompleted.textContent = String(completed);
-  let filtered = tickets;
-  if (activeFilter === "pending") filtered = tickets.filter((t) => t.status === "pending");
-  else if (activeFilter === "in_progress") filtered = tickets.filter((t) => t.status === "in_progress");
-  else if (activeFilter === "completed") filtered = tickets.filter((t) => t.status === "completed");
-  else if (activeFilter === "aras") filtered = tickets.filter((t) => t.aras_code && t.aras_code.trim() !== "");
+  let filtered = [...tickets];
+  if (activeFilter === "pending") filtered = filtered.filter((t) => t.status === "pending");
+  else if (activeFilter === "in_progress") filtered = filtered.filter((t) => t.status === "in_progress");
+  else if (activeFilter === "completed") filtered = filtered.filter((t) => t.status === "completed");
+  else if (activeFilter === "aras") filtered = filtered.filter((t) => t.aras_code && t.aras_code.trim() !== "");
+  if (searchQuery) {
+    filtered = filtered.filter(
+      (t) => (t.serial || "").toLowerCase().includes(searchQuery) || (t.customer_name || "").toLowerCase().includes(searchQuery)
+    );
+  }
   if (filtered.length === 0) {
     emptyState.style.display = "block";
     return;
@@ -69,7 +96,7 @@ function renderTickets(tickets) {
   filtered.forEach((ticket) => {
     const card = document.createElement("div");
     card.className = `ticket-card status-${ticket.status}`;
-    const timeStr = ticket.created_at?.seconds ? new Date(ticket.created_at.seconds * 1e3).toLocaleString("tr-TR") : "";
+    const timeStr = ticket.created_at ? new Date(ticket.created_at).toLocaleString("tr-TR") : "";
     let actionsHtml = "";
     if (currentRole === "mh") {
       if (ticket.status === "pending") {
@@ -80,14 +107,14 @@ function renderTickets(tickets) {
       } else if (ticket.status === "in_progress") {
         if (ticket.responded_by === personnelName) {
           const types = ticket.missing_type.split(",").map((t) => t.trim());
-          let structuredInputs = '<div class="structured-responses" style="display:flex;flex-direction:column;gap:8px w-full;">';
+          let structuredInputs = '<div class="structured-responses" style="display:flex;flex-direction:column;gap:8px;">';
           types.forEach((type, idx) => {
             structuredInputs += `
                             <div class="collab-group">
                                 <span class="collab-label">${type}</span>
-                                <input type="text" class="response-input structured-input" 
-                                    data-type="${type}" 
-                                    id="resp-${ticket.id}-${idx}" 
+                                <input type="text" class="response-input structured-input"
+                                    data-type="${type}"
+                                    id="resp-${ticket.id}-${idx}"
                                     placeholder="${type} cevabını girin...">
                             </div>
                         `;
@@ -99,9 +126,7 @@ function renderTickets(tickets) {
                         <button class="btn-sm btn-complete" data-id="${ticket.id}" style="margin-top:8px;">Tamamla</button>
                     `;
         } else {
-          actionsHtml = `
-                        <span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>
-                    `;
+          actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} üstlendi</span>`;
         }
       } else {
         actionsHtml = `
@@ -110,13 +135,9 @@ function renderTickets(tickets) {
                 `;
       }
     } else {
-      if (ticket.status === "pending") {
-        actionsHtml = `<span class="badge badge-pending">Bekliyor</span>`;
-      } else if (ticket.status === "in_progress") {
-        actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} bakıyor</span>`;
-      } else {
-        actionsHtml = `<span class="badge badge-completed">✅ Tamamlandı</span>`;
-      }
+      if (ticket.status === "pending") actionsHtml = `<span class="badge badge-pending">Bekliyor</span>`;
+      else if (ticket.status === "in_progress") actionsHtml = `<span class="badge badge-in_progress">${ticket.responded_by} bakıyor</span>`;
+      else actionsHtml = `<span class="badge badge-completed">✅ Tamamlandı</span>`;
     }
     let responseHtml = "";
     if (ticket.status === "completed" && ticket.response) {
@@ -127,7 +148,6 @@ function renderTickets(tickets) {
         </div>
       `;
     }
-    ticket.status === "completed";
     const collabHtml = `
             <div class="collab-container">
                 <div class="collab-group">
@@ -151,9 +171,7 @@ function renderTickets(tickets) {
         <div class="ticket-model">${ticket.model_name || ""} ${ticket.model_color || ""}</div>
         <span class="ticket-missing-type">${MISSING_TYPE_LABELS[ticket.missing_type] || ticket.missing_type}</span>
         ${ticket.note ? `<div class="ticket-note" style="margin-top:8px;"><strong>Not:</strong> ${ticket.note}</div>` : ""}
-        
         ${collabHtml}
-
         ${responseHtml}
         <div class="ticket-time" style="margin-top:12px;">${timeStr} — ${ticket.created_by}</div>
       </div>
@@ -163,10 +181,12 @@ function renderTickets(tickets) {
     `;
     ticketList.appendChild(card);
   });
+  bindTicketActions();
+}
+function bindTicketActions() {
   document.querySelectorAll(".btn-claim").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      await api.claimTicket(id, personnelName);
+      await api.claimTicket(btn.dataset.id, personnelName);
     });
   });
   document.querySelectorAll(".btn-complete").forEach((btn) => {
@@ -177,41 +197,93 @@ function renderTickets(tickets) {
       let allFilled = true;
       inputs.forEach((input) => {
         const val = input.value.trim();
-        const label = input.dataset.type;
         if (!val) {
           input.style.borderColor = "#ef4444";
           allFilled = false;
         } else {
           input.style.borderColor = "";
-          responses.push(`${label}: ${val}`);
+          responses.push(`${input.dataset.type}: ${val}`);
         }
       });
       if (!allFilled) return;
-      const finalResponse = responses.join(" | ");
-      await api.completeTicket(id, finalResponse);
+      await api.completeTicket(id, responses.join(" | "));
     });
   });
   document.querySelectorAll(".btn-reopen").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      await api.reopenTicket(id);
+      await api.reopenTicket(btn.dataset.id);
     });
   });
   document.querySelectorAll(".btn-update").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
-      const custInput = document.getElementById(`cust-${id}`);
-      const arasInput = document.getElementById(`aras-${id}`);
-      const phoneInput = document.getElementById(`phone-${id}`);
       btn.textContent = "Güncelleniyor...";
       btn.disabled = true;
       await api.updateTicketDetails(id, {
-        customer_name: custInput?.value?.trim() || "",
-        aras_code: arasInput?.value?.trim() || "",
-        phone_number: phoneInput?.value?.trim() || ""
+        customer_name: document.getElementById(`cust-${id}`)?.value?.trim() || "",
+        aras_code: document.getElementById(`aras-${id}`)?.value?.trim() || "",
+        phone_number: document.getElementById(`phone-${id}`)?.value?.trim() || ""
       });
       btn.textContent = "Güncelle";
       btn.disabled = false;
     });
   });
 }
+function renderPriorityDevices(devices) {
+  priorityList.innerHTML = "";
+  if (devices.length === 0) {
+    priorityList.innerHTML = '<div class="priority-empty">Henüz kayıt yok.</div>';
+    return;
+  }
+  devices.forEach((device) => {
+    const item = document.createElement("div");
+    item.className = "priority-item";
+    item.innerHTML = `
+            <div class="priority-item-body">
+                <div class="priority-item-name">${device.customer_name}</div>
+                ${device.serial ? `<div class="priority-item-serial">📦 ${device.serial}</div>` : ""}
+                <div class="priority-item-desc">${device.description}</div>
+            </div>
+            ${currentRole === "mh" ? `<button class="btn-del-priority" data-id="${device.id}" title="Sil">✕</button>` : ""}
+        `;
+    priorityList.appendChild(item);
+  });
+  if (currentRole === "mh") {
+    priorityList.querySelectorAll(".btn-del-priority").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        await api.deletePriorityDevice(id);
+      });
+    });
+  }
+}
+btnAddPriority?.addEventListener("click", async () => {
+  const customer = pdCustomer.value.trim();
+  const serial = pdSerial.value.trim();
+  const desc = pdDesc.value.trim();
+  if (!customer || !desc) {
+    if (!customer) pdCustomer.style.borderColor = "#ef4444";
+    if (!desc) pdDesc.style.borderColor = "#ef4444";
+    return;
+  }
+  pdCustomer.style.borderColor = "";
+  pdDesc.style.borderColor = "";
+  btnAddPriority.textContent = "Kaydediliyor...";
+  btnAddPriority.disabled = true;
+  try {
+    await api.addPriorityDevice({
+      customer_name: customer,
+      serial: serial.toUpperCase(),
+      description: desc,
+      created_by: personnelName
+    });
+    pdCustomer.value = "";
+    pdSerial.value = "";
+    pdDesc.value = "";
+  } catch (e) {
+    console.error("Error adding priority device:", e);
+  } finally {
+    btnAddPriority.textContent = "➕ Kaydet";
+    btnAddPriority.disabled = false;
+  }
+});

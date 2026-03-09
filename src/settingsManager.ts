@@ -12,8 +12,14 @@ export interface AppSettings {
     clearCache: string;
     toggleMonitoring: string;
   };
-  role?: 'kargo_kabul' | 'mh';
+  role?: 'kargo_kabul' | 'mh' | 'admin';
   personnelName?: string;
+  username?: string;
+  isAdmin?: boolean;
+  isLoggedIn?: boolean;
+  rememberMe?: boolean;
+  savedUsername?: string;
+  savedPassword?: string;
   theme?: 'dark' | 'light';
   workingHours?: {
     start: string;
@@ -40,7 +46,7 @@ export function loadSettings(): AppSettings {
     personnelName: '',
     theme: 'dark',
     workingHours: {
-      start: '08:00',
+      start: '09:30',
       end: '18:30'
     }
   };

@@ -359,6 +359,171 @@
             background: var(--accent);
             color: white;
         }
+
+        /* ── Search Bar ── */
+        .search-bar {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            color: var(--text-main);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            pointer-events: all;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .search-bar input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-bar .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        /* ── Priority Panel ── */
+        .priority-panel {
+            background: rgba(239, 68, 68, 0.04);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 20px;
+            padding: 20px 24px;
+            margin-top: 32px;
+        }
+
+        .priority-panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ef4444;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .priority-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .priority-form .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .priority-input {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            pointer-events: all;
+            -webkit-user-select: text;
+            user-select: text;
+            transition: border-color 0.2s;
+        }
+
+        .priority-input:focus {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-add-priority {
+            padding: 9px 20px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-add-priority:hover {
+            background: rgba(239, 68, 68, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .priority-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .priority-item {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: 14px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .priority-item-body {
+            flex: 1;
+            font-size: 0.88rem;
+        }
+
+        .priority-item-name {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .priority-item-serial {
+            font-size: 0.8rem;
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .priority-item-desc {
+            margin-top: 4px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .btn-del-priority {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+
+        .btn-del-priority:hover {
+            color: #ef4444;
+        }
+
+        .priority-empty {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 
@@ -381,6 +546,11 @@
             </div>
         </div>
 
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
+        </div>
+
         <div class="filter-tabs" id="filter-tabs">
             <button class="filter-tab active" data-filter="all">Tümü</button>
             <button class="filter-tab" data-filter="pending">Bekleyen</button>
@@ -399,6 +569,30 @@
                     Ana ekranda bir cihaz kartında "📩 MH'ye Sor" butonuna tıklayarak<br>
                     eksik bilgi tipini seçin ve talep gönderin.
                 </p>
+            </div>
+        </div>
+
+        <!-- Öncelikli Cihaz Paneli -->
+        <div class="priority-panel" id="priority-panel">
+            <div class="priority-panel-title">
+                ⚠️ Öncelikli Cihazlar
+                <span style="margin-left:auto;font-size:0.75rem;font-weight:500;color:#94a3b8;">Müşteri özel
+                    istekleri</span>
+            </div>
+
+            <!-- Ekleme Formu: Sadece MH -->
+            <div id="priority-form-section">
+                <div class="priority-form">
+                    <input class="priority-input" type="text" id="pd-customer" placeholder="Müşteri İsmi *">
+                    <input class="priority-input" type="text" id="pd-serial" placeholder="Seri No (opsiyonel)">
+                    <textarea class="priority-input full-width" id="pd-desc" placeholder="İstek açıklaması *" rows="2"
+                        style="resize:vertical;"></textarea>
+                </div>
+                <button class="btn-add-priority" id="btn-add-priority">➕ Kaydet</button>
+            </div>
+
+            <div class="priority-list" id="priority-list">
+                <div class="priority-empty">Henüz kayıt yok.</div>
             </div>
         </div>
     </div>

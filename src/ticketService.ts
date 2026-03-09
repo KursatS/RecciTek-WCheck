@@ -12,7 +12,8 @@ import {
     Timestamp,
     Unsubscribe,
     limit,
-    increment
+    increment,
+    deleteDoc
 } from 'firebase/firestore'
 import { db } from './firebaseConfig'
 
@@ -35,9 +36,19 @@ export interface Ticket {
     responded_at: Timestamp | null
 }
 
-const TICKETS_COLLECTION = 'tickets'
+export interface PriorityDevice {
+    id?: string
+    customer_name: string
+    serial: string
+    description: string
+    created_by: string
+    created_at: Timestamp | null
+}
 
-// ── Create ──────────────────────────────────────────────────────────
+const TICKETS_COLLECTION = 'tickets'
+const PRIORITY_COLLECTION = 'priority_devices'
+
+// ── Create Ticket ───────────────────────────────────────────────────
 export async function createTicket(data: {
     serial: string
     model_name: string
@@ -58,22 +69,18 @@ export async function createTicket(data: {
         responded_at: null
     })
 
-    // Give XP to Kargo Kabul creator (5 XP per ticket creation)
     try {
         const q = query(collection(db, 'users'), where('fullName', '==', data.created_by))
         const snapshot = await getDocs(q)
         if (!snapshot.empty) {
-            const userId = snapshot.docs[0].id
-            await updateDoc(doc(db, 'users', userId), {
-                xp: increment(5)
-            })
+            await updateDoc(doc(db, 'users', snapshot.docs[0].id), { xp: increment(5) })
         }
     } catch (e) { console.error('Error adding xp:', e) }
 
     return docRef.id
 }
 
-// ── Claim (MH üstlenir) ────────────────────────────────────────────
+// ── Claim ───────────────────────────────────────────────────────────
 export async function claimTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'in_progress',
@@ -81,13 +88,11 @@ export async function claimTicket(ticketId: string, personnelName: string): Prom
     })
 }
 
-// ── Complete (MH cevap yazar) ───────────────────────────────────────
+// ── Complete ────────────────────────────────────────────────────────
 export async function completeTicket(ticketId: string, response: string): Promise<void> {
     const ticketDoc = await getDocs(query(collection(db, TICKETS_COLLECTION), where('__name__', '==', ticketId)))
     let respondedBy = ''
-    if (!ticketDoc.empty) {
-        respondedBy = ticketDoc.docs[0].data().responded_by
-    }
+    if (!ticketDoc.empty) respondedBy = ticketDoc.docs[0].data().responded_by
 
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'completed',
@@ -95,105 +100,88 @@ export async function completeTicket(ticketId: string, response: string): Promis
         responded_at: serverTimestamp()
     })
 
-    // Give XP to MH (10 XP per ticket answer)
     if (respondedBy) {
         try {
             const q = query(collection(db, 'users'), where('fullName', '==', respondedBy))
             const snapshot = await getDocs(q)
             if (!snapshot.empty) {
-                const userId = snapshot.docs[0].id
-                await updateDoc(doc(db, 'users', userId), {
-                    xp: increment(10)
-                })
+                await updateDoc(doc(db, 'users', snapshot.docs[0].id), { xp: increment(10) })
             }
         } catch (e) { console.error('Error adding xp:', e) }
     }
 }
 
-// ── Reopen (MH tekrar düzenler) ─────────────────────────────────────
+// ── Reopen ──────────────────────────────────────────────────────────
 export async function reopenTicket(ticketId: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'in_progress',
-        response: '' // Cevabı boşaltıyoruz ki tekrar düzenleyebilsin
+        response: ''
     })
 }
 
-// ── Update Details (Ortak Düzenleme) ───────────────────────────────
+// ── Update Details ──────────────────────────────────────────────────
 export async function updateTicketDetails(ticketId: string, details: Partial<Ticket>): Promise<void> {
-    await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
-        ...details
-    })
+    await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), { ...details })
 }
 
-// ── Real-time Listeners ─────────────────────────────────────────────
-
-/**
- * Kargo Kabul: Kendi oluşturduğu talepleri dinler
- */
+// ── Realtime Listeners ──────────────────────────────────────────────
 export function subscribeAsKargoKabul(
     personnelName: string,
     callback: (tickets: Ticket[]) => void
 ): Unsubscribe {
-    const q = query(
-        collection(db, TICKETS_COLLECTION),
-        orderBy('created_at', 'desc'),
-        limit(200)
-    )
-
+    const q = query(collection(db, TICKETS_COLLECTION), orderBy('created_at', 'desc'), limit(200))
     return onSnapshot(q, (snapshot) => {
         const tickets = snapshot.docs.map(d => {
-            const data = d.data();
-            return {
-                id: d.id,
-                ...data,
-                created_at: data.created_at ? data.created_at.toMillis() : null,
-                responded_at: data.responded_at ? data.responded_at.toMillis() : null
-            }
-        });
-
-        tickets.sort((a, b) => {
-            const timeA = a.created_at || 0;
-            const timeB = b.created_at || 0;
-            return timeB - timeA;
-        });
-
+            const data = d.data()
+            return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null }
+        })
+        tickets.sort((a: any, b: any) => (b.created_at || 0) - (a.created_at || 0))
         callback(tickets as any)
-    }, (error) => {
-        console.error('Firestore listener error (KK):', error)
-    })
+    }, (error) => console.error('Firestore listener error (KK):', error))
 }
 
-/**
- * MH: Tüm pending + in_progress talepleri dinler
- */
 export function subscribeAsMH(
     callback: (tickets: Ticket[]) => void
 ): Unsubscribe {
-    const q = query(
-        collection(db, TICKETS_COLLECTION),
-        orderBy('created_at', 'desc'),
-        limit(200)
-    )
-
+    const q = query(collection(db, TICKETS_COLLECTION), orderBy('created_at', 'desc'), limit(200))
     return onSnapshot(q, (snapshot) => {
         const tickets = snapshot.docs.map(d => {
-            const data = d.data();
-            return {
-                id: d.id,
-                ...data,
-                created_at: data.created_at ? data.created_at.toMillis() : null,
-                responded_at: data.responded_at ? data.responded_at.toMillis() : null
-            }
-        });
-
-        tickets.sort((a, b) => {
-            const timeA = a.created_at || 0;
-            const timeB = b.created_at || 0;
-            return timeB - timeA;
-        });
-
+            const data = d.data()
+            return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null }
+        })
+        tickets.sort((a: any, b: any) => (b.created_at || 0) - (a.created_at || 0))
         callback(tickets as any)
-    }, (error) => {
-        console.error('Firestore listener error (MH):', error)
+    }, (error) => console.error('Firestore listener error (MH):', error))
+}
+
+// ── Priority Devices ────────────────────────────────────────────────
+export async function addPriorityDevice(data: {
+    customer_name: string
+    serial: string
+    description: string
+    created_by: string
+}): Promise<string> {
+    const docRef = await addDoc(collection(db, PRIORITY_COLLECTION), {
+        ...data,
+        serial: data.serial.trim().toUpperCase(),
+        created_at: serverTimestamp()
     })
+    return docRef.id
+}
+
+export async function deletePriorityDevice(id: string): Promise<void> {
+    await deleteDoc(doc(db, PRIORITY_COLLECTION, id))
+}
+
+export function subscribeToPriorityDevices(
+    callback: (devices: PriorityDevice[]) => void
+): Unsubscribe {
+    const q = query(collection(db, PRIORITY_COLLECTION), orderBy('created_at', 'desc'))
+    return onSnapshot(q, (snapshot) => {
+        const devices = snapshot.docs.map(d => {
+            const data = d.data()
+            return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null }
+        })
+        callback(devices as any)
+    }, (error) => console.error('Firestore listener error (PriorityDevices):', error))
 }

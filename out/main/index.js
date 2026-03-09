@@ -258,7 +258,7 @@ function loadSettings() {
     personnelName: "",
     theme: "dark",
     workingHours: {
-      start: "08:00",
+      start: "09:30",
       end: "18:30"
     }
   };
@@ -350,12 +350,11 @@ class WindowManager {
         this.mainWindow.hide();
       }
     });
-    this.mainWindow.once("ready-to-show", () => this.mainWindow?.show());
     return this.mainWindow;
   }
   createLoginWindow() {
     this.loginWindow = new electron$1.BrowserWindow({
-      width: 400,
+      width: 500,
       height: 500,
       frame: false,
       resizable: false,
@@ -728,6 +727,7 @@ const firebaseConfig = {
 const app = app$2.initializeApp(firebaseConfig);
 const db = firestore.getFirestore(app);
 const TICKETS_COLLECTION = "tickets";
+const PRIORITY_COLLECTION = "priority_devices";
 async function createTicket(data) {
   const docRef = await firestore.addDoc(firestore.collection(db, TICKETS_COLLECTION), {
     ...data,
@@ -741,10 +741,7 @@ async function createTicket(data) {
     const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", data.created_by));
     const snapshot = await firestore.getDocs(q);
     if (!snapshot.empty) {
-      const userId = snapshot.docs[0].id;
-      await firestore.updateDoc(firestore.doc(db, "users", userId), {
-        xp: firestore.increment(5)
-      });
+      await firestore.updateDoc(firestore.doc(db, "users", snapshot.docs[0].id), { xp: firestore.increment(5) });
     }
   } catch (e) {
     console.error("Error adding xp:", e);
@@ -760,9 +757,7 @@ async function claimTicket(ticketId, personnelName) {
 async function completeTicket(ticketId, response) {
   const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
   let respondedBy = "";
-  if (!ticketDoc.empty) {
-    respondedBy = ticketDoc.docs[0].data().responded_by;
-  }
+  if (!ticketDoc.empty) respondedBy = ticketDoc.docs[0].data().responded_by;
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
     status: "completed",
     response,
@@ -773,10 +768,7 @@ async function completeTicket(ticketId, response) {
       const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", respondedBy));
       const snapshot = await firestore.getDocs(q);
       if (!snapshot.empty) {
-        const userId = snapshot.docs[0].id;
-        await firestore.updateDoc(firestore.doc(db, "users", userId), {
-          xp: firestore.increment(10)
-        });
+        await firestore.updateDoc(firestore.doc(db, "users", snapshot.docs[0].id), { xp: firestore.increment(10) });
       }
     } catch (e) {
       console.error("Error adding xp:", e);
@@ -787,65 +779,53 @@ async function reopenTicket(ticketId) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
     status: "in_progress",
     response: ""
-    // Cevabı boşaltıyoruz ki tekrar düzenleyebilsin
   });
 }
 async function updateTicketDetails(ticketId, details) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    ...details
-  });
+  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), { ...details });
 }
 function subscribeAsKargoKabul(personnelName, callback) {
-  const q = firestore.query(
-    firestore.collection(db, TICKETS_COLLECTION),
-    firestore.orderBy("created_at", "desc"),
-    firestore.limit(200)
-  );
+  const q = firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(200));
   return firestore.onSnapshot(q, (snapshot) => {
     const tickets = snapshot.docs.map((d) => {
       const data = d.data();
-      return {
-        id: d.id,
-        ...data,
-        created_at: data.created_at ? data.created_at.toMillis() : null,
-        responded_at: data.responded_at ? data.responded_at.toMillis() : null
-      };
+      return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null };
     });
-    tickets.sort((a, b) => {
-      const timeA = a.created_at || 0;
-      const timeB = b.created_at || 0;
-      return timeB - timeA;
-    });
+    tickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
     callback(tickets);
-  }, (error) => {
-    console.error("Firestore listener error (KK):", error);
-  });
+  }, (error) => console.error("Firestore listener error (KK):", error));
 }
 function subscribeAsMH(callback) {
-  const q = firestore.query(
-    firestore.collection(db, TICKETS_COLLECTION),
-    firestore.orderBy("created_at", "desc"),
-    firestore.limit(200)
-  );
+  const q = firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(200));
   return firestore.onSnapshot(q, (snapshot) => {
     const tickets = snapshot.docs.map((d) => {
       const data = d.data();
-      return {
-        id: d.id,
-        ...data,
-        created_at: data.created_at ? data.created_at.toMillis() : null,
-        responded_at: data.responded_at ? data.responded_at.toMillis() : null
-      };
+      return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null };
     });
-    tickets.sort((a, b) => {
-      const timeA = a.created_at || 0;
-      const timeB = b.created_at || 0;
-      return timeB - timeA;
-    });
+    tickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
     callback(tickets);
-  }, (error) => {
-    console.error("Firestore listener error (MH):", error);
+  }, (error) => console.error("Firestore listener error (MH):", error));
+}
+async function addPriorityDevice(data) {
+  const docRef = await firestore.addDoc(firestore.collection(db, PRIORITY_COLLECTION), {
+    ...data,
+    serial: data.serial.trim().toUpperCase(),
+    created_at: firestore.serverTimestamp()
   });
+  return docRef.id;
+}
+async function deletePriorityDevice(id) {
+  await firestore.deleteDoc(firestore.doc(db, PRIORITY_COLLECTION, id));
+}
+function subscribeToPriorityDevices(callback) {
+  const q = firestore.query(firestore.collection(db, PRIORITY_COLLECTION), firestore.orderBy("created_at", "desc"));
+  return firestore.onSnapshot(q, (snapshot) => {
+    const devices = snapshot.docs.map((d) => {
+      const data = d.data();
+      return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null };
+    });
+    callback(devices);
+  }, (error) => console.error("Firestore listener error (PriorityDevices):", error));
 }
 const gotTheLock = electron$1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -876,7 +856,9 @@ let currentPopupData = null;
 let lastDetectedSerial = "";
 let statusInterval = null;
 let ticketUnsubscribe = null;
+let priorityUnsubscribe = null;
 let cachedTickets = [];
+let cachedPriorityDevices = [];
 function extractCopyText(data) {
   if (!data) return "";
   if (data.warranty_status === "KVK GARANTILI" && data.warranty_end) {
@@ -948,6 +930,7 @@ async function handleDetection(serial) {
     currentPopupData = cached;
     windowManager.showPopup(cached, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send("refresh-cards");
+    checkPriorityMatch(serial);
     return;
   }
   try {
@@ -956,12 +939,27 @@ async function handleDetection(serial) {
     currentPopupData = warrantyInfo;
     windowManager.showPopup(warrantyInfo, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send("refresh-cards");
+    checkPriorityMatch(serial);
   } catch {
     windowManager.showPopup({
       serial,
       warranty_status: "İnternet Bağlantı Hatası",
       is_error: true
     }, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
+  }
+}
+function checkPriorityMatch(serial) {
+  if (!serial) return;
+  const match = cachedPriorityDevices.find(
+    (d) => d.serial && d.serial.toUpperCase() === serial.toUpperCase()
+  );
+  if (match) {
+    new electron$1.Notification({
+      title: "⚠️ Öncelikli Cihaz!",
+      body: `${match.customer_name}: ${match.description}`,
+      silent: false
+    }).show();
+    windowManager.getMainWindow()?.webContents.send("priority-device-match", match);
   }
 }
 function setupIpcHandlers() {
@@ -975,7 +973,12 @@ function setupIpcHandlers() {
     preventDuplicatePopup: currentSettings.preventDuplicatePopup,
     shortcuts: currentSettings.shortcuts,
     role: currentSettings.role,
-    personnelName: currentSettings.personnelName
+    personnelName: currentSettings.personnelName,
+    username: currentSettings.username,
+    isAdmin: currentSettings.isAdmin,
+    isLoggedIn: currentSettings.isLoggedIn,
+    theme: currentSettings.theme,
+    workingHours: currentSettings.workingHours
   }));
   electron$1.ipcMain.handle("save-settings", async (_, settings) => {
     currentSettings = { ...currentSettings, ...settings };
@@ -1110,6 +1113,25 @@ function setupIpcHandlers() {
   electron$1.ipcMain.on("open-tickets", () => {
     windowManager.openTicketsWindow();
   });
+  electron$1.ipcMain.handle("get-priority-devices", async () => cachedPriorityDevices);
+  electron$1.ipcMain.handle("add-priority-device", async (_, data) => {
+    try {
+      const id = await addPriorityDevice(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error("Error adding priority device:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("delete-priority-device", async (_, id) => {
+    try {
+      await deletePriorityDevice(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting priority device:", error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 function createTray() {
   const mainWindow = windowManager.getMainWindow();
@@ -1168,6 +1190,21 @@ function registerShortcuts() {
       }
     }
   }
+}
+function startPriorityDevicesListener() {
+  if (priorityUnsubscribe) {
+    priorityUnsubscribe();
+    priorityUnsubscribe = null;
+  }
+  priorityUnsubscribe = subscribeToPriorityDevices((devices) => {
+    cachedPriorityDevices = devices;
+    const { BrowserWindow: BrowserWindow2 } = require("electron");
+    BrowserWindow2.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send("priority-devices-update", devices);
+      }
+    });
+  });
 }
 function startTicketListener() {
   if (ticketUnsubscribe) {
@@ -1239,6 +1276,7 @@ function initializeApp() {
     clipboardMonitor.start();
     startServerStatusMonitor();
     startTicketListener();
+    startPriorityDevicesListener();
     electron$1.app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: electron$1.app.getPath("exe")
@@ -1258,6 +1296,10 @@ electron$1.app.on("will-quit", () => {
   if (ticketUnsubscribe) {
     ticketUnsubscribe();
     ticketUnsubscribe = null;
+  }
+  if (priorityUnsubscribe) {
+    priorityUnsubscribe();
+    priorityUnsubscribe = null;
   }
 });
 electron$1.app.on("window-all-closed", () => {

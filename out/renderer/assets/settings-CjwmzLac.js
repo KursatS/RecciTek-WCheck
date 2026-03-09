@@ -7,7 +7,7 @@ const preventDuplicate = document.getElementById("prevent-duplicate");
 const shortcutClear = document.getElementById("shortcut-clear");
 const shortcutCopy = document.getElementById("shortcut-copy");
 const personnelNameInput = document.getElementById("personnel-name");
-const userRoleSelect = document.getElementById("user-role");
+const userRoleInput = document.getElementById("user-role");
 const saveBtn = document.getElementById("save-btn");
 let initialRole = "";
 window.electronAPI.getSettings().then((settings) => {
@@ -19,7 +19,11 @@ window.electronAPI.getSettings().then((settings) => {
   shortcutClear.value = settings.shortcuts?.clearCache || "CommandOrControl+Shift+X";
   shortcutCopy.value = settings.shortcuts?.toggleMonitoring || "CommandOrControl+Shift+C";
   personnelNameInput.value = (settings.personnelName || "").toUpperCase();
-  userRoleSelect.value = settings.role || "";
+  let displayRole = settings.role;
+  if (displayRole === "kargo_kabul") displayRole = "Kargo Kabul";
+  else if (displayRole === "mh") displayRole = "Müşteri Hizmetleri";
+  else if (displayRole === "admin") displayRole = "Yönetici";
+  userRoleInput.value = displayRole || "";
   initialRole = settings.role || "";
 });
 personnelNameInput.addEventListener("input", () => {
@@ -44,11 +48,6 @@ function setupShortcutRecorder(input) {
 setupShortcutRecorder(shortcutClear);
 setupShortcutRecorder(shortcutCopy);
 saveBtn.onclick = () => {
-  if (!userRoleSelect.value) {
-    userRoleSelect.style.borderColor = "#ef4444";
-    alert("Lütfen bir rol seçin!");
-    return;
-  }
   const settings = {
     popupSizeLevel: parseInt(popupSize.value),
     popupTimeout: parseInt(popupTimeout.value),
@@ -59,14 +58,9 @@ saveBtn.onclick = () => {
       toggleMonitoring: shortcutCopy.value
     },
     personnelName: personnelNameInput.value.trim(),
-    role: userRoleSelect.value
+    role: initialRole
   };
-  const roleChanged = userRoleSelect.value !== initialRole && initialRole !== "";
-  if (roleChanged) {
-    window.electronAPI.restartApp(settings);
-  } else {
-    window.electronAPI.saveSettings(settings).then(() => {
-      window.close();
-    });
-  }
+  window.electronAPI.saveSettings(settings).then(() => {
+    window.close();
+  });
 };

@@ -59,5 +59,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('ticket-update', (_event, tickets) => callback(tickets)),
 
     // Tickets Window
-    openTickets: () => ipcRenderer.send('open-tickets')
+    openTickets: () => ipcRenderer.send('open-tickets'),
+
+    // Priority Devices
+    getPriorityDevices: () => ipcRenderer.invoke('get-priority-devices'),
+    addPriorityDevice: (data: any) => ipcRenderer.invoke('add-priority-device', data),
+    deletePriorityDevice: (id: string) => ipcRenderer.invoke('delete-priority-device', id),
+    onPriorityDeviceMatch: (callback: any) =>
+        ipcRenderer.on('priority-device-match', (_event, device) => callback(device)),
+    onPriorityDevicesUpdate: (callback: any) =>
+        ipcRenderer.on('priority-devices-update', (_event, devices) => callback(devices))
 })

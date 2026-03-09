@@ -87,14 +87,12 @@ export class WindowManager {
             }
         });
 
-        this.mainWindow.once('ready-to-show', () => this.mainWindow?.show());
-
         return this.mainWindow;
     }
 
     createLoginWindow(): BrowserWindow {
         this.loginWindow = new BrowserWindow({
-            width: 400,
+            width: 500,
             height: 500,
             frame: false,
             resizable: false,
