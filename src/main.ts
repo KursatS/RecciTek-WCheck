@@ -201,7 +201,10 @@ function setupIpcHandlers() {
     isAdmin: currentSettings.isAdmin,
     isLoggedIn: currentSettings.isLoggedIn,
     theme: currentSettings.theme,
-    workingHours: currentSettings.workingHours
+    workingHours: currentSettings.workingHours,
+    rememberMe: currentSettings.rememberMe,
+    savedUsername: currentSettings.savedUsername,
+    savedPassword: currentSettings.savedPassword
   }));
 
   ipcMain.handle('save-settings', async (_, settings) => {
