@@ -1,4 +1,7 @@
 export { }
+import { showToast } from './utils/toastUtils'
+import { SVG_EMPTY_FOLDER } from './utils/svgUtils'
+
 // ── Element References ──────────────────────────────────────────────
 const cardsDiv = document.getElementById('cards')!
 const searchInput = document.getElementById('search') as HTMLInputElement
@@ -10,6 +13,7 @@ const bonusBtn = document.getElementById('bonus-btn')!
 const profileBtn = document.getElementById('profile-btn')!
 const adminBtn = document.getElementById('admin-btn')!
 const ticketsBtn = document.getElementById('tickets-btn')!
+const priorityBtn = document.getElementById('priority-btn')!
 const ticketBadge = document.getElementById('ticket-badge')!
 const dcBtn = document.getElementById('double-copy-toggle')!
 const statusDot = document.getElementById('status-dot')!
@@ -118,17 +122,22 @@ function showAskMHModal(serial: string, modelName: string, modelColor: string): 
         const arasCode = (document.getElementById('mh-aras') as HTMLInputElement).value.trim()
         const phoneNumber = (document.getElementById('mh-phone') as HTMLInputElement).value.trim()
 
-        await api.createTicket({
-            serial,
-            model_name: modelName,
-            model_color: modelColor,
-            missing_type: missingType,
-            note,
-            customer_name: customerName,
-            aras_code: arasCode,
-            phone_number: phoneNumber,
-            created_by: personnelName || 'İsimsiz Personel'
-        })
+        try {
+            await api.createTicket({
+                serial,
+                model_name: modelName,
+                model_color: modelColor,
+                missing_type: missingType,
+                note,
+                customer_name: customerName,
+                aras_code: arasCode,
+                phone_number: phoneNumber,
+                created_by: personnelName || 'İsimsiz Personel'
+            })
+            showToast('Eksik bilgi talebiniz MH departmanına iletildi.', 'success')
+        } catch (e: any) {
+            showToast('Talep oluşturulurken hata: ' + e.message, 'error')
+        }
 
         modalOverlay.classList.remove('active')
     }
@@ -150,13 +159,26 @@ function formatDate(dateString: string): string {
 
 // ── Card Renderer ───────────────────────────────────────────────────
 function loadCards() {
+    cardsDiv.innerHTML = `
+        <div class="card" style="display:flex; flex-direction:column; gap:12px; pointer-events:none; opacity:0.7;">
+            <div class="skeleton" style="width: 30%; height: 24px;"></div>
+            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+            <div class="skeleton" style="width: 60%; height: 20px;"></div>
+        </div>
+        <div class="card" style="display:flex; flex-direction:column; gap:12px; pointer-events:none; opacity:0.5;">
+            <div class="skeleton" style="width: 40%; height: 24px;"></div>
+            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+            <div class="skeleton" style="width: 80%; height: 20px;"></div>
+        </div>
+    `
+
     api.getCachedData().then((data: any[]) => {
         cardsDiv.innerHTML = ''
 
         if (!data || data.length === 0) {
             cardsDiv.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">📂</div>
+          ${SVG_EMPTY_FOLDER}
           <h3>Henüz bir cihaz sorgulanmadı</h3>
           <p>Panoya bir seri numarası kopyaladığınızda burada görünecektir.</p>
         </div>
@@ -267,6 +289,7 @@ searchInput.oninput = () => loadCards()
 settingsBtn.onclick = () => api.openSettings()
 bonusBtn.onclick = () => api.openBonus()
 ticketsBtn.onclick = () => api.openTickets()
+priorityBtn.onclick = () => api.openPriority()
 profileBtn.onclick = () => api.openProfile()
 adminBtn.onclick = () => api.openAdmin()
 
@@ -278,8 +301,13 @@ clearCacheBtn.onclick = async () => {
         'Tümünü Sil'
     )
     if (confirmed) {
-        await api.clearCache()
-        loadCards()
+        try {
+            await api.clearCache()
+            loadCards()
+            showToast('Tüm önbellek başarıyla temizlendi.', 'success')
+        } catch (e: any) {
+            showToast('Temizleme hatası: ' + e.message, 'error')
+        }
     }
 }
 
@@ -290,8 +318,13 @@ clearCacheBtn.onclick = async () => {
             `${serial} seri numaralı cihazı listeden silmek istediğinizden emin misiniz?`
         )
         if (confirmed) {
-            await api.deleteEntry(serial)
-            loadCards()
+            try {
+                await api.deleteEntry(serial)
+                loadCards()
+                showToast(`${serial} kaydı silindi.`, 'success')
+            } catch (e: any) {
+                showToast('Silinemedi: ' + e.message, 'error')
+            }
         }
     }
 
@@ -306,8 +339,13 @@ api.getDoubleCopy().then((enabled: boolean) => updateDCUI(enabled))
 
 dcBtn.onclick = async () => {
     const current = dcBtn.textContent!.includes('Açık')
-    await api.toggleDoubleCopy(!current)
-    updateDCUI(!current)
+    try {
+        await api.toggleDoubleCopy(!current)
+        updateDCUI(!current)
+        showToast(`Double Copy modu ${!current ? 'açıldı' : 'kapatıldı'}.`, 'info')
+    } catch (e: any) {
+        showToast('Double Copy değişemedi: ' + e.message, 'error')
+    }
 }
 
 // ── Server Status Listener ──────────────────────────────────────────

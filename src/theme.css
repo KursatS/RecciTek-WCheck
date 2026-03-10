@@ -60,3 +60,31 @@ select:focus-visible {
         opacity: 0.8;
     }
 }
+
+/* ─── Skeleton Loading ─── */
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 2s infinite linear;
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+.light .skeleton {
+    background: linear-gradient(90deg, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 75%);
+    background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ─── Empty State SVG ─── */
+.empty-state-svg {
+    width: 140px;
+    height: 140px;
+    margin-bottom: 16px;
+    opacity: 0.9;
+    filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.15));
+}

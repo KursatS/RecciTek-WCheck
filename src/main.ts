@@ -136,6 +136,9 @@ function handleDoubleCopy(): void {
 }
 
 async function handleDetection(serial: string): Promise<void> {
+  // Bypas önlemi: Uygulamaya login olunmamışsa (öğrenci ekranı/login sayfası vb) hiçbir şey yapma
+  if (!currentSettings.isLoggedIn) return;
+
   if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
     return;
   }
@@ -243,6 +246,10 @@ function setupIpcHandlers() {
 
   ipcMain.on('open-profile', () => {
     windowManager.openProfileWindow();
+  });
+
+  ipcMain.on('open-priority', () => {
+    windowManager.openPriorityWindow();
   });
 
   ipcMain.handle('login-success', async () => {

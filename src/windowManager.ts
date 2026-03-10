@@ -22,6 +22,7 @@ export class WindowManager {
     private settingsWindow: BrowserWindow | null = null;
     private bonusWindow: BrowserWindow | null = null;
     private ticketsWindow: BrowserWindow | null = null;
+    private priorityWindow: BrowserWindow | null = null;
     private loginWindow: BrowserWindow | null = null;
     private adminWindow: BrowserWindow | null = null;
     private profileWindow: BrowserWindow | null = null;
@@ -212,6 +213,33 @@ export class WindowManager {
         this.loadFile(this.ticketsWindow, 'tickets.html');
         this.ticketsWindow.on('closed', () => {
             this.ticketsWindow = null;
+        });
+    }
+
+    openPriorityWindow(): void {
+        if (this.priorityWindow && !this.priorityWindow.isDestroyed()) {
+            this.priorityWindow.focus();
+            return;
+        }
+
+        this.priorityWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            resizable: true,
+            frame: true,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            },
+            title: 'Öncelikli Cihazlar',
+            autoHideMenuBar: true
+        });
+
+        this.priorityWindow.setMenuBarVisibility(false);
+        this.loadFile(this.priorityWindow, 'priority.html');
+        this.priorityWindow.on('closed', () => {
+            this.priorityWindow = null;
         });
     }
 

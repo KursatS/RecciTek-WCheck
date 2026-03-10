@@ -294,6 +294,7 @@ class WindowManager {
     this.settingsWindow = null;
     this.bonusWindow = null;
     this.ticketsWindow = null;
+    this.priorityWindow = null;
     this.loginWindow = null;
     this.adminWindow = null;
     this.profileWindow = null;
@@ -459,6 +460,30 @@ class WindowManager {
     this.loadFile(this.ticketsWindow, "tickets.html");
     this.ticketsWindow.on("closed", () => {
       this.ticketsWindow = null;
+    });
+  }
+  openPriorityWindow() {
+    if (this.priorityWindow && !this.priorityWindow.isDestroyed()) {
+      this.priorityWindow.focus();
+      return;
+    }
+    this.priorityWindow = new electron$1.BrowserWindow({
+      width: 800,
+      height: 600,
+      resizable: true,
+      frame: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      },
+      title: "Öncelikli Cihazlar",
+      autoHideMenuBar: true
+    });
+    this.priorityWindow.setMenuBarVisibility(false);
+    this.loadFile(this.priorityWindow, "priority.html");
+    this.priorityWindow.on("closed", () => {
+      this.priorityWindow = null;
     });
   }
   openAdminWindow() {
@@ -921,6 +946,7 @@ function handleDoubleCopy() {
   }
 }
 async function handleDetection(serial) {
+  if (!currentSettings.isLoggedIn) return;
   if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
     return;
   }
@@ -1015,6 +1041,9 @@ function setupIpcHandlers() {
   });
   electron$1.ipcMain.on("open-profile", () => {
     windowManager.openProfileWindow();
+  });
+  electron$1.ipcMain.on("open-priority", () => {
+    windowManager.openPriorityWindow();
   });
   electron$1.ipcMain.handle("login-success", async () => {
     windowManager.onLoginSuccess();

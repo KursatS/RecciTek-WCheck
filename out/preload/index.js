@@ -1,26 +1,34 @@
 "use strict";
 const electron = require("electron");
+const safeInvoke = async (channel, ...args) => {
+  try {
+    return await electron.ipcRenderer.invoke(channel, ...args);
+  } catch (error) {
+    console.error(`[IPC Error] Channel '${channel}':`, error);
+    throw error;
+  }
+};
 electron.contextBridge.exposeInMainWorld("electronAPI", {
   getPathForFile: (file) => electron.webUtils.getPathForFile(file),
   // Main Window Actions
-  getCachedData: () => electron.ipcRenderer.invoke("get-cached-data"),
-  deleteEntry: (serial) => electron.ipcRenderer.invoke("delete-entry", serial),
-  clearCache: () => electron.ipcRenderer.invoke("clear-cache"),
+  getCachedData: () => safeInvoke("get-cached-data"),
+  deleteEntry: (serial) => safeInvoke("delete-entry", serial),
+  clearCache: () => safeInvoke("clear-cache"),
   toggleMonitoring: (enabled) => electron.ipcRenderer.send("toggle-monitoring", enabled),
   // Double Copy
-  getDoubleCopy: () => electron.ipcRenderer.invoke("get-double-copy"),
-  toggleDoubleCopy: (enabled) => electron.ipcRenderer.invoke("toggle-double-copy", enabled),
+  getDoubleCopy: () => safeInvoke("get-double-copy"),
+  toggleDoubleCopy: (enabled) => safeInvoke("toggle-double-copy", enabled),
   // Settings, Admin, Profile, Bonus Windows
   openSettings: () => electron.ipcRenderer.send("open-settings"),
   openBonus: () => electron.ipcRenderer.send("open-bonus"),
   openAdmin: () => electron.ipcRenderer.send("open-admin"),
   openProfile: () => electron.ipcRenderer.send("open-profile"),
-  loginSuccess: () => electron.ipcRenderer.invoke("login-success"),
-  getSettings: () => electron.ipcRenderer.invoke("get-settings"),
-  saveSettings: (settings) => electron.ipcRenderer.invoke("save-settings", settings),
-  restartApp: (settings) => electron.ipcRenderer.invoke("restart-app", settings),
+  loginSuccess: () => safeInvoke("login-success"),
+  getSettings: () => safeInvoke("get-settings"),
+  saveSettings: (settings) => safeInvoke("save-settings", settings),
+  restartApp: (settings) => safeInvoke("restart-app", settings),
   // Bonus Calculation
-  calculateBonus: (filePath, customHours) => electron.ipcRenderer.invoke("calculate-bonus", filePath, customHours),
+  calculateBonus: (filePath, customHours) => safeInvoke("calculate-bonus", filePath, customHours),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),
@@ -36,19 +44,20 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   onCacheCleared: (callback) => electron.ipcRenderer.on("cache-cleared", () => callback()),
   onMonitoringToggled: (callback) => electron.ipcRenderer.on("monitoring-toggled", (_event, enabled) => callback(enabled)),
   // Ticket System
-  getTickets: () => electron.ipcRenderer.invoke("get-tickets"),
-  createTicket: (data) => electron.ipcRenderer.invoke("create-ticket", data),
-  claimTicket: (id, name) => electron.ipcRenderer.invoke("claim-ticket", id, name),
-  completeTicket: (id, response) => electron.ipcRenderer.invoke("complete-ticket", id, response),
-  reopenTicket: (id) => electron.ipcRenderer.invoke("reopen-ticket", id),
-  updateTicketDetails: (id, details) => electron.ipcRenderer.invoke("update-ticket-details", id, details),
+  getTickets: () => safeInvoke("get-tickets"),
+  createTicket: (data) => safeInvoke("create-ticket", data),
+  claimTicket: (id, name) => safeInvoke("claim-ticket", id, name),
+  completeTicket: (id, response) => safeInvoke("complete-ticket", id, response),
+  reopenTicket: (id) => safeInvoke("reopen-ticket", id),
+  updateTicketDetails: (id, details) => safeInvoke("update-ticket-details", id, details),
   onTicketUpdate: (callback) => electron.ipcRenderer.on("ticket-update", (_event, tickets) => callback(tickets)),
-  // Tickets Window
+  // Tickets & Priority Windows
   openTickets: () => electron.ipcRenderer.send("open-tickets"),
+  openPriority: () => electron.ipcRenderer.send("open-priority"),
   // Priority Devices
-  getPriorityDevices: () => electron.ipcRenderer.invoke("get-priority-devices"),
-  addPriorityDevice: (data) => electron.ipcRenderer.invoke("add-priority-device", data),
-  deletePriorityDevice: (id) => electron.ipcRenderer.invoke("delete-priority-device", id),
+  getPriorityDevices: () => safeInvoke("get-priority-devices"),
+  addPriorityDevice: (data) => safeInvoke("add-priority-device", data),
+  deletePriorityDevice: (id) => safeInvoke("delete-priority-device", id),
   onPriorityDeviceMatch: (callback) => electron.ipcRenderer.on("priority-device-match", (_event, device) => callback(device)),
   onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices))
 });

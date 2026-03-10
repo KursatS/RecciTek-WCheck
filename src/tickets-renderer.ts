@@ -1,4 +1,6 @@
 export { }
+import { showToast } from './utils/toastUtils'
+import { SVG_EMPTY_TICKET } from './utils/svgUtils'
 const api = (window as any).electronAPI
 
 // ── DOM Refs ─────────────────────────────────────────────────────────
@@ -9,15 +11,8 @@ const countProgress = document.getElementById('count-progress')!
 const countCompleted = document.getElementById('count-completed')!
 const filterTabs = document.getElementById('filter-tabs')!
 const searchInput = document.getElementById('ticket-search') as HTMLInputElement
-const priorityList = document.getElementById('priority-list')!
-const priorityFormSection = document.getElementById('priority-form-section')!
-const btnAddPriority = document.getElementById('btn-add-priority') as HTMLButtonElement
-const pdCustomer = document.getElementById('pd-customer') as HTMLInputElement
-const pdSerial = document.getElementById('pd-serial') as HTMLInputElement
-const pdDesc = document.getElementById('pd-desc') as HTMLTextAreaElement
 
 let allTickets: any[] = []
-let allPriorityDevices: any[] = []
 let activeFilter = 'all'
 let searchQuery = ''
 let currentRole = 'mh'
@@ -53,37 +48,43 @@ api.onRefreshCards(() => {
     api.getSettings().then((s: any) => {
         currentRole = s.role || 'mh'
         personnelName = s.personnelName || 'Bilinmeyen'
-        syncRoleUI()
         api.getTickets().then((tickets: any[]) => { if (tickets) renderTickets(tickets) })
     })
-})
-
-// ── Priority devices real-time ───────────────────────────────────────
-api.onPriorityDevicesUpdate((devices: any[]) => {
-    allPriorityDevices = devices
-    renderPriorityDevices(devices)
 })
 
 // ── Init ─────────────────────────────────────────────────────────────
 Promise.all([
     api.getSettings(),
-    api.getTickets(),
-    api.getPriorityDevices()
-]).then(([settings, tickets, devices]: [any, any[], any[]]) => {
+    api.getTickets()
+]).then(([settings, tickets]: [any, any[]]) => {
     if (settings.theme === 'light') document.body.classList.add('light')
     currentRole = settings.role || 'mh'
     personnelName = settings.personnelName || 'Bilinmeyen'
-    syncRoleUI()
     if (tickets) renderTickets(tickets)
-    if (devices) {
-        allPriorityDevices = devices
-        renderPriorityDevices(devices)
-    }
 })
 
-function syncRoleUI() {
-    // Only MH can add priority devices
-    priorityFormSection.style.display = currentRole === 'mh' ? 'block' : 'none'
+// Skeleton while waiting for initial data
+showSkeletonTickets()
+
+// ── Show skeleton while loading tickets ──────────────────────────────
+function showSkeletonTickets() {
+    ticketList.innerHTML = `
+        <div class="ticket-card" style="pointer-events:none;">
+            <div class="ticket-body" style="flex:1;display:flex;flex-direction:column;gap:10px;">
+                <div class="skeleton" style="width:30%;height:20px;"></div>
+                <div class="skeleton" style="width:55%;height:14px;"></div>
+                <div class="skeleton" style="width:80%;height:40px;"></div>
+            </div>
+        </div>
+        <div class="ticket-card" style="pointer-events:none;opacity:0.6;">
+            <div class="ticket-body" style="flex:1;display:flex;flex-direction:column;gap:10px;">
+                <div class="skeleton" style="width:25%;height:20px;"></div>
+                <div class="skeleton" style="width:45%;height:14px;"></div>
+                <div class="skeleton" style="width:90%;height:40px;"></div>
+            </div>
+        </div>
+    `
+    emptyState.style.display = 'none'
 }
 
 // ── Render Tickets ───────────────────────────────────────────────────
@@ -116,6 +117,18 @@ function renderTickets(tickets: any[]) {
     }
 
     if (filtered.length === 0) {
+        ticketList.innerHTML = ''
+        emptyState.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;">
+                ${SVG_EMPTY_TICKET}
+                <div style="font-weight:600;font-size:1rem;margin-bottom:6px;">
+                    ${searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz aktif talep yok'}
+                </div>
+                <div style="font-size:0.84rem;color:var(--text-muted);">
+                    ${searchQuery ? '"' + searchQuery + '" ile eşleşen kayıt bulunamadı.' : 'Tüm talepler tamamlandı veya henüz oluşturulmadı.'}
+                </div>
+            </div>
+        `
         emptyState.style.display = 'block'
         return
     }
@@ -224,7 +237,12 @@ function renderTickets(tickets: any[]) {
 function bindTicketActions() {
     document.querySelectorAll('.btn-claim').forEach(btn => {
         btn.addEventListener('click', async () => {
-            await api.claimTicket((btn as HTMLElement).dataset.id!, personnelName)
+            try {
+                await api.claimTicket((btn as HTMLElement).dataset.id!, personnelName)
+                showToast('Talebi başarıyla üstlendiniz.', 'success')
+            } catch (e: any) {
+                showToast('Hata: ' + e.message, 'error')
+            }
         })
     })
 
@@ -239,14 +257,27 @@ function bindTicketActions() {
                 if (!val) { input.style.borderColor = '#ef4444'; allFilled = false }
                 else { input.style.borderColor = ''; responses.push(`${input.dataset.type}: ${val}`) }
             })
-            if (!allFilled) return
-            await api.completeTicket(id, responses.join(' | '))
+            if (!allFilled) {
+                showToast('Lütfen istenen tüm bilgileri doldurun.', 'error')
+                return
+            }
+            try {
+                await api.completeTicket(id, responses.join(' | '))
+                showToast('Bilgiler iletildi. Talep kapatıldı.', 'success')
+            } catch (e: any) {
+                showToast('Hata: ' + e.message, 'error')
+            }
         })
     })
 
     document.querySelectorAll('.btn-reopen').forEach(btn => {
         btn.addEventListener('click', async () => {
-            await api.reopenTicket((btn as HTMLElement).dataset.id!)
+            try {
+                await api.reopenTicket((btn as HTMLElement).dataset.id!)
+                showToast('Talep yeniden açıldı.', 'info')
+            } catch (e: any) {
+                showToast('Hata: ' + e.message, 'error')
+            }
         })
     })
 
@@ -255,79 +286,19 @@ function bindTicketActions() {
             const id = (btn as HTMLElement).dataset.id!
             btn.textContent = 'Güncelleniyor...'
                 ; (btn as HTMLButtonElement).disabled = true
-            await api.updateTicketDetails(id, {
-                customer_name: (document.getElementById(`cust-${id}`) as HTMLInputElement)?.value?.trim() || '',
-                aras_code: (document.getElementById(`aras-${id}`) as HTMLInputElement)?.value?.trim() || '',
-                phone_number: (document.getElementById(`phone-${id}`) as HTMLInputElement)?.value?.trim() || ''
-            })
-            btn.textContent = 'Güncelle'
-                ; (btn as HTMLButtonElement).disabled = false
+            try {
+                await api.updateTicketDetails(id, {
+                    customer_name: (document.getElementById(`cust-${id}`) as HTMLInputElement)?.value?.trim() || '',
+                    aras_code: (document.getElementById(`aras-${id}`) as HTMLInputElement)?.value?.trim() || '',
+                    phone_number: (document.getElementById(`phone-${id}`) as HTMLInputElement)?.value?.trim() || ''
+                })
+                showToast('Cihaz detayları güncellendi.', 'success')
+            } catch (e: any) {
+                showToast('Güncelleme hatası: ' + e.message, 'error')
+            } finally {
+                btn.textContent = 'Güncelle'
+                    ; (btn as HTMLButtonElement).disabled = false
+            }
         })
     })
 }
-
-// ── Priority Devices ─────────────────────────────────────────────────
-function renderPriorityDevices(devices: any[]) {
-    priorityList.innerHTML = ''
-    if (devices.length === 0) {
-        priorityList.innerHTML = '<div class="priority-empty">Henüz kayıt yok.</div>'
-        return
-    }
-    devices.forEach(device => {
-        const item = document.createElement('div')
-        item.className = 'priority-item'
-        item.innerHTML = `
-            <div class="priority-item-body">
-                <div class="priority-item-name">${device.customer_name}</div>
-                ${device.serial ? `<div class="priority-item-serial">📦 ${device.serial}</div>` : ''}
-                <div class="priority-item-desc">${device.description}</div>
-            </div>
-            ${currentRole === 'mh' ? `<button class="btn-del-priority" data-id="${device.id}" title="Sil">✕</button>` : ''}
-        `
-        priorityList.appendChild(item)
-    })
-
-    // Only MH can delete
-    if (currentRole === 'mh') {
-        priorityList.querySelectorAll('.btn-del-priority').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const id = (btn as HTMLElement).dataset.id!
-                await api.deletePriorityDevice(id)
-            })
-        })
-    }
-}
-
-btnAddPriority?.addEventListener('click', async () => {
-    const customer = pdCustomer.value.trim()
-    const serial = pdSerial.value.trim()
-    const desc = pdDesc.value.trim()
-
-    if (!customer || !desc) {
-        if (!customer) pdCustomer.style.borderColor = '#ef4444'
-        if (!desc) pdDesc.style.borderColor = '#ef4444'
-        return
-    }
-
-    pdCustomer.style.borderColor = ''
-    pdDesc.style.borderColor = ''
-    btnAddPriority.textContent = 'Kaydediliyor...'
-    btnAddPriority.disabled = true
-
-    try {
-        await api.addPriorityDevice({
-            customer_name: customer,
-            serial: serial.toUpperCase(),
-            description: desc,
-            created_by: personnelName
-        })
-        pdCustomer.value = ''
-        pdSerial.value = ''
-        pdDesc.value = ''
-    } catch (e) {
-        console.error('Error adding priority device:', e)
-    } finally {
-        btnAddPriority.textContent = '➕ Kaydet'
-        btnAddPriority.disabled = false
-    }
-})
