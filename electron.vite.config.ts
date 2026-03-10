@@ -1,40 +1,32 @@
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { resolve } from 'path'
+import { defineConfig, externalsPlugin } from 'electron-vite'
+import vue from '@vitejs/plugin-vue'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-    main: {
-        plugins: [externalizeDepsPlugin()],
-        build: {
-            rollupOptions: {
-                input: {
-                    index: resolve(__dirname, 'src/main.ts')
-                }
-            }
-        }
+  main: {
+    plugins: [externalsPlugin()]
+  },
+  preload: {
+    plugins: [externalsPlugin()]
+  },
+  renderer: {
+    resolve: {
+      alias: {
+        '@': resolve('src/renderer')
+      }
     },
-    preload: {
-        plugins: [externalizeDepsPlugin()],
-        build: {
-            rollupOptions: {
-                input: {
-                    index: resolve(__dirname, 'src/preload.ts')
-                }
-            }
-        }
-    },
-    renderer: {
-        root: 'src',
-        build: {
-            rollupOptions: {
-                input: {
-                    index: resolve(__dirname, 'src/index.html'),
-                    settings: resolve(__dirname, 'src/settings.html'),
-                    bonus: resolve(__dirname, 'src/bonus.html'),
-                    splash: resolve(__dirname, 'src/splash.html'),
-                    popup: resolve(__dirname, 'src/popup.html'),
-                    tickets: resolve(__dirname, 'src/tickets.html')
-                }
-            }
-        }
+    plugins: [vue(), react()],
+    input: {
+      index: resolve(__dirname, 'src/renderer/index.html'),
+      login: resolve(__dirname, 'src/renderer/login.html'),
+      settings: resolve(__dirname, 'src/renderer/settings.html'),
+      bonus: resolve(__dirname, 'src/renderer/bonus.html'),
+      tickets: resolve(__dirname, 'src/renderer/tickets.html'),
+      admin: resolve(__dirname, 'src/renderer/admin.html'),
+      profile: resolve(__dirname, 'src/renderer/profile.html'),
+      popup: resolve(__dirname, 'src/renderer/popup.html'),
+      splash: resolve(__dirname, 'src/renderer/splash.html')
     }
+  }
 })
