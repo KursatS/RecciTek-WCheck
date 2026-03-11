@@ -13,7 +13,8 @@
       color: var(--text-main);
       transition: all 0.3s ease;
       min-height: 100vh;
-      padding: 40px 20px;
+      margin: 0;
+      padding: 0;
       background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 400px),
         radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 400px);
       background-attachment: fixed;
@@ -465,8 +466,7 @@
       color: var(--text-muted);
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-Cm8_FdAX.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/svgUtils-BxY6k_uX.js">
+  <script type="module" crossorigin src="./assets/index-CM4CqIl5.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/input-BgXuQ7kZ.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtxYo9VL.css">
 </head>
@@ -479,6 +479,37 @@
       <div class="modal-actions">
         <button class="modal-btn modal-btn-cancel" id="modal-cancel">Vazgeç</button>
         <button class="modal-btn modal-btn-confirm" id="modal-confirm">Evet, Sil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin User Modal -->
+  <div class="admin-modal-overlay" id="admin-user-modal">
+    <div class="admin-modal-content">
+      <h2 id="admin-modal-title">Yeni Kullanıcı</h2>
+      <input type="hidden" id="admin-user-id">
+      <div class="form-group">
+        <label>Kullanıcı Adı</label>
+        <input type="text" id="admin-user-username" placeholder="Sisteme giriş adı...">
+      </div>
+      <div class="form-group">
+        <label>Şifre</label>
+        <input type="text" id="admin-user-password" placeholder="Giriş şifresi...">
+      </div>
+      <div class="form-group">
+        <label>Ad Soyad</label>
+        <input type="text" id="admin-user-fullname" placeholder="Personel ad soyad...">
+      </div>
+      <div class="form-group">
+        <label>Rol (Görev)</label>
+        <select id="admin-user-role">
+          <option value="kargo_kabul">Kargo Kabul</option>
+          <option value="mh">Müşteri Hizmetleri</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="btn-cancel-admin-modal" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1;">İptal</button>
+        <button class="btn btn-primary" id="btn-save-admin-user">Kaydet</button>
       </div>
     </div>
   </div>
@@ -540,7 +571,7 @@
         <div class="server-status-compact">
           <div class="status-dot" id="status-dot"></div>
           <span id="status-info">Sunucu: --</span>
-          <div id="status-refresh-btn" title="Yenile">🔄</div>
+          <div id="status-refresh-btn" title="Yenile" style="cursor:pointer;">🔄</div>
         </div>
         <button id="theme-toggle" class="theme-btn">🌙</button>
       </div>
@@ -689,37 +720,6 @@
           <button id="btn-add-user" class="btn btn-primary" style="margin-top: 10px;">+ Yeni Kullanıcı Ekle</button>
         </header>
         <div id="admin-user-list" class="users-grid"></div>
-
-        <!-- Admin User Modal -->
-        <div class="admin-modal-overlay" id="admin-user-modal">
-          <div class="admin-modal-content">
-            <h2 id="admin-modal-title">Yeni Kullanıcı</h2>
-            <input type="hidden" id="admin-user-id">
-            <div class="form-group">
-              <label>Kullanıcı Adı</label>
-              <input type="text" id="admin-user-username" placeholder="Sisteme giriş adı...">
-            </div>
-            <div class="form-group">
-              <label>Şifre</label>
-              <input type="text" id="admin-user-password" placeholder="Giriş şifresi...">
-            </div>
-            <div class="form-group">
-              <label>Ad Soyad</label>
-              <input type="text" id="admin-user-fullname" placeholder="Personel ad soyad...">
-            </div>
-            <div class="form-group">
-              <label>Rol (Görev)</label>
-              <select id="admin-user-role">
-                <option value="kargo_kabul">Kargo Kabul</option>
-                <option value="mh">Müşteri Hizmetleri</option>
-              </select>
-            </div>
-            <div class="modal-actions">
-              <button class="btn" id="btn-cancel-admin-modal" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1;">İptal</button>
-              <button class="btn btn-primary" id="btn-save-admin-user">Kaydet</button>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- View: Settings (Embedded) -->
@@ -728,16 +728,61 @@
           <h1>⚙️ Uygulama Ayarları</h1>
           <p>Kişiselleştirme ve sistem tercihleri</p>
         </header>
-        <div class="controls" style="flex-direction: column; align-items: stretch; max-width: 600px;">
-          <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 14px; border: 1px solid var(--glass-border);">
-            <span>Popup Süresi (ms)</span>
-            <input type="number" id="popup-timeout" style="width: 80px; padding: 5px; border-radius: 6px; background: #000; border: 1px solid var(--glass-border); color: white;">
+
+        <div style="max-width: 660px;">
+          <!-- Profil -->
+          <h3 class="settings-group-title">Profil</h3>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Personel Adı</div><div class="setting-desc">Taleplerde görünecek isminiz</div></div>
+              <input type="text" id="personnel-name" placeholder="ADINIZI GİRİN..." class="setting-input" style="width: 200px;">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Rol</div><div class="setting-desc">Sizin atandığınız görev (Değiştirilemez)</div></div>
+              <input type="text" id="user-role" readonly class="setting-input" style="width: 200px; opacity: 0.5; cursor: not-allowed;">
+            </div>
           </div>
-          <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 14px; border: 1px solid var(--glass-border);">
-            <span>Başlangıçta Çalıştır</span>
-            <input type="checkbox" id="auto-start">
+
+          <!-- Kısayol Yöneticisi -->
+          <h3 class="settings-group-title">Kısayol Yöneticisi</h3>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Geçmişi Temizle</div><div class="setting-desc">Global kısayol (örn: Ctrl+Shift+X)</div></div>
+              <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..." class="shortcut-input">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">İzlemeyi Aç/Kapat</div><div class="setting-desc">Global kısayol (örn: Ctrl+Shift+M)</div></div>
+              <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..." class="shortcut-input">
+            </div>
           </div>
-          <button id="save-settings-btn" class="btn btn-primary" style="margin-top: 20px; justify-content: center;">Değişiklikleri Kaydet</button>
+
+          <!-- Popup & Sistem -->
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Popup Boyutu</div><div class="setting-desc">Bildirim penceresinin ölçeği</div></div>
+              <select id="popup-size" class="setting-input">
+                <option value="1">Küçük</option>
+                <option value="2">Orta</option>
+                <option value="3">Büyük</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Görüntüleme Süresi</div><div class="setting-desc">Kapanış zamanı (ms)</div></div>
+              <input type="number" id="popup-timeout" min="1000" max="30000" step="500" class="setting-input" style="width: 120px;">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Otomatik Başlat</div><div class="setting-desc">Windows açıldığında başlasın</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="auto-start"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Aynı Seriyi Engelle</div><div class="setting-desc">Tekrar eden popup bildirimlerini önler</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="prevent-duplicate"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+
+          <button id="save-settings-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">
+            Değişiklikleri Kaydet
+          </button>
         </div>
       </section>
     </main>
@@ -767,6 +812,7 @@
       padding: 20px;
       z-index: 100;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
     }
 
     .sidebar-header {
@@ -842,7 +888,9 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+      overflow-y: auto;
+      min-height: 0;
     }
 
     .nav-item {
@@ -896,12 +944,13 @@
 
     /* ── Sidebar Footer ── */
     .sidebar-footer {
-      margin-top: auto;
-      padding-top: 16px;
+      margin-top: 12px;
+      padding-top: 12px;
       border-top: 1px solid var(--glass-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .server-status-compact {
@@ -931,7 +980,6 @@
       position: relative;
       overflow-y: auto;
       padding: 40px;
-      background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), transparent 400px);
     }
 
     .view-section {
@@ -1131,6 +1179,29 @@
     .status-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px; }
     .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; }
     .card:hover .delete-btn { opacity: 1; }
+
+    /* ── Settings Styles ── */
+    .settings-group-title { margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+    .settings-group-title:first-child { margin-top: 0; }
+    .setting-group { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; margin-bottom: 24px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .setting-desc { font-size: 0.8rem; color: var(--text-muted); }
+    .setting-input { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); padding: 10px 14px; border-radius: 12px; outline: none; font-size: 0.95rem; transition: all 0.3s ease; min-width: 120px; }
+    .setting-input:hover { border-color: rgba(56,189,248,0.5); }
+    .setting-input:focus { border-color: var(--accent); }
+    .setting-input option { background-color: var(--bg-color); color: var(--text-main); }
+    .shortcut-input { width: 220px; padding: 12px 18px; background: rgba(255,255,255,0.05); border: 2px solid var(--glass-border); border-radius: 12px; color: var(--accent); font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; outline: none; transition: border-color 0.2s; }
+    .shortcut-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(56,189,248,0.3); }
+
+    /* Toggle Switch */
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 24px; border: 1px solid var(--glass-border); }
+    .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+    .toggle-switch input:checked + .toggle-slider { background-color: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
   </style>
 
 </body>

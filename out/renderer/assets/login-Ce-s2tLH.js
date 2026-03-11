@@ -1,3 +1,5 @@
+/* empty css               */
+/* empty css               */
 const getDefaultsFromPostinstall = () => void 0;
 var define_process_env_default = {};
 /**
@@ -5551,30 +5553,8 @@ class DocumentKey {
     return new DocumentKey(new ResourcePath(e.slice()));
   }
 }
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-function __PRIVATE_validateNonEmptyArgument(e, t, n) {
-  if (!n) throw new FirestoreError(C.INVALID_ARGUMENT, `Function ${e}() cannot be called with an empty ${t}.`);
-}
 function __PRIVATE_validateIsNotUsedTogether(e, t, n, r) {
   if (true === t && true === r) throw new FirestoreError(C.INVALID_ARGUMENT, `${e} and ${n} cannot be used together.`);
-}
-function __PRIVATE_validateDocumentPath(e) {
-  if (!DocumentKey.isDocumentKey(e)) throw new FirestoreError(C.INVALID_ARGUMENT, `Invalid document reference. Document references must have an even number of segments, but ${e} has ${e.length}.`);
 }
 function __PRIVATE_validateCollectionPath(e) {
   if (DocumentKey.isDocumentKey(e)) throw new FirestoreError(C.INVALID_ARGUMENT, `Invalid collection reference. Collection references must have an odd number of segments, but ${e} has ${e.length}.`);
@@ -7284,20 +7264,6 @@ class ObjectValue {
     return new ObjectValue(__PRIVATE_deepClone(this.value));
   }
 }
-function __PRIVATE_extractFieldMask(e) {
-  const t = [];
-  return forEach(e.fields, ((e2, n) => {
-    const r = new FieldPath$1([e2]);
-    if (__PRIVATE_isMapValue(n)) {
-      const e3 = __PRIVATE_extractFieldMask(n.mapValue).fields;
-      if (0 === e3.length)
-        t.push(r);
-      else
-        for (const n2 of e3) t.push(r.child(n2));
-    } else
-      t.push(r);
-  })), new FieldMask(t);
-}
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -8028,7 +7994,6 @@ function __PRIVATE_newMutationMap() {
 function __PRIVATE_newDocumentKeyMap() {
   return new ObjectMap(((e) => e.toString()), ((e, t) => e.isEqual(t)));
 }
-const It = new SortedMap(DocumentKey.comparator);
 const Et = new SortedSet(DocumentKey.comparator);
 function __PRIVATE_documentKeySet(...e) {
   let t = Et;
@@ -8179,36 +8144,10 @@ function asNumber(e) {
 function __PRIVATE_coercedFieldValuesArray(e) {
   return isArray(e) && e.arrayValue.values ? e.arrayValue.values.slice() : [];
 }
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-class FieldTransform {
-  constructor(e, t) {
-    this.field = e, this.transform = t;
-  }
-}
 function __PRIVATE_fieldTransformEquals(e, t) {
   return e.field.isEqual(t.field) && (function __PRIVATE_transformOperationEquals(e2, t2) {
     return e2 instanceof __PRIVATE_ArrayUnionTransformOperation && t2 instanceof __PRIVATE_ArrayUnionTransformOperation || e2 instanceof __PRIVATE_ArrayRemoveTransformOperation && t2 instanceof __PRIVATE_ArrayRemoveTransformOperation ? __PRIVATE_arrayEquals(e2.elements, t2.elements, __PRIVATE_valueEquals) : e2 instanceof __PRIVATE_NumericIncrementTransformOperation && t2 instanceof __PRIVATE_NumericIncrementTransformOperation ? __PRIVATE_valueEquals(e2.Ae, t2.Ae) : e2 instanceof __PRIVATE_ServerTimestampTransform && t2 instanceof __PRIVATE_ServerTimestampTransform;
   })(e.transform, t.transform);
-}
-class MutationResult {
-  constructor(e, t) {
-    this.version = e, this.transformResults = t;
-  }
 }
 class Precondition {
   constructor(e, t) {
@@ -8281,14 +8220,6 @@ function __PRIVATE_mutationApplyToLocalView(e, t, n, r) {
     return n2;
   })(e, t, n);
 }
-function __PRIVATE_mutationExtractBaseValue(e, t) {
-  let n = null;
-  for (const r of e.fieldTransforms) {
-    const e2 = t.data.field(r.field), i = __PRIVATE_computeTransformOperationBaseValue(r.transform, e2 || null);
-    null != i && (null === n && (n = ObjectValue.empty()), n.set(r.field, i));
-  }
-  return n || null;
-}
 function __PRIVATE_mutationEquals(e, t) {
   return e.type === t.type && (!!e.key.isEqual(t.key) && (!!e.precondition.isEqual(t.precondition) && (!!(function __PRIVATE_fieldTransformsAreEqual(e2, t2) {
     return void 0 === e2 && void 0 === t2 || !(!e2 || !t2) && __PRIVATE_arrayEquals(e2, t2, ((e3, t3) => __PRIVATE_fieldTransformEquals(e3, t3)));
@@ -8342,14 +8273,6 @@ function __PRIVATE_localTransformResults(e, t, n) {
 class __PRIVATE_DeleteMutation extends Mutation {
   constructor(e, t) {
     super(), this.key = e, this.precondition = t, this.type = 2, this.fieldTransforms = [];
-  }
-  getFieldMask() {
-    return null;
-  }
-}
-class __PRIVATE_VerifyMutation extends Mutation {
-  constructor(e, t) {
-    super(), this.key = e, this.precondition = t, this.type = 3, this.fieldTransforms = [];
   }
   getFieldMask() {
     return null;
@@ -8438,28 +8361,6 @@ class MutationBatch {
     return this.batchId === e.batchId && __PRIVATE_arrayEquals(this.mutations, e.mutations, ((e2, t) => __PRIVATE_mutationEquals(e2, t))) && __PRIVATE_arrayEquals(this.baseMutations, e.baseMutations, ((e2, t) => __PRIVATE_mutationEquals(e2, t)));
   }
 }
-class MutationBatchResult {
-  constructor(e, t, n, r) {
-    this.batch = e, this.commitVersion = t, this.mutationResults = n, this.docVersions = r;
-  }
-  /**
-   * Creates a new MutationBatchResult for the given batch and results. There
-   * must be one result for each mutation in the batch. This static factory
-   * caches a document=&gt;version mapping (docVersions).
-   */
-  static from(e, t, n) {
-    __PRIVATE_hardAssert(e.mutations.length === n.length, 58842, {
-      me: e.mutations.length,
-      fe: n.length
-    });
-    let r = /* @__PURE__ */ (function __PRIVATE_documentVersionMap() {
-      return It;
-    })();
-    const i = e.mutations;
-    for (let e2 = 0; e2 < i.length; e2++) r = r.insert(i[e2].key, n[e2].version);
-    return new MutationBatchResult(e, t, n, r);
-  }
-}
 /**
  * @license
  * Copyright 2022 Google LLC
@@ -8531,39 +8432,6 @@ class ExistenceFilter {
  * limitations under the License.
  */
 var At, Vt;
-function __PRIVATE_isPermanentError(e) {
-  switch (e) {
-    case C.OK:
-      return fail(64938);
-    case C.CANCELLED:
-    case C.UNKNOWN:
-    case C.DEADLINE_EXCEEDED:
-    case C.RESOURCE_EXHAUSTED:
-    case C.INTERNAL:
-    case C.UNAVAILABLE:
-    // Unauthenticated means something went wrong with our token and we need
-    // to retry with new credentials which will happen automatically.
-    case C.UNAUTHENTICATED:
-      return false;
-    case C.INVALID_ARGUMENT:
-    case C.NOT_FOUND:
-    case C.ALREADY_EXISTS:
-    case C.PERMISSION_DENIED:
-    case C.FAILED_PRECONDITION:
-    // Aborted might be retried in some scenarios, but that is dependent on
-    // the context and should handled individually by the calling code.
-    // See https://cloud.google.com/apis/design/errors.
-    case C.ABORTED:
-    case C.OUT_OF_RANGE:
-    case C.UNIMPLEMENTED:
-    case C.DATA_LOSS:
-      return true;
-    default:
-      return fail(15467, {
-        code: e
-      });
-  }
-}
 function __PRIVATE_mapCodeFromRpcCode(e) {
   if (void 0 === e)
     return __PRIVATE_logError("GRPC error has no .code"), C.UNKNOWN;
@@ -9215,9 +9083,6 @@ function toTimestamp(e, t) {
 function __PRIVATE_toBytes(e, t) {
   return e.useProto3Json ? t.toBase64() : t.toUint8Array();
 }
-function __PRIVATE_toVersion(e, t) {
-  return toTimestamp(e, t.toTimestamp());
-}
 function __PRIVATE_fromVersion(e) {
   return __PRIVATE_hardAssert(!!e, 49232), SnapshotVersion.fromTimestamp((function fromTimestamp(e2) {
     const t = __PRIVATE_normalizeTimestamp(e2);
@@ -9239,9 +9104,6 @@ function __PRIVATE_fromResourceName(e) {
     key: t.toString()
   }), t;
 }
-function __PRIVATE_toName(e, t) {
-  return __PRIVATE_toResourceName(e.databaseId, t.path);
-}
 function fromName(e, t) {
   const n = __PRIVATE_fromResourceName(t);
   if (n.get(1) !== e.databaseId.projectId) throw new FirestoreError(C.INVALID_ARGUMENT, "Tried to deserialize key from different project: " + n.get(1) + " vs " + e.databaseId.projectId);
@@ -9262,12 +9124,6 @@ function __PRIVATE_extractLocalPathFromResourceName(e) {
   return __PRIVATE_hardAssert(e.length > 4 && "documents" === e.get(4), 29091, {
     key: e.toString()
   }), e.popFirst(5);
-}
-function __PRIVATE_toMutationDocument(e, t, n) {
-  return {
-    name: __PRIVATE_toName(e, t),
-    fields: n.value.mapValue.fields
-  };
 }
 function __PRIVATE_fromWatchChange(e, t) {
   let n;
@@ -9323,70 +9179,6 @@ function __PRIVATE_fromWatchChange(e, t) {
     }
   }
   return n;
-}
-function toMutation(e, t) {
-  let n;
-  if (t instanceof __PRIVATE_SetMutation) n = {
-    update: __PRIVATE_toMutationDocument(e, t.key, t.value)
-  };
-  else if (t instanceof __PRIVATE_DeleteMutation) n = {
-    delete: __PRIVATE_toName(e, t.key)
-  };
-  else if (t instanceof __PRIVATE_PatchMutation) n = {
-    update: __PRIVATE_toMutationDocument(e, t.key, t.data),
-    updateMask: __PRIVATE_toDocumentMask(t.fieldMask)
-  };
-  else {
-    if (!(t instanceof __PRIVATE_VerifyMutation)) return fail(16599, {
-      dt: t.type
-    });
-    n = {
-      verify: __PRIVATE_toName(e, t.key)
-    };
-  }
-  return t.fieldTransforms.length > 0 && (n.updateTransforms = t.fieldTransforms.map(((e2) => (function __PRIVATE_toFieldTransform(e3, t2) {
-    const n2 = t2.transform;
-    if (n2 instanceof __PRIVATE_ServerTimestampTransform) return {
-      fieldPath: t2.field.canonicalString(),
-      setToServerValue: "REQUEST_TIME"
-    };
-    if (n2 instanceof __PRIVATE_ArrayUnionTransformOperation) return {
-      fieldPath: t2.field.canonicalString(),
-      appendMissingElements: {
-        values: n2.elements
-      }
-    };
-    if (n2 instanceof __PRIVATE_ArrayRemoveTransformOperation) return {
-      fieldPath: t2.field.canonicalString(),
-      removeAllFromArray: {
-        values: n2.elements
-      }
-    };
-    if (n2 instanceof __PRIVATE_NumericIncrementTransformOperation) return {
-      fieldPath: t2.field.canonicalString(),
-      increment: n2.Ae
-    };
-    throw fail(20930, {
-      transform: t2.transform
-    });
-  })(0, e2)))), t.precondition.isNone || (n.currentDocument = (function __PRIVATE_toPrecondition(e2, t2) {
-    return void 0 !== t2.updateTime ? {
-      updateTime: __PRIVATE_toVersion(e2, t2.updateTime)
-    } : void 0 !== t2.exists ? {
-      exists: t2.exists
-    } : fail(27497);
-  })(e, t.precondition)), n;
-}
-function __PRIVATE_fromWriteResults(e, t) {
-  return e && e.length > 0 ? (__PRIVATE_hardAssert(void 0 !== t, 14353), e.map(((e2) => (function __PRIVATE_fromWriteResult(e3, t2) {
-    let n = e3.updateTime ? __PRIVATE_fromVersion(e3.updateTime) : __PRIVATE_fromVersion(t2);
-    return n.isEqual(SnapshotVersion.min()) && // The Firestore Emulator currently returns an update time of 0 for
-    // deletes of non-existing documents (rather than null). This breaks the
-    // test "get deleted doc while offline with source=cache" as NoDocuments
-    // with version 0 are filtered by IndexedDb's RemoteDocumentCache.
-    // TODO(#2149): Remove this when Emulator is fixed
-    (n = __PRIVATE_fromVersion(t2)), new MutationResult(n, e3.transformResults || []);
-  })(e2, t)))) : [];
 }
 function __PRIVATE_toDocumentsTarget(e, t) {
   return {
@@ -9650,12 +9442,6 @@ function __PRIVATE_toFilter(e) {
   })(e) : fail(54877, {
     filter: e
   });
-}
-function __PRIVATE_toDocumentMask(e) {
-  const t = [];
-  return e.fields.forEach(((e2) => t.push(e2.canonicalString()))), {
-    fieldPaths: t
-  };
 }
 function __PRIVATE_isValidResourceName(e) {
   return e.length >= 4 && "projects" === e.get(0) && "databases" === e.get(2);
@@ -11418,33 +11204,6 @@ async function __PRIVATE_localStoreHandleUserChange(e, t) {
     }));
   }));
 }
-function __PRIVATE_localStoreAcknowledgeBatch(e, t) {
-  const n = __PRIVATE_debugCast(e);
-  return n.persistence.runTransaction("Acknowledge batch", "readwrite-primary", ((e2) => {
-    const r = t.batch.keys(), i = n.xs.newChangeBuffer({
-      trackRemovals: true
-    });
-    return (function __PRIVATE_applyWriteToRemoteDocuments(e3, t2, n2, r2) {
-      const i2 = n2.batch, s = i2.keys();
-      let o = PersistencePromise.resolve();
-      return s.forEach(((e4) => {
-        o = o.next((() => r2.getEntry(t2, e4))).next(((t3) => {
-          const s2 = n2.docVersions.get(e4);
-          __PRIVATE_hardAssert(null !== s2, 48541), t3.version.compareTo(s2) < 0 && (i2.applyToRemoteDocument(t3, n2), t3.isValidDocument() && // We use the commitVersion as the readTime rather than the
-          // document's updateTime since the updateTime is not advanced
-          // for updates that do not modify the underlying document.
-          (t3.setReadTime(n2.commitVersion), r2.addEntry(t3)));
-        }));
-      })), o.next((() => e3.mutationQueue.removeMutationBatch(t2, i2)));
-    })(n, e2, t, i).next((() => i.apply(e2))).next((() => n.mutationQueue.performConsistencyCheck(e2))).next((() => n.documentOverlayCache.removeOverlaysForBatchId(e2, r, t.batch.batchId))).next((() => n.localDocuments.recalculateAndSaveOverlaysForDocumentKeys(e2, (function __PRIVATE_getKeysWithTransformResults(e3) {
-      let t2 = __PRIVATE_documentKeySet();
-      for (let n2 = 0; n2 < e3.mutationResults.length; ++n2) {
-        e3.mutationResults[n2].transformResults.length > 0 && (t2 = t2.add(e3.batch.mutations[n2].key));
-      }
-      return t2;
-    })(t)))).next((() => n.localDocuments.getDocuments(e2, r)));
-  }));
-}
 function __PRIVATE_localStoreGetLastRemoteSnapshotVersion(e) {
   const t = __PRIVATE_debugCast(e);
   return t.persistence.runTransaction("Get last remote snapshot version", "readonly", ((e2) => t.li.getLastRemoteSnapshotVersion(e2)));
@@ -11519,10 +11278,6 @@ function __PRIVATE_populateDocumentChangeBuffer(e, t, n) {
       Ls: i
     };
   }));
-}
-function __PRIVATE_localStoreGetNextMutationBatch(e, t) {
-  const n = __PRIVATE_debugCast(e);
-  return n.persistence.runTransaction("Get next mutation batch", "readonly", ((e2) => (void 0 === t && (t = U), n.mutationQueue.getNextMutationBatchAfterBatchId(e2, t))));
 }
 function __PRIVATE_localStoreAllocateTarget(e, t) {
   const n = __PRIVATE_debugCast(e);
@@ -12434,57 +12189,6 @@ class __PRIVATE_PersistentListenStream extends __PRIVATE_PersistentStream {
     t.database = __PRIVATE_getEncodedDatabaseId(this.serializer), t.removeTarget = e, this.K_(t);
   }
 }
-class __PRIVATE_PersistentWriteStream extends __PRIVATE_PersistentStream {
-  constructor(e, t, n, r, i, s) {
-    super(e, "write_stream_connection_backoff", "write_stream_idle", "health_check_timeout", t, n, r, s), this.serializer = i;
-  }
-  /**
-   * Tracks whether or not a handshake has been successfully exchanged and
-   * the stream is ready to accept mutations.
-   */
-  get Y_() {
-    return this.F_ > 0;
-  }
-  // Override of PersistentStream.start
-  start() {
-    this.lastStreamToken = void 0, super.start();
-  }
-  W_() {
-    this.Y_ && this.ea([]);
-  }
-  j_(e, t) {
-    return this.connection.T_("Write", e, t);
-  }
-  H_(e) {
-    return __PRIVATE_hardAssert(!!e.streamToken, 31322), this.lastStreamToken = e.streamToken, // The first response is always the handshake response
-    __PRIVATE_hardAssert(!e.writeResults || 0 === e.writeResults.length, 55816), this.listener.ta();
-  }
-  onNext(e) {
-    __PRIVATE_hardAssert(!!e.streamToken, 12678), this.lastStreamToken = e.streamToken, // A successful first write response means the stream is healthy,
-    // Note, that we could consider a successful handshake healthy, however,
-    // the write itself might be causing an error we want to back off from.
-    this.M_.reset();
-    const t = __PRIVATE_fromWriteResults(e.writeResults, e.commitTime), n = __PRIVATE_fromVersion(e.commitTime);
-    return this.listener.na(n, t);
-  }
-  /**
-   * Sends an initial streamToken to the server, performing the handshake
-   * required to make the StreamingWrite RPC work. Subsequent
-   * calls should wait until onHandshakeComplete was called.
-   */
-  ra() {
-    const e = {};
-    e.database = __PRIVATE_getEncodedDatabaseId(this.serializer), this.K_(e);
-  }
-  /** Sends a group of mutations to the Firestore backend to apply. */
-  ea(e) {
-    const t = {
-      streamToken: this.lastStreamToken,
-      writes: e.map(((e2) => toMutation(this.serializer, e2)))
-    };
-    this.K_(t);
-  }
-}
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -12828,66 +12532,6 @@ async function __PRIVATE_disableNetworkUntilRecovery(e, t, n) {
     ), await __PRIVATE_enableNetworkInternal(e);
   }));
 }
-function __PRIVATE_executeWithRecovery(e, t) {
-  return t().catch(((n) => __PRIVATE_disableNetworkUntilRecovery(e, n, t)));
-}
-async function __PRIVATE_fillWritePipeline(e) {
-  const t = __PRIVATE_debugCast(e), n = __PRIVATE_ensureWriteStream(t);
-  let r = t.Ta.length > 0 ? t.Ta[t.Ta.length - 1].batchId : U;
-  for (; __PRIVATE_canAddToWritePipeline(t); ) try {
-    const e2 = await __PRIVATE_localStoreGetNextMutationBatch(t.localStore, r);
-    if (null === e2) {
-      0 === t.Ta.length && n.L_();
-      break;
-    }
-    r = e2.batchId, __PRIVATE_addToWritePipeline(t, e2);
-  } catch (e2) {
-    await __PRIVATE_disableNetworkUntilRecovery(t, e2);
-  }
-  __PRIVATE_shouldStartWriteStream(t) && __PRIVATE_startWriteStream(t);
-}
-function __PRIVATE_canAddToWritePipeline(e) {
-  return __PRIVATE_canUseNetwork(e) && e.Ta.length < 10;
-}
-function __PRIVATE_addToWritePipeline(e, t) {
-  e.Ta.push(t);
-  const n = __PRIVATE_ensureWriteStream(e);
-  n.O_() && n.Y_ && n.ea(t.mutations);
-}
-function __PRIVATE_shouldStartWriteStream(e) {
-  return __PRIVATE_canUseNetwork(e) && !__PRIVATE_ensureWriteStream(e).x_() && e.Ta.length > 0;
-}
-function __PRIVATE_startWriteStream(e) {
-  __PRIVATE_ensureWriteStream(e).start();
-}
-async function __PRIVATE_onWriteStreamOpen(e) {
-  __PRIVATE_ensureWriteStream(e).ra();
-}
-async function __PRIVATE_onWriteHandshakeComplete(e) {
-  const t = __PRIVATE_ensureWriteStream(e);
-  for (const n of e.Ta) t.ea(n.mutations);
-}
-async function __PRIVATE_onMutationResult(e, t, n) {
-  const r = e.Ta.shift(), i = MutationBatchResult.from(r, t, n);
-  await __PRIVATE_executeWithRecovery(e, (() => e.remoteSyncer.applySuccessfulWrite(i))), // It's possible that with the completion of this mutation another
-  // slot has freed up.
-  await __PRIVATE_fillWritePipeline(e);
-}
-async function __PRIVATE_onWriteStreamClose(e, t) {
-  t && __PRIVATE_ensureWriteStream(e).Y_ && // This error affects the actual write.
-  await (async function __PRIVATE_handleWriteError(e2, t2) {
-    if ((function __PRIVATE_isPermanentWriteError(e3) {
-      return __PRIVATE_isPermanentError(e3) && e3 !== C.ABORTED;
-    })(t2.code)) {
-      const n = e2.Ta.shift();
-      __PRIVATE_ensureWriteStream(e2).B_(), await __PRIVATE_executeWithRecovery(e2, (() => e2.remoteSyncer.rejectFailedWrite(n.batchId, t2))), // It's possible that with the completion of this mutation
-      // another slot has freed up.
-      await __PRIVATE_fillWritePipeline(e2);
-    }
-  })(e, t), // The write stream might have been started by refilling the write
-  // pipeline for failed writes
-  __PRIVATE_shouldStartWriteStream(e) && __PRIVATE_startWriteStream(e);
-}
 async function __PRIVATE_remoteStoreHandleCredentialChange(e, t) {
   const n = __PRIVATE_debugCast(e);
   n.asyncQueue.verifyOperationInProgress(), __PRIVATE_logDebug(Ht$1, "RemoteStore received new credentials");
@@ -12933,22 +12577,6 @@ function __PRIVATE_ensureWatchStream(e) {
       /* OnlineState.Unknown */
     )) : (await e.ma.stop(), __PRIVATE_cleanUpWatchStreamState(e));
   }))), e.ma;
-}
-function __PRIVATE_ensureWriteStream(e) {
-  return e.fa || // Create stream (but note that it is not started yet).
-  (e.fa = (function __PRIVATE_newPersistentWriteStream(e2, t, n) {
-    const r = __PRIVATE_debugCast(e2);
-    return r.sa(), new __PRIVATE_PersistentWriteStream(t, r.connection, r.authCredentials, r.appCheckCredentials, r.serializer, n);
-  })(e.datastore, e.asyncQueue, {
-    Zo: () => Promise.resolve(),
-    Yo: __PRIVATE_onWriteStreamOpen.bind(null, e),
-    t_: __PRIVATE_onWriteStreamClose.bind(null, e),
-    ta: __PRIVATE_onWriteHandshakeComplete.bind(null, e),
-    na: __PRIVATE_onMutationResult.bind(null, e)
-  }), e.Ra.push((async (t) => {
-    t ? (e.fa.B_(), // This will start the write stream if necessary.
-    await __PRIVATE_fillWritePipeline(e)) : (await e.fa.stop(), e.Ta.length > 0 && (__PRIVATE_logDebug(Ht$1, `Stopping write stream with ${e.Ta.length} pending writes`), e.Ta = []));
-  }))), e.fa;
 }
 /**
  * @license
@@ -13804,49 +13432,6 @@ async function __PRIVATE_triggerRemoteStoreUnlisten(e, t) {
   // watch target.
   (n.sharedClientState.removeLocalQueryTarget(r.targetId), __PRIVATE_remoteStoreUnlisten(n.remoteStore, r.targetId));
 }
-async function __PRIVATE_syncEngineWrite(e, t, n) {
-  const r = __PRIVATE_syncEngineEnsureWriteCallbacks(e);
-  try {
-    const e2 = await (function __PRIVATE_localStoreWriteLocally(e3, t2) {
-      const n2 = __PRIVATE_debugCast(e3), r2 = Timestamp.now(), i = t2.reduce(((e4, t3) => e4.add(t3.key)), __PRIVATE_documentKeySet());
-      let s, o;
-      return n2.persistence.runTransaction("Locally write mutations", "readwrite", ((e4) => {
-        let _ = __PRIVATE_mutableDocumentMap(), a = __PRIVATE_documentKeySet();
-        return n2.xs.getEntries(e4, i).next(((e5) => {
-          _ = e5, _.forEach(((e6, t3) => {
-            t3.isValidDocument() || (a = a.add(e6));
-          }));
-        })).next((() => n2.localDocuments.getOverlayedDocuments(e4, _))).next(((i2) => {
-          s = i2;
-          const o2 = [];
-          for (const e5 of t2) {
-            const t3 = __PRIVATE_mutationExtractBaseValue(e5, s.get(e5.key).overlayedDocument);
-            null != t3 && // NOTE: The base state should only be applied if there's some
-            // existing document to override, so use a Precondition of
-            // exists=true
-            o2.push(new __PRIVATE_PatchMutation(e5.key, t3, __PRIVATE_extractFieldMask(t3.value.mapValue), Precondition.exists(true)));
-          }
-          return n2.mutationQueue.addMutationBatch(e4, r2, o2, t2);
-        })).next(((t3) => {
-          o = t3;
-          const r3 = t3.applyToLocalDocumentSet(s, a);
-          return n2.documentOverlayCache.saveOverlays(e4, t3.batchId, r3);
-        }));
-      })).then((() => ({
-        batchId: o.batchId,
-        changes: __PRIVATE_convertOverlayedDocumentMapToDocumentMap(s)
-      })));
-    })(r.localStore, t);
-    r.sharedClientState.addPendingMutation(e2.batchId), (function __PRIVATE_addMutationCallback(e3, t2, n2) {
-      let r2 = e3.du[e3.currentUser.toKey()];
-      r2 || (r2 = new SortedMap(__PRIVATE_primitiveComparator));
-      r2 = r2.insert(t2, n2), e3.du[e3.currentUser.toKey()] = r2;
-    })(r, e2.batchId, n), await __PRIVATE_syncEngineEmitNewSnapsAndNotifyLocalStore(r, e2.changes), await __PRIVATE_fillWritePipeline(r.remoteStore);
-  } catch (e2) {
-    const t2 = __PRIVATE_wrapInUserErrorIfRecoverable(e2, "Failed to persist write");
-    n.reject(t2);
-  }
-}
 async function __PRIVATE_syncEngineApplyRemoteEvent(e, t) {
   const n = __PRIVATE_debugCast(e);
   try {
@@ -13907,48 +13492,6 @@ async function __PRIVATE_syncEngineRejectListen(e, t, n) {
     /* keepPersistedTargetData */
     false
   ).then((() => __PRIVATE_removeAndCleanupTarget(r, t, n))).catch(__PRIVATE_ignoreIfPrimaryLeaseLoss);
-}
-async function __PRIVATE_syncEngineApplySuccessfulWrite(e, t) {
-  const n = __PRIVATE_debugCast(e), r = t.batch.batchId;
-  try {
-    const e2 = await __PRIVATE_localStoreAcknowledgeBatch(n.localStore, t);
-    __PRIVATE_processUserCallback(
-      n,
-      r,
-      /*error=*/
-      null
-    ), __PRIVATE_triggerPendingWritesCallbacks(n, r), n.sharedClientState.updateMutationState(r, "acknowledged"), await __PRIVATE_syncEngineEmitNewSnapsAndNotifyLocalStore(n, e2);
-  } catch (e2) {
-    await __PRIVATE_ignoreIfPrimaryLeaseLoss(e2);
-  }
-}
-async function __PRIVATE_syncEngineRejectFailedWrite(e, t, n) {
-  const r = __PRIVATE_debugCast(e);
-  try {
-    const e2 = await (function __PRIVATE_localStoreRejectBatch(e3, t2) {
-      const n2 = __PRIVATE_debugCast(e3);
-      return n2.persistence.runTransaction("Reject batch", "readwrite-primary", ((e4) => {
-        let r2;
-        return n2.mutationQueue.lookupMutationBatch(e4, t2).next(((t3) => (__PRIVATE_hardAssert(null !== t3, 37113), r2 = t3.keys(), n2.mutationQueue.removeMutationBatch(e4, t3)))).next((() => n2.mutationQueue.performConsistencyCheck(e4))).next((() => n2.documentOverlayCache.removeOverlaysForBatchId(e4, r2, t2))).next((() => n2.localDocuments.recalculateAndSaveOverlaysForDocumentKeys(e4, r2))).next((() => n2.localDocuments.getDocuments(e4, r2)));
-      }));
-    })(r.localStore, t);
-    __PRIVATE_processUserCallback(r, t, n), __PRIVATE_triggerPendingWritesCallbacks(r, t), r.sharedClientState.updateMutationState(t, "rejected", n), await __PRIVATE_syncEngineEmitNewSnapsAndNotifyLocalStore(r, e2);
-  } catch (n2) {
-    await __PRIVATE_ignoreIfPrimaryLeaseLoss(n2);
-  }
-}
-function __PRIVATE_triggerPendingWritesCallbacks(e, t) {
-  (e.mu.get(t) || []).forEach(((e2) => {
-    e2.resolve();
-  })), e.mu.delete(t);
-}
-function __PRIVATE_processUserCallback(e, t, n) {
-  const r = __PRIVATE_debugCast(e);
-  let i = r.du[r.currentUser.toKey()];
-  if (i) {
-    const e2 = i.get(t);
-    e2 && (n ? e2.reject(n) : e2.resolve(), i = i.remove(t)), r.du[r.currentUser.toKey()] = i;
-  }
 }
 function __PRIVATE_removeAndCleanupTarget(e, t, n = null) {
   e.sharedClientState.removeLocalQueryTarget(t);
@@ -14051,10 +13594,6 @@ function __PRIVATE_syncEngineGetRemoteKeysForTarget(e, t) {
 function __PRIVATE_ensureWatchCallbacks(e) {
   const t = __PRIVATE_debugCast(e);
   return t.remoteStore.remoteSyncer.applyRemoteEvent = __PRIVATE_syncEngineApplyRemoteEvent.bind(null, t), t.remoteStore.remoteSyncer.getRemoteKeysForTarget = __PRIVATE_syncEngineGetRemoteKeysForTarget.bind(null, t), t.remoteStore.remoteSyncer.rejectListen = __PRIVATE_syncEngineRejectListen.bind(null, t), t.Pu.J_ = __PRIVATE_eventManagerOnWatchChange.bind(null, t.eventManager), t.Pu.yu = __PRIVATE_eventManagerOnWatchError.bind(null, t.eventManager), t;
-}
-function __PRIVATE_syncEngineEnsureWriteCallbacks(e) {
-  const t = __PRIVATE_debugCast(e);
-  return t.remoteStore.remoteSyncer.applySuccessfulWrite = __PRIVATE_syncEngineApplySuccessfulWrite.bind(null, t), t.remoteStore.remoteSyncer.rejectFailedWrite = __PRIVATE_syncEngineRejectFailedWrite.bind(null, t), t;
 }
 class __PRIVATE_MemoryOfflineComponentProvider {
   constructor() {
@@ -14309,9 +13848,6 @@ async function __PRIVATE_ensureOfflineComponents(e) {
 async function __PRIVATE_ensureOnlineComponents(e) {
   return e._onlineComponents || (e._uninitializedComponentsProvider ? (__PRIVATE_logDebug(Yt, "Using user provided OnlineComponentProvider"), await __PRIVATE_setOnlineComponentProvider(e, e._uninitializedComponentsProvider._online)) : (__PRIVATE_logDebug(Yt, "Using default OnlineComponentProvider"), await __PRIVATE_setOnlineComponentProvider(e, new OnlineComponentProvider()))), e._onlineComponents;
 }
-function __PRIVATE_getSyncEngine(e) {
-  return __PRIVATE_ensureOnlineComponents(e).then(((e2) => e2.syncEngine));
-}
 async function __PRIVATE_getEventManager(e) {
   const t = await __PRIVATE_ensureOnlineComponents(e), n = t.eventManager;
   return n.onListen = __PRIVATE_syncEngineListen.bind(null, t.syncEngine), n.onUnlisten = __PRIVATE_syncEngineUnlisten.bind(null, t.syncEngine), n.onFirstRemoteStoreListen = __PRIVATE_triggerRemoteStoreListen.bind(null, t.syncEngine), n.onLastRemoteStoreUnlisten = __PRIVATE_triggerRemoteStoreUnlisten.bind(null, t.syncEngine), n;
@@ -14330,10 +13866,6 @@ function __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(e, t, n = {}) 
     });
     return __PRIVATE_eventManagerListen(e2, o);
   })(await __PRIVATE_getEventManager(e), e.asyncQueue, t, n, r))), r.promise;
-}
-function __PRIVATE_firestoreClientWrite(e, t) {
-  const n = new __PRIVATE_Deferred();
-  return e.asyncQueue.enqueueAndForget((async () => __PRIVATE_syncEngineWrite(await __PRIVATE_getSyncEngine(e), t, n))), n.promise;
 }
 /**
  * @license
@@ -14636,7 +14168,7 @@ class CollectionReference extends Query {
   }
 }
 function collection(e, t, ...n) {
-  if (e = getModularInstance(e), __PRIVATE_validateNonEmptyArgument("collection", "path", t), e instanceof Firestore$1) {
+  if (e = getModularInstance(e), e instanceof Firestore$1) {
     const r = ResourcePath.fromString(t, ...n);
     return __PRIVATE_validateCollectionPath(r), new CollectionReference(
       e,
@@ -14654,24 +14186,6 @@ function collection(e, t, ...n) {
       null,
       r
     );
-  }
-}
-function doc(e, t, ...n) {
-  if (e = getModularInstance(e), // We allow omission of 'pathString' but explicitly prohibit passing in both
-  // 'undefined' and 'null'.
-  1 === arguments.length && (t = __PRIVATE_AutoId.newId()), __PRIVATE_validateNonEmptyArgument("doc", "path", t), e instanceof Firestore$1) {
-    const r = ResourcePath.fromString(t, ...n);
-    return __PRIVATE_validateDocumentPath(r), new DocumentReference(
-      e,
-      /* converter= */
-      null,
-      new DocumentKey(r)
-    );
-  }
-  {
-    if (!(e instanceof DocumentReference || e instanceof CollectionReference)) throw new FirestoreError(C.INVALID_ARGUMENT, "Expected first argument to doc() to be a CollectionReference, a DocumentReference or FirebaseFirestore");
-    const r = e._path.child(ResourcePath.fromString(t, ...n));
-    return __PRIVATE_validateDocumentPath(r), new DocumentReference(e.firestore, e instanceof CollectionReference ? e.converter : null, new DocumentKey(r));
   }
 }
 /**
@@ -15216,22 +14730,6 @@ VectorValue._jsonSchemaVersion = "firestore/vectorValue/1.0", VectorValue._jsonS
  * limitations under the License.
  */
 const _n = /^__.*__$/;
-class ParsedSetData {
-  constructor(e, t, n) {
-    this.data = e, this.fieldMask = t, this.fieldTransforms = n;
-  }
-  toMutation(e, t) {
-    return null !== this.fieldMask ? new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t, this.fieldTransforms) : new __PRIVATE_SetMutation(e, this.data, t, this.fieldTransforms);
-  }
-}
-class ParsedUpdateData {
-  constructor(e, t, n) {
-    this.data = e, this.fieldMask = t, this.fieldTransforms = n;
-  }
-  toMutation(e, t) {
-    return new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t, this.fieldTransforms);
-  }
-}
 function __PRIVATE_isWrite(e) {
   switch (e) {
     case 0:
@@ -15340,78 +14838,6 @@ class UserDataReader {
 function __PRIVATE_newUserDataReader(e) {
   const t = e._freezeSettings(), n = __PRIVATE_newSerializer(e._databaseId);
   return new UserDataReader(e._databaseId, !!t.ignoreUndefinedProperties, n);
-}
-function __PRIVATE_parseSetData(e, t, n, r, i, s = {}) {
-  const o = e.createContext(s.merge || s.mergeFields ? 2 : 0, t, n, i);
-  __PRIVATE_validatePlainObject("Data must be an object, but it was:", o, r);
-  const _ = __PRIVATE_parseObject(r, o);
-  let a, u;
-  if (s.merge) a = new FieldMask(o.fieldMask), u = o.fieldTransforms;
-  else if (s.mergeFields) {
-    const e2 = [];
-    for (const r2 of s.mergeFields) {
-      const i2 = __PRIVATE_fieldPathFromArgument(t, r2, n);
-      if (!o.contains(i2)) throw new FirestoreError(C.INVALID_ARGUMENT, `Field '${i2}' is specified in your field mask but missing from your input data.`);
-      __PRIVATE_fieldMaskContains(e2, i2) || e2.push(i2);
-    }
-    a = new FieldMask(e2), u = o.fieldTransforms.filter(((e3) => a.covers(e3.field)));
-  } else a = null, u = o.fieldTransforms;
-  return new ParsedSetData(new ObjectValue(_), a, u);
-}
-class __PRIVATE_DeleteFieldValueImpl extends FieldValue {
-  _toFieldTransform(e) {
-    if (2 !== e.dataSource) throw 1 === e.dataSource ? e.createError(`${this._methodName}() can only appear at the top level of your update data`) : e.createError(`${this._methodName}() cannot be used with set() unless you pass {merge:true}`);
-    return e.fieldMask.push(e.path), null;
-  }
-  isEqual(e) {
-    return e instanceof __PRIVATE_DeleteFieldValueImpl;
-  }
-}
-class __PRIVATE_ServerTimestampFieldValueImpl extends FieldValue {
-  _toFieldTransform(e) {
-    return new FieldTransform(e.path, new __PRIVATE_ServerTimestampTransform());
-  }
-  isEqual(e) {
-    return e instanceof __PRIVATE_ServerTimestampFieldValueImpl;
-  }
-}
-function __PRIVATE_parseUpdateData(e, t, n, r) {
-  const i = e.createContext(1, t, n);
-  __PRIVATE_validatePlainObject("Data must be an object, but it was:", i, r);
-  const s = [], o = ObjectValue.empty();
-  forEach(r, ((e2, r2) => {
-    const _2 = __PRIVATE_fieldPathFromDotSeparatedString(t, e2, n);
-    r2 = getModularInstance(r2);
-    const a = i.childContextForFieldPath(_2);
-    if (r2 instanceof __PRIVATE_DeleteFieldValueImpl)
-      s.push(_2);
-    else {
-      const e3 = __PRIVATE_parseData(r2, a);
-      null != e3 && (s.push(_2), o.set(_2, e3));
-    }
-  }));
-  const _ = new FieldMask(s);
-  return new ParsedUpdateData(o, _, i.fieldTransforms);
-}
-function __PRIVATE_parseUpdateVarargs(e, t, n, r, i, s) {
-  const o = e.createContext(1, t, n), _ = [__PRIVATE_fieldPathFromArgument(t, r, n)], a = [i];
-  if (s.length % 2 != 0) throw new FirestoreError(C.INVALID_ARGUMENT, `Function ${t}() needs to be called with an even number of arguments that alternate between field names and values.`);
-  for (let e2 = 0; e2 < s.length; e2 += 2) _.push(__PRIVATE_fieldPathFromArgument(t, s[e2])), a.push(s[e2 + 1]);
-  const u = [], c = ObjectValue.empty();
-  for (let e2 = _.length - 1; e2 >= 0; --e2) if (!__PRIVATE_fieldMaskContains(u, _[e2])) {
-    const t2 = _[e2];
-    let n2 = a[e2];
-    n2 = getModularInstance(n2);
-    const r2 = o.childContextForFieldPath(t2);
-    if (n2 instanceof __PRIVATE_DeleteFieldValueImpl)
-      u.push(t2);
-    else {
-      const e3 = __PRIVATE_parseData(n2, r2);
-      null != e3 && (u.push(t2), c.set(t2, e3));
-    }
-  }
-  const l = new FieldMask(u);
-  return new ParsedUpdateData(c, l, o.fieldTransforms);
 }
 function __PRIVATE_parseQueryValue(e, t, n, r = false) {
   return __PRIVATE_parseData(n, e.createContext(r ? 4 : 3, t));
@@ -15592,9 +15018,6 @@ function createError(e, t, n, r, i) {
   let a = "";
   return (s || o) && (a += " (found", s && (a += ` in field ${r}`), o && (a += ` in document ${i}`), a += ")"), new FirestoreError(C.INVALID_ARGUMENT, _ + e + a);
 }
-function __PRIVATE_fieldMaskContains(e, t) {
-  return e.some(((e2) => e2.isEqual(t)));
-}
 /**
  * @license
  * Copyright 2020 Google LLC
@@ -15726,9 +15149,6 @@ class __PRIVATE_ExpUserDataWriter extends AbstractUserDataWriter {
       t
     );
   }
-}
-function serverTimestamp() {
-  return new __PRIVATE_ServerTimestampFieldValueImpl("serverTimestamp");
 }
 const Ut = "@firebase/firestore", Ht = "4.11.0";
 /**
@@ -15994,10 +15414,6 @@ function __PRIVATE_validateNewFieldFilter(t, e) {
   if (null !== n)
     throw n === e.op ? new FirestoreError(C.INVALID_ARGUMENT, `Invalid query. You cannot use more than one '${e.op.toString()}' filter.`) : new FirestoreError(C.INVALID_ARGUMENT, `Invalid query. You cannot use '${e.op.toString()}' filters with '${n.toString()}' filters.`);
 }
-function __PRIVATE_applyFirestoreDataConverter(t, e, n) {
-  let r;
-  return r = t ? t.toFirestore(e) : e, r;
-}
 class SnapshotMetadata {
   /** @hideconstructor */
   constructor(t, e) {
@@ -16246,26 +15662,6 @@ function getDocs(t) {
   const e = __PRIVATE_cast(t.firestore, Firestore), n = ensureFirestoreConfigured(e), r = new __PRIVATE_ExpUserDataWriter(e);
   return __PRIVATE_validateHasExplicitOrderByForLimitToLast(t._query), __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(n, t._query).then(((n2) => new QuerySnapshot(e, r, t, n2)));
 }
-function updateDoc(t, e, n, ...r) {
-  t = __PRIVATE_cast(t, DocumentReference);
-  const s = __PRIVATE_cast(t.firestore, Firestore), o = __PRIVATE_newUserDataReader(s);
-  let i;
-  i = "string" == typeof // For Compat types, we have to "extract" the underlying types before
-  // performing validation.
-  (e = getModularInstance(e)) || e instanceof FieldPath ? __PRIVATE_parseUpdateVarargs(o, "updateDoc", t._key, e, n, r) : __PRIVATE_parseUpdateData(o, "updateDoc", t._key, e);
-  return executeWrite(s, [i.toMutation(t._key, Precondition.exists(true))]);
-}
-function deleteDoc(t) {
-  return executeWrite(__PRIVATE_cast(t.firestore, Firestore), [new __PRIVATE_DeleteMutation(t._key, Precondition.none())]);
-}
-function addDoc(t, e) {
-  const n = __PRIVATE_cast(t.firestore, Firestore), r = doc(t), s = __PRIVATE_applyFirestoreDataConverter(t.converter, e), o = __PRIVATE_newUserDataReader(t.firestore);
-  return executeWrite(n, [__PRIVATE_parseSetData(o, "addDoc", r._key, s, null !== t.converter, {}).toMutation(r._key, Precondition.exists(false))]).then((() => r));
-}
-function executeWrite(t, e) {
-  const n = ensureFirestoreConfigured(t);
-  return __PRIVATE_firestoreClientWrite(n, e);
-}
 !(function __PRIVATE_registerFirestore(u, l = true) {
   __PRIVATE_setSDKVersion(SDK_VERSION), _registerComponent(new Component("firestore", ((t, { instanceIdentifier: e, options: n }) => {
     const r = t.getProvider("app").getImmediate(), s = new Firestore(new __PRIVATE_FirebaseAuthCredentialsProvider(t.getProvider("auth-internal")), new __PRIVATE_FirebaseAppCheckTokenProvider(r, t.getProvider("app-check-internal")), __PRIVATE_databaseIdFromApp(r, e), r);
@@ -16305,15 +15701,65 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-export {
-  doc as a,
-  addDoc as b,
-  collection as c,
-  db as d,
-  deleteDoc as e,
-  getDocs as g,
-  query as q,
-  serverTimestamp as s,
-  updateDoc as u,
-  where as w
-};
+const api = window.electronAPI;
+const btnLogin = document.getElementById("login-btn");
+const errorMsg = document.getElementById("error-msg");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const btnMin = document.getElementById("btn-min");
+const btnClose = document.getElementById("btn-close");
+const rememberMeCb = document.getElementById("remember-me");
+btnMin.onclick = () => api.minimizeWindow();
+btnClose.onclick = () => api.closeWindow();
+api.getSettings().then((settings) => {
+  if (settings.rememberMe) {
+    usernameInput.value = settings.savedUsername || "";
+    passwordInput.value = settings.savedPassword || "";
+    rememberMeCb.checked = true;
+  }
+});
+async function handleLogin() {
+  const un = usernameInput.value.trim();
+  const pw = passwordInput.value.trim();
+  if (!un || !pw) {
+    errorMsg.textContent = "Lütfen kullanıcı adı ve şifre girin.";
+    return;
+  }
+  btnLogin.disabled = true;
+  btnLogin.textContent = "Giriş Yapılıyor...";
+  errorMsg.textContent = "";
+  try {
+    const q = query(collection(db, "users"), where("username", "==", un), where("password", "==", pw));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      errorMsg.textContent = "Hatalı kullanıcı adı veya şifre!";
+      btnLogin.disabled = false;
+      btnLogin.textContent = "Giriş Yap";
+      return;
+    }
+    const userData = snapshot.docs[0].data();
+    const effectiveRole = userData.role === "admin" ? "kargo_kabul" : userData.role;
+    const currentSettings = await api.getSettings();
+    await api.saveSettings({
+      ...currentSettings,
+      personnelName: userData.fullName,
+      role: effectiveRole,
+      username: un,
+      isAdmin: un === "KursatS" || userData.role === "admin",
+      isLoggedIn: true,
+      rememberMe: rememberMeCb.checked,
+      savedUsername: rememberMeCb.checked ? un : "",
+      savedPassword: rememberMeCb.checked ? pw : ""
+    });
+    await api.loginSuccess();
+  } catch (error) {
+    console.error("Login error:", error);
+    errorMsg.textContent = "Bağlantı hatası: " + error.message;
+    btnLogin.disabled = false;
+    btnLogin.textContent = "Giriş Yap";
+  }
+}
+btnLogin.addEventListener("click", handleLogin);
+passwordInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleLogin();
+});

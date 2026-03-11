@@ -1,0 +1,1208 @@
+/* empty css               */
+/* empty css               */
+function showToast(message, type = "info") {
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    Object.assign(container.style, {
+      position: "fixed",
+      bottom: "24px",
+      right: "24px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      zIndex: "9999",
+      pointerEvents: "none"
+    });
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  Object.assign(toast.style, {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    color: "#fff",
+    fontFamily: "Inter, sans-serif",
+    fontSize: "0.9rem",
+    fontWeight: "500",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    transform: "translateX(120%)",
+    transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease",
+    pointerEvents: "auto",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    minWidth: "250px"
+  });
+  let icon = "";
+  if (type === "success") {
+    toast.style.background = "rgba(16, 185, 129, 0.85)";
+    toast.style.borderColor = "rgba(16, 185, 129, 0.3)";
+    icon = "✅";
+  } else if (type === "error") {
+    toast.style.background = "rgba(239, 68, 68, 0.85)";
+    toast.style.borderColor = "rgba(239, 68, 68, 0.3)";
+    icon = "❌";
+  } else {
+    toast.style.background = "rgba(59, 130, 246, 0.85)";
+    toast.style.borderColor = "rgba(59, 130, 246, 0.3)";
+    icon = "ℹ️";
+  }
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  container.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.transform = "translateX(0)";
+  });
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-10px)";
+    setTimeout(() => toast.remove(), 300);
+  }, 3e3);
+}
+const SVG_EMPTY_FOLDER = `
+<svg class="empty-state-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 7V17C4 18.1046 4.89543 19 6 19H18C19.1046 19 20 18.1046 20 17V10C20 8.89543 19.1046 8 18 8H11.5L9.5 6H6C4.89543 6 4 6.89543 4 8Z" fill="url(#paint0_linear)" fill-opacity="0.2"/>
+<path d="M11.5 8H18C19.1046 8 20 8.89543 20 10V17C20 18.1046 19.1046 19 18 19H6C4.89543 19 4 18.1046 4 17V7M4 7C4 6.44772 4.44772 6 5 6H9.5L11.5 8M4 7V8" stroke="#38BDF8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<defs>
+<linearGradient id="paint0_linear" x1="12" y1="6" x2="12" y2="19" gradientUnits="userSpaceOnUse">
+<stop stop-color="#38BDF8"/>
+<stop offset="1" stop-color="#38BDF8" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>
+`;
+function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
+  const { ticketList: ticketList2, tSearchInput: tSearchInput2, tFilterTabs: tFilterTabs2, tcPending: tcPending2, tcProgress: tcProgress2, tcCompleted: tcCompleted2 } = elements;
+  async function loadTickets2() {
+    const tickets = await api2.getTickets();
+    if (!tickets) return;
+    renderTicketsList2(tickets);
+  }
+  function renderTicketsList2(tickets) {
+    ticketList2.innerHTML = "";
+    const searchQuery = tSearchInput2?.value?.toLowerCase().trim() || "";
+    const activeFilter = tFilterTabs2?.querySelector(".active")?.dataset.filter || "all";
+    tcPending2.textContent = String(tickets.filter((t) => t.status === "pending").length);
+    tcProgress2.textContent = String(tickets.filter((t) => t.status === "in_progress").length);
+    tcCompleted2.textContent = String(tickets.filter((t) => t.status === "completed").length);
+    let filtered = tickets;
+    if (activeFilter !== "all") {
+      if (activeFilter === "aras") filtered = filtered.filter((t) => t.aras_code);
+      else filtered = filtered.filter((t) => t.status === activeFilter);
+    }
+    if (searchQuery) {
+      filtered = filtered.filter((t) => (t.serial || "").toLowerCase().includes(searchQuery) || (t.customer_name || "").toLowerCase().includes(searchQuery));
+    }
+    if (filtered.length === 0) {
+      ticketList2.innerHTML = '<div class="priority-empty">Henüz talep yok.</div>';
+      return;
+    }
+    const currentRole2 = getCurrentRole();
+    const personnelName2 = getPersonnelName();
+    const fragment = document.createDocumentFragment();
+    filtered.forEach((ticket) => {
+      const card = document.createElement("div");
+      card.className = `ticket-card status-${ticket.status}`;
+      const statusLabel = ticket.status === "pending" ? "Bekliyor" : ticket.status === "in_progress" ? "İşleniyor" : "Tamamlandı";
+      const badgeClass = `badge-${ticket.status}`;
+      const missingLabels = { address: "Adres", fault_form: "Arıza Formu", contact: "İletişim", other: "Diğer" };
+      const missingLabel = missingLabels[ticket.missing_type] || ticket.missing_type;
+      const createdDate = ticket.created_at ? new Date(ticket.created_at).toLocaleString("tr-TR") : "";
+      let actionsHTML = "";
+      if (ticket.status === "pending" && currentRole2 === "mh") {
+        actionsHTML = `<button class="btn-sm btn-claim" data-action="claim" data-id="${ticket.id}">Üstlen</button>`;
+      } else if (ticket.status === "in_progress" && currentRole2 === "mh") {
+        actionsHTML = `
+                    <input class="response-input" id="resp-${ticket.id}" placeholder="Yanıtınızı yazın...">
+                    <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}">Tamamla</button>
+                `;
+      } else if (ticket.status === "completed") {
+        actionsHTML = `<button class="btn-sm btn-reopen" data-action="reopen" data-id="${ticket.id}">Yeniden Aç</button>`;
+      }
+      let responseHTML = "";
+      if (ticket.response) {
+        responseHTML = `<div class="ticket-response"><strong>${ticket.responded_by || "MH"}:</strong> ${ticket.response}</div>`;
+      }
+      let collabHTML = "";
+      if (ticket.customer_name || ticket.aras_code || ticket.phone_number) {
+        collabHTML = `<div class="collab-container">
+                    ${ticket.customer_name ? `<div class="collab-group"><span class="collab-label">Müşteri</span><span>${ticket.customer_name}</span></div>` : ""}
+                    ${ticket.aras_code ? `<div class="collab-group"><span class="collab-label">Aras Kodu</span><span>${ticket.aras_code}</span></div>` : ""}
+                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>${ticket.phone_number}</span></div>` : ""}
+                </div>`;
+      }
+      card.innerHTML = `
+                <div class="ticket-body">
+                    <div class="ticket-serial">${ticket.serial || "Seri No Yok"}</div>
+                    <div class="ticket-model">${ticket.model_name || ""} ${ticket.model_color ? "- " + ticket.model_color : ""}</div>
+                    <span class="ticket-missing-type">${missingLabel}</span>
+                    ${ticket.note ? `<div class="ticket-note"><strong>Not:</strong> ${ticket.note}</div>` : ""}
+                    ${responseHTML}
+                    ${collabHTML}
+                    <div class="ticket-time">${createdDate}</div>
+                </div>
+                <div class="ticket-actions">
+                    <span class="${badgeClass}">${statusLabel}</span>
+                    ${actionsHTML}
+                </div>
+            `;
+      fragment.appendChild(card);
+    });
+    ticketList2.appendChild(fragment);
+    ticketList2.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const el = e.target;
+        const action = el.dataset.action;
+        const id = el.dataset.id;
+        if (action === "claim") {
+          await api2.claimTicket(id, personnelName2);
+          showToast("Talep üstlenildi.", "success");
+        } else if (action === "complete") {
+          const input = document.getElementById(`resp-${id}`);
+          const response = input?.value?.trim();
+          if (!response) {
+            showToast("Lütfen bir yanıt yazın.", "error");
+            return;
+          }
+          await api2.completeTicket(id, response);
+          showToast("Talep tamamlandı.", "success");
+        } else if (action === "reopen") {
+          await api2.reopenTicket(id);
+          showToast("Talep yeniden açıldı.", "info");
+        }
+        loadTickets2();
+      });
+    });
+  }
+  tFilterTabs2.addEventListener("click", (e) => {
+    const tab = e.target.closest(".filter-tab");
+    if (!tab) return;
+    tFilterTabs2.querySelectorAll(".filter-tab").forEach((t) => t.classList.remove("active"));
+    tab.classList.add("active");
+    loadTickets2();
+  });
+  let searchTimeout;
+  tSearchInput2.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      loadTickets2();
+    }, 300);
+  });
+  return { loadTickets: loadTickets2, renderTicketsList: renderTicketsList2 };
+}
+function initProfileLogic(api2, elements, personnelName2, calculateLevel2, refreshSidebarProfile2) {
+  const {
+    scoreboardContainer: scoreboardContainer2,
+    profileFilterBtns: profileFilterBtns2,
+    pMyLevel: pMyLevel2,
+    pMyName: pMyName2,
+    pMyRole: pMyRole2,
+    pMyXp: pMyXp2,
+    pNextLevelXp: pNextLevelXp2,
+    pXpFill: pXpFill2
+  } = elements;
+  async function loadProfileScoreboard2() {
+    const users = await api2.getUsers();
+    if (!users) return;
+    scoreboardContainer2.innerHTML = "";
+    users.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+    const activeRole = Array.from(profileFilterBtns2).find((b) => b.classList.contains("active"))?.dataset.role || "all";
+    let filtered = users;
+    if (activeRole !== "all") filtered = filtered.filter((u) => u.role === activeRole);
+    const currentUser = users.find((u) => u.fullName === personnelName2 || u.username === personnelName2);
+    if (currentUser) {
+      const { level, nextXp } = calculateLevel2(currentUser.xp || 0);
+      const currentXp = currentUser.xp || 0;
+      pMyLevel2.textContent = String(level);
+      pMyName2.textContent = currentUser.fullName || currentUser.username;
+      pMyRole2.textContent = currentUser.role === "mh" ? "Müşteri Hizmetleri" : "Kargo Kabul";
+      pMyXp2.textContent = String(currentXp);
+      pNextLevelXp2.textContent = String(nextXp);
+      pXpFill2.style.width = `${currentXp / nextXp * 100}%`;
+    }
+    if (filtered.length === 0) {
+      scoreboardContainer2.innerHTML = '<div class="priority-empty">Kullanıcı bulunamadı.</div>';
+      return;
+    }
+    filtered.forEach((u, idx) => {
+      const rank = idx + 1;
+      const { level } = calculateLevel2(u.xp || 0);
+      const roleLabel = u.role === "mh" ? "Müşteri Hizmetleri" : u.role === "admin" || u.username === "KursatS" ? "Yönetici" : "Kargo Kabul";
+      let medalIcon = `#${rank}`;
+      if (rank === 1) medalIcon = "🥇";
+      else if (rank === 2) medalIcon = "🥈";
+      else if (rank === 3) medalIcon = "🥉";
+      const row = document.createElement("div");
+      row.className = `score-row${rank <= 3 ? " rank-" + rank : ""}`;
+      row.style.setProperty("--i", String(idx));
+      row.innerHTML = `
+                <div class="score-rank">${medalIcon}</div>
+                <div class="score-name">${u.fullName || u.username}</div>
+                <div class="score-role">${roleLabel}</div>
+                <div class="score-level">Lv. ${level}</div>
+                <div class="score-xp">${u.xp || 0} XP</div>
+            `;
+      scoreboardContainer2.appendChild(row);
+    });
+    refreshSidebarProfile2();
+  }
+  profileFilterBtns2.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      profileFilterBtns2.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadProfileScoreboard2();
+    });
+  });
+  return { loadProfileScoreboard: loadProfileScoreboard2 };
+}
+function initPriorityLogic(api2, elements) {
+  const { prioList: prioList2, addPrioBtn: addPrioBtn2, pSerial: pSerial2, pCustomer: pCustomer2, pDesc: pDesc2 } = elements;
+  async function loadPriorityDevices2() {
+    const devices = await api2.getPriorityDevices();
+    prioList2.innerHTML = "";
+    if (!devices || devices.length === 0) {
+      prioList2.innerHTML = '<div class="priority-empty">Kayıtlı öncelikli cihaz yok.</div>';
+      return;
+    }
+    devices.forEach((d) => {
+      const item = document.createElement("div");
+      item.className = "priority-item";
+      item.innerHTML = `
+                <div class="priority-item-body">
+                    <div class="priority-item-name">${d.customer_name}</div>
+                    <div class="priority-item-serial">${d.serial}</div>
+                    <div class="priority-item-desc">${d.description}</div>
+                </div>
+                <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
+            `;
+      prioList2.appendChild(item);
+    });
+  }
+  addPrioBtn2.onclick = async () => {
+    const data = {
+      serial: pSerial2.value.trim().toUpperCase(),
+      customer_name: pCustomer2.value.trim(),
+      description: pDesc2.value.trim()
+    };
+    if (!data.serial || !data.customer_name) return;
+    await api2.addPriorityDevice(data);
+    pSerial2.value = "";
+    pCustomer2.value = "";
+    pDesc2.value = "";
+    loadPriorityDevices2();
+  };
+  window.deletePriority = async (id) => {
+    await api2.deletePriorityDevice(id);
+    loadPriorityDevices2();
+  };
+  return { loadPriorityDevices: loadPriorityDevices2 };
+}
+function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
+  const {
+    sPersonnelName: sPersonnelName2,
+    sUserRole: sUserRole2,
+    sShortcutClear: sShortcutClear2,
+    sShortcutCopy: sShortcutCopy2,
+    sPopupSize: sPopupSize2,
+    sPopupTimeout: sPopupTimeout2,
+    sAutoStart: sAutoStart2,
+    sPreventDuplicate: sPreventDuplicate2,
+    sSaveBtn: sSaveBtn2
+  } = elements;
+  let initialRole = "";
+  async function loadSettingsToUI2() {
+    const s = await api2.getSettings();
+    sPersonnelName2.value = (s.personnelName || "").toUpperCase();
+    let displayRole = s.role;
+    if (displayRole === "kargo_kabul") displayRole = "Kargo Kabul";
+    else if (displayRole === "mh") displayRole = "Müşteri Hizmetleri";
+    else if (displayRole === "admin") displayRole = "Yönetici";
+    sUserRole2.value = displayRole || "";
+    initialRole = s.role || "";
+    sShortcutClear2.value = s.shortcuts?.clearCache || "CommandOrControl+Shift+X";
+    sShortcutCopy2.value = s.shortcuts?.toggleMonitoring || "CommandOrControl+Shift+C";
+    sPopupSize2.value = String(s.popupSizeLevel || 2);
+    sPopupTimeout2.value = String(s.popupTimeout || 5e3);
+    sAutoStart2.checked = s.autoStartEnabled || false;
+    sPreventDuplicate2.checked = s.preventDuplicatePopup || false;
+  }
+  sPersonnelName2.addEventListener("input", () => {
+    const start = sPersonnelName2.selectionStart;
+    const end = sPersonnelName2.selectionEnd;
+    sPersonnelName2.value = sPersonnelName2.value.replace(/\\s/g, "").toUpperCase();
+    sPersonnelName2.setSelectionRange(start, end);
+  });
+  function setupShortcutRecorder(input) {
+    input.onkeydown = (e) => {
+      e.preventDefault();
+      const keys = [];
+      if (e.ctrlKey || e.metaKey) keys.push("CommandOrControl");
+      if (e.shiftKey) keys.push("Shift");
+      if (e.altKey) keys.push("Alt");
+      if (!["Control", "Shift", "Alt", "Meta"].includes(e.key)) {
+        keys.push(e.key.toUpperCase());
+        input.value = keys.join("+");
+      }
+    };
+  }
+  setupShortcutRecorder(sShortcutClear2);
+  setupShortcutRecorder(sShortcutCopy2);
+  sSaveBtn2.onclick = async () => {
+    const currentSettings = await api2.getSettings();
+    const settingsToSave = {
+      ...currentSettings,
+      personnelName: sPersonnelName2.value.trim(),
+      role: initialRole,
+      shortcuts: {
+        clearCache: sShortcutClear2.value,
+        toggleMonitoring: sShortcutCopy2.value
+      },
+      popupSizeLevel: parseInt(sPopupSize2.value),
+      popupTimeout: parseInt(sPopupTimeout2.value),
+      autoStartEnabled: sAutoStart2.checked,
+      preventDuplicatePopup: sPreventDuplicate2.checked
+    };
+    try {
+      await api2.saveSettings(settingsToSave);
+      showToast("Ayarlar başarıyla kaydedildi.", "success");
+      refreshSidebarProfile2();
+    } catch (e) {
+      showToast("Ayarlar kaydedilirken hata oluştu.", "error");
+    }
+  };
+  return { loadSettingsToUI: loadSettingsToUI2 };
+}
+function initBonusLogic(api2, elements) {
+  const {
+    bonusDropZone: bonusDropZone2,
+    bonusFileInput: bonusFileInput2,
+    bonusResults: bonusResults2,
+    bonusAnalytics: bonusAnalytics2,
+    workStartInput: workStartInput2,
+    workEndInput: workEndInput2
+  } = elements;
+  let lastBonusFilePath = "";
+  bonusDropZone2.onclick = () => bonusFileInput2.click();
+  bonusDropZone2.ondragover = (e) => {
+    e.preventDefault();
+    bonusDropZone2.classList.add("dragover");
+  };
+  bonusDropZone2.ondragleave = () => bonusDropZone2.classList.remove("dragover");
+  bonusDropZone2.ondrop = async (e) => {
+    e.preventDefault();
+    bonusDropZone2.classList.remove("dragover");
+    const file = e.dataTransfer?.files[0];
+    if (file) {
+      lastBonusFilePath = file.path || file.name;
+      await handleBonusFile(lastBonusFilePath);
+    }
+  };
+  bonusFileInput2.onchange = async () => {
+    if (bonusFileInput2.files && bonusFileInput2.files[0]) {
+      lastBonusFilePath = bonusFileInput2.files[0].path || bonusFileInput2.files[0].name;
+      await handleBonusFile(lastBonusFilePath);
+    }
+  };
+  workStartInput2.onchange = () => {
+    if (lastBonusFilePath) handleBonusFile(lastBonusFilePath);
+  };
+  workEndInput2.onchange = () => {
+    if (lastBonusFilePath) handleBonusFile(lastBonusFilePath);
+  };
+  async function handleBonusFile(path) {
+    if (!path) return;
+    bonusResults2.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Hesaplanıyor...</div>';
+    bonusAnalytics2.style.display = "none";
+    try {
+      const customHours = { start: workStartInput2.value, end: workEndInput2.value };
+      const results = await api2.calculateBonus(path, customHours);
+      displayBonusResults(results);
+    } catch (err) {
+      bonusResults2.innerHTML = '<div style="text-align:center; color:#ef4444;">Dosya okunurken hata oluştu.</div>';
+    }
+  }
+  function displayBonusResults(results) {
+    bonusResults2.innerHTML = "";
+    if (!results || results.length === 0) {
+      bonusResults2.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Geçerli veri bulunamadı.</p>';
+      return;
+    }
+    results.forEach((res, index) => {
+      const card = document.createElement("div");
+      card.className = "result-card";
+      card.style.animationDelay = `${index * 0.1}s`;
+      let statusText = "";
+      let statusClass = "";
+      if (res.isEligible) {
+        statusText = "🏆 Prim Tamam";
+        statusClass = "status-eligible";
+      } else {
+        const remaining = 850 - res.validCount;
+        statusText = index === 0 ? `Eksik: ${remaining}` : "Prim tamamlanamadı";
+        statusClass = "status-pending-badge";
+      }
+      card.innerHTML = `
+                <div class="result-info">
+                    <h3>${res.month}</h3>
+                    <div class="result-stats">
+                        <div class="stat-item">Geçerli: <strong>${res.validCount}</strong></div>
+                        <div class="stat-item">Mesai Dışı: <strong>${res.overtimeCount}</strong></div>
+                        <div class="stat-item">Toplam: ${res.totalCount}</div>
+                    </div>
+                </div>
+                <div class="status-badge ${statusClass}">${statusText}</div>
+            `;
+      card.onclick = () => {
+        bonusResults2.querySelectorAll(".result-card").forEach((c) => c.classList.remove("active"));
+        card.classList.add("active");
+        showBonusAnalytics(res);
+      };
+      bonusResults2.appendChild(card);
+      if (index === 0) card.click();
+    });
+  }
+  function showBonusAnalytics(res) {
+    bonusAnalytics2.style.display = "block";
+    bonusAnalytics2.innerHTML = "";
+    if (!res.dailyStats || res.dailyStats.length === 0) {
+      bonusAnalytics2.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Günlük veri yok</p>';
+      return;
+    }
+    const maxVal = Math.max(...res.dailyStats.map((d) => d.validCount + d.overtimeCount));
+    bonusAnalytics2.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                <div><h2>${res.month} Günlük Dağılım</h2></div>
+                <div style="text-align:right;"><div style="font-size:1.5rem; font-weight:800; color:var(--accent);">${res.totalCount}</div><div style="font-size:0.8rem; color:var(--text-muted);">TOPLAM CİHAZ</div></div>
+            </div>
+            <div id="bonus-chart" style="display:flex; align-items:flex-end; gap:6px; height:240px; border-bottom:2px solid var(--glass-border); position:relative;"></div>
+            <div style="display:flex; gap:20px; margin-top:16px; justify-content:center; font-size:0.8rem; color:var(--text-muted);">
+                <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:var(--success);"></span> Mesai İçi</div>
+                <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:var(--warning);"></span> Fazla Mesai</div>
+            </div>
+        `;
+    const chart = document.getElementById("bonus-chart");
+    res.dailyStats.forEach((day, i) => {
+      const total = day.validCount + day.overtimeCount;
+      const nH = maxVal > 0 ? day.validCount / maxVal * 220 : 0;
+      const oH = maxVal > 0 ? day.overtimeCount / maxVal * 220 : 0;
+      const dayNum = day.date.split("-")[2];
+      const group = document.createElement("div");
+      group.style.cssText = "flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;";
+      group.innerHTML = `
+                <div style="width:100%; display:flex; flex-direction:column-reverse; align-items:center; border-radius:4px 4px 0 0; cursor:pointer; position:relative; height:0; transition:height 0.6s cubic-bezier(0.175,0.885,0.32,1.275);" class="bar-stack">
+                    ${oH > 0 ? `<div style="width:100%; height:${oH}px; background:var(--warning); opacity:0.8;"></div>` : ""}
+                    <div style="width:100%; height:${nH}px; background:var(--success);"></div>
+                    <span style="position:absolute; top:-18px; font-size:11px; font-weight:800; color:var(--text-main);">${total}</span>
+                </div>
+                <div style="font-size:11px; font-weight:600; color:var(--text-muted);">${dayNum}</div>
+            `;
+      chart.appendChild(group);
+      setTimeout(() => {
+        const stack = group.querySelector(".bar-stack");
+        stack.style.height = `${nH + oH}px`;
+      }, 30 + i * 20);
+    });
+    bonusAnalytics2.scrollIntoView({ behavior: "smooth" });
+  }
+}
+function initAdminLogic(api2, elements, loadAdminUsersCallback) {
+  const {
+    adminUserList: adminUserList2,
+    btnAddUser: btnAddUser2,
+    adminModal: adminModal2,
+    adminModalTitle: adminModalTitle2,
+    adminUserId: adminUserId2,
+    adminUsername: adminUsername2,
+    adminPassword: adminPassword2,
+    adminFullname: adminFullname2,
+    adminRole: adminRole2,
+    btnCancelAdminModal: btnCancelAdminModal2,
+    btnSaveAdminUser: btnSaveAdminUser2
+  } = elements;
+  let adminUsersCache = [];
+  async function loadAdminUsers2() {
+    const users = await api2.getUsers();
+    adminUsersCache = users || [];
+    renderAdminUsers(adminUsersCache);
+  }
+  function renderAdminUsers(users) {
+    adminUserList2.innerHTML = "";
+    users.forEach((user) => {
+      const card = document.createElement("div");
+      card.className = "user-card";
+      let badgeClass = "badge-kargo";
+      let roleDisplay = "Kargo Kabul";
+      if (user.role === "admin" || user.username === "KursatS") {
+        badgeClass = "badge-admin";
+        roleDisplay = "Yönetici";
+      } else if (user.role === "mh") {
+        badgeClass = "badge-mh";
+        roleDisplay = "Müşteri Hizmetleri";
+      }
+      card.innerHTML = `
+                <span class="${badgeClass}">${roleDisplay}</span>
+                <h3>${user.fullName || "İsimsiz"}</h3>
+                <p><strong>K. Adı:</strong> ${user.username}</p>
+                <p><strong>Şifre:</strong> <span style="cursor:pointer;opacity:0.5;" title="Göstermek için tıklayın" data-pw="${user.password}">••••••</span></p>
+                <p><strong>Level:</strong> ${user.level || 1} (${user.xp || 0} XP)</p>
+                <div class="actions">
+                    <button class="btn-edit" data-id="${user.id}">Düzenle</button>
+                    <button class="btn-delete" data-id="${user.id}">Sil</button>
+                    <button class="btn-reset-xp" data-id="${user.id}" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">XP Sıfırla</button>
+                </div>
+            `;
+      adminUserList2.appendChild(card);
+    });
+    adminUserList2.querySelectorAll("[data-pw]").forEach((el) => {
+      el.addEventListener("click", function() {
+        this.textContent = this.dataset.pw || "";
+        this.style.opacity = "1";
+      });
+    });
+    adminUserList2.querySelectorAll(".btn-edit").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.target.dataset.id;
+        const user = adminUsersCache.find((u) => u.id === id);
+        if (user) openAdminModal(user);
+      });
+    });
+    adminUserList2.querySelectorAll(".btn-delete").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.target.dataset.id;
+        const user = adminUsersCache.find((u) => u.id === id);
+        const confirmed = await showConfirm("Kullanıcıyı Sil", `"${user?.username}" kullanıcısını silmek istediğinize emin misiniz?`);
+        if (confirmed) {
+          await api2.deleteUser(id);
+          loadAdminUsers2();
+          showToast("Kullanıcı silindi.", "success");
+        }
+      });
+    });
+    adminUserList2.querySelectorAll(".btn-reset-xp").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.target.dataset.id;
+        const user = adminUsersCache.find((u) => u.id === id);
+        const confirmed = await showConfirm("XP Sıfırla", `"${user?.username}" kullanıcısının XP ve Level bilgisi sıfırlanacak. Emin misiniz?`);
+        if (confirmed) {
+          await api2.resetUserXp(id);
+          loadAdminUsers2();
+          showToast("XP sıfırlandı.", "success");
+        }
+      });
+    });
+  }
+  function openAdminModal(user = null) {
+    if (user) {
+      adminModalTitle2.textContent = "Kullanıcıyı Düzenle";
+      adminUserId2.value = user.id;
+      adminUsername2.value = user.username || "";
+      adminPassword2.value = user.password || "";
+      adminFullname2.value = user.fullName || "";
+      adminRole2.value = user.role || "kargo_kabul";
+    } else {
+      adminModalTitle2.textContent = "Yeni Kullanıcı";
+      adminUserId2.value = "";
+      adminUsername2.value = "";
+      adminPassword2.value = "";
+      adminFullname2.value = "";
+      adminRole2.value = "kargo_kabul";
+    }
+    adminModal2.classList.add("active");
+  }
+  btnAddUser2.onclick = () => openAdminModal();
+  btnCancelAdminModal2.onclick = () => adminModal2.classList.remove("active");
+  btnSaveAdminUser2.onclick = async () => {
+    const username = adminUsername2.value.trim();
+    const password = adminPassword2.value.trim();
+    const fullName = adminFullname2.value.trim();
+    const role = adminRole2.value;
+    const id = adminUserId2.value;
+    if (!username || !password || !fullName || !role) {
+      showToast("Lütfen tüm alanları doldurun.", "error");
+      return;
+    }
+    try {
+      btnSaveAdminUser2.textContent = "Kaydediliyor...";
+      btnSaveAdminUser2.disabled = true;
+      if (id) {
+        await api2.updateUser(id, { username, password, fullName, role });
+      } else {
+        await api2.createUser({ username, password, fullName, role });
+      }
+      adminModal2.classList.remove("active");
+      loadAdminUsers2();
+      showToast("Kullanıcı kaydedildi.", "success");
+    } catch (e) {
+      showToast("Hata: " + e.message, "error");
+    } finally {
+      btnSaveAdminUser2.textContent = "Kaydet";
+      btnSaveAdminUser2.disabled = false;
+    }
+  };
+  return { loadAdminUsers: loadAdminUsers2 };
+}
+const cardsDiv = document.getElementById("cards");
+const searchInput = document.getElementById("search");
+const toggleBtn = document.getElementById("toggle");
+const themeBtn = document.getElementById("theme-toggle");
+const clearCacheBtn = document.getElementById("clear-cache");
+const dcBtn = document.getElementById("double-copy-toggle");
+const statusDot = document.getElementById("status-dot");
+const statusInfo = document.getElementById("status-info");
+const statusRefreshBtn = document.getElementById("status-refresh-btn");
+const sideLevel = document.getElementById("side-level");
+const sideName = document.getElementById("side-name");
+const sideXp = document.getElementById("side-xp");
+const sideXpFill = document.getElementById("side-xp-fill");
+const navItems = document.querySelectorAll(".nav-item");
+const viewSections = document.querySelectorAll(".view-section");
+const ticketBadge = document.getElementById("ticket-badge");
+const ticketList = document.getElementById("ticket-list");
+const tcPending = document.getElementById("count-pending");
+const tcProgress = document.getElementById("count-progress");
+const tcCompleted = document.getElementById("count-completed");
+const tSearchInput = document.getElementById("ticket-search");
+const tFilterTabs = document.getElementById("filter-tabs");
+const pMyLevel = document.getElementById("my-level");
+const pMyName = document.getElementById("my-name");
+const pMyRole = document.getElementById("my-role");
+const pMyXp = document.getElementById("my-xp");
+const pNextLevelXp = document.getElementById("next-level-xp");
+const pXpFill = document.getElementById("my-xp-fill");
+const scoreboardContainer = document.getElementById("scoreboard");
+const profileFilterBtns = document.querySelectorAll(".filter-btn");
+const prioList = document.getElementById("priority-list");
+const pSerial = document.getElementById("p-serial");
+const pCustomer = document.getElementById("p-customer");
+const pDesc = document.getElementById("p-desc");
+const addPrioBtn = document.getElementById("add-priority-btn");
+const sPersonnelName = document.getElementById("personnel-name");
+const sUserRole = document.getElementById("user-role");
+const sShortcutClear = document.getElementById("shortcut-clear");
+const sShortcutCopy = document.getElementById("shortcut-copy");
+const sPopupSize = document.getElementById("popup-size");
+const sPopupTimeout = document.getElementById("popup-timeout");
+const sAutoStart = document.getElementById("auto-start");
+const sPreventDuplicate = document.getElementById("prevent-duplicate");
+const sSaveBtn = document.getElementById("save-settings-btn");
+const bonusDropZone = document.getElementById("bonus-drop-zone");
+const bonusFileInput = document.getElementById("bonus-file-input");
+const bonusResults = document.getElementById("bonus-results");
+const bonusAnalytics = document.getElementById("bonus-analytics");
+const workStartInput = document.getElementById("work-start");
+const workEndInput = document.getElementById("work-end");
+const adminUserList = document.getElementById("admin-user-list");
+const btnAddUser = document.getElementById("btn-add-user");
+const adminModal = document.getElementById("admin-user-modal");
+const adminModalTitle = document.getElementById("admin-modal-title");
+const adminUserId = document.getElementById("admin-user-id");
+const adminUsername = document.getElementById("admin-user-username");
+const adminPassword = document.getElementById("admin-user-password");
+const adminFullname = document.getElementById("admin-user-fullname");
+const adminRole = document.getElementById("admin-user-role");
+const btnCancelAdminModal = document.getElementById("btn-cancel-admin-modal");
+const btnSaveAdminUser = document.getElementById("btn-save-admin-user");
+const modalOverlay = document.getElementById("modal-overlay");
+const modalTitle = document.getElementById("modal-title");
+const modalText = document.getElementById("modal-text");
+const modalConfirm = document.getElementById("modal-confirm");
+const modalCancel = document.getElementById("modal-cancel");
+const api = window.electronAPI;
+let monitoringEnabled = true;
+let currentRole = "kargo_kabul";
+let personnelName = "";
+let activeTickets = [];
+function showConfirm(title, message, confirmText = "Evet, Sil") {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalText.textContent = message;
+    modalConfirm.textContent = confirmText;
+    modalOverlay.classList.add("active");
+    const close = (result) => {
+      modalOverlay.classList.remove("active");
+      resolve(result);
+    };
+    modalConfirm.onclick = () => close(true);
+    modalCancel.onclick = () => close(false);
+    modalOverlay.onclick = (e) => {
+      if (e.target === modalOverlay) close(false);
+    };
+  });
+}
+function showAskMHModal(serial, modelName, modelColor) {
+  modalTitle.textContent = "MH'ye Sor";
+  modalText.innerHTML = "";
+  const form = document.createElement("div");
+  form.style.cssText = "display:flex;flex-direction:column;gap:12px;margin-top:12px;";
+  const fields = [
+    { id: "chk-ariza", label: "Arıza Beyanı" },
+    { id: "chk-adres", label: "Adres Bilgisi" },
+    { id: "chk-tel", label: "Telefon Numarası" },
+    { id: "chk-fatura", label: "Fatura Tarihi" },
+    { id: "chk-seri", label: "Seri Numarası" },
+    { id: "chk-isim", label: "İsim ve Soyisim" }
+  ];
+  let checkboxesHtml = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">';
+  fields.forEach((f) => {
+    checkboxesHtml += `
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;">
+                <input type="checkbox" id="${f.id}" value="${f.label}" style="accent-color:#38bdf8;width:16px;height:16px;">
+                ${f.label}
+            </label>
+        `;
+  });
+  checkboxesHtml += "</div>";
+  form.innerHTML = `
+    <label style="font-size:0.85rem;color:#94a3b8;margin-bottom:-8px;">Eksik Bilgiler (Birden fazla seçebilirsiniz)</label>
+    ${checkboxesHtml}
+    
+    <label style="font-size:0.85rem;color:#94a3b8;">Müşteri İsmi (Opsiyonel)</label>
+    <input type="text" id="mh-customer" placeholder="Müşteri adı soyadı..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+    <label style="font-size:0.85rem;color:#94a3b8;">Aras Kodu (Opsiyonel)</label>
+    <input type="text" id="mh-aras" placeholder="Aras kargo kodu..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+    <label style="font-size:0.85rem;color:#94a3b8;">Telefon Numarası (Opsiyonel)</label>
+    <input type="text" id="mh-phone" placeholder="Müşteri iletişim numarası..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+    <label style="font-size:0.85rem;color:#94a3b8;">Not (Opsiyonel)</label>
+    <input type="text" id="mh-note" placeholder="Ekstra detay ekleyin..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+    `;
+  modalText.appendChild(form);
+  modalConfirm.textContent = "Gönder";
+  modalOverlay.classList.add("active");
+  modalConfirm.onclick = async () => {
+    const selectedTypes = [];
+    fields.forEach((f) => {
+      const el = document.getElementById(f.id);
+      if (el && el.checked) {
+        selectedTypes.push(el.value);
+      }
+    });
+    const missingType = selectedTypes.length > 0 ? selectedTypes.join(", ") : "Belirtilmedi";
+    const note = document.getElementById("mh-note").value.trim();
+    const customerName = document.getElementById("mh-customer").value.trim();
+    const arasCode = document.getElementById("mh-aras").value.trim();
+    const phoneNumber = document.getElementById("mh-phone").value.trim();
+    try {
+      await api.createTicket({
+        serial,
+        model_name: modelName,
+        model_color: modelColor,
+        missing_type: missingType,
+        note,
+        customer_name: customerName,
+        aras_code: arasCode,
+        phone_number: phoneNumber,
+        created_by: personnelName || "İsimsiz Personel"
+      });
+      showToast("Eksik bilgi talebiniz MH departmanına iletildi.", "success");
+    } catch (e) {
+      showToast("Talep oluşturulurken hata: " + e.message, "error");
+    }
+    modalOverlay.classList.remove("active");
+  };
+  modalCancel.onclick = () => {
+    modalOverlay.classList.remove("active");
+  };
+  modalOverlay.onclick = (e) => {
+    if (e.target === modalOverlay) modalOverlay.classList.remove("active");
+  };
+}
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return `${date.getDate().toString().padStart(2, "0")}.${(date.getMonth() + 1).toString().padStart(2, "0")}.${date.getFullYear()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+}
+function loadCards() {
+  cardsDiv.innerHTML = `
+        <div class="card" style="display:flex; flex-direction:column; gap:12px; pointer-events:none; opacity:0.7;">
+            <div class="skeleton" style="width: 30%; height: 24px;"></div>
+            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+            <div class="skeleton" style="width: 60%; height: 20px;"></div>
+        </div>
+        <div class="card" style="display:flex; flex-direction:column; gap:12px; pointer-events:none; opacity:0.5;">
+            <div class="skeleton" style="width: 40%; height: 24px;"></div>
+            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+            <div class="skeleton" style="width: 80%; height: 20px;"></div>
+        </div>
+    `;
+  api.getCachedData().then((data) => {
+    cardsDiv.innerHTML = "";
+    if (!data || data.length === 0) {
+      cardsDiv.innerHTML = `
+        <div class="empty-state">
+          ${SVG_EMPTY_FOLDER}
+          <h3>Henüz bir cihaz sorgulanmadı</h3>
+          <p>Panoya bir seri numarası kopyaladığınızda burada görünecektir.</p>
+        </div>
+      `;
+      return;
+    }
+    const query = searchInput.value.toLowerCase();
+    data.sort((a, b) => new Date(b.copy_date).getTime() - new Date(a.copy_date).getTime());
+    const completedTicketsMap = /* @__PURE__ */ new Map();
+    activeTickets.forEach((t) => {
+      if (t.status === "completed") {
+        completedTicketsMap.set(t.serial, t);
+      }
+    });
+    const fragment = document.createDocumentFragment();
+    data.forEach((item) => {
+      if (item.serial.toLowerCase().includes(query)) {
+        const card = document.createElement("div");
+        let cardClass = "card";
+        const statusLabel = item.warranty_status;
+        if (statusLabel.includes("RECCI")) cardClass += " recci";
+        else if (statusLabel.includes("KVK")) cardClass += " kvk";
+        else cardClass += " out-of-warranty";
+        const completedTicket = completedTicketsMap.get(item.serial);
+        const askMHBtn = currentRole === "kargo_kabul" && !completedTicket?.response ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>` : "";
+        card.className = cardClass;
+        card.style.position = "relative";
+        card.innerHTML = `
+          <button class="delete-btn" onclick="deleteEntry('${item.serial}')">✕</button>
+          ${askMHBtn}
+          <div class="status-tag">${statusLabel}</div>
+          <p><strong>Seri:</strong> ${item.serial}</p>
+          <p><strong>Model:</strong> ${item.model_name || "Bilinmiyor"} ${item.model_color || ""}</p>
+          <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
+          ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ""}
+          ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ""}
+        `;
+        fragment.appendChild(card);
+      }
+    });
+    cardsDiv.appendChild(fragment);
+    cardsDiv.querySelectorAll(".ask-mh-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const el = btn;
+        showAskMHModal(el.dataset.serial, el.dataset.model, el.dataset.color);
+      });
+    });
+  });
+}
+toggleBtn.onclick = () => {
+  monitoringEnabled = !monitoringEnabled;
+  const span = toggleBtn.querySelector("span");
+  if (span) {
+    span.textContent = monitoringEnabled ? "👁️ Clipboard İzleme: Aktif" : "👁️ Clipboard İzleme: Devre Dışı";
+  }
+  toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
+  api.toggleMonitoring(monitoringEnabled);
+};
+function applyTheme(isDark) {
+  document.body.classList.toggle("dark", isDark);
+  document.body.classList.toggle("light", !isDark);
+  themeBtn.textContent = isDark ? "🌙" : "☀️";
+}
+themeBtn.onclick = () => {
+  const isDark = document.body.classList.contains("dark");
+  const newDark = !isDark;
+  applyTheme(newDark);
+  api.getSettings().then((s) => {
+    api.saveSettings({ ...s, theme: newDark ? "dark" : "light" });
+  });
+};
+api.getSettings().then((s) => {
+  const theme = s.theme || "dark";
+  applyTheme(theme === "dark");
+});
+let mainSearchTimeout;
+searchInput.oninput = () => {
+  clearTimeout(mainSearchTimeout);
+  mainSearchTimeout = setTimeout(() => {
+    loadCards();
+  }, 300);
+};
+function switchView(viewName) {
+  viewSections.forEach((sec) => sec.classList.remove("active"));
+  navItems.forEach((item) => item.classList.remove("active"));
+  const targetSec = document.getElementById(`view-${viewName}`);
+  const targetNavItem = document.querySelector(`[data-view="${viewName}"]`);
+  if (targetSec && targetNavItem) {
+    targetSec.classList.add("active");
+    targetNavItem.classList.add("active");
+  }
+  if (viewName === "history") loadCards();
+  else if (viewName === "tickets") loadTickets();
+  else if (viewName === "profile") loadProfileScoreboard();
+  else if (viewName === "priority") loadPriorityDevices();
+  else if (viewName === "admin") loadAdminUsers();
+  else if (viewName === "settings") loadSettingsToUI();
+}
+navItems.forEach((item) => {
+  item.addEventListener("click", () => {
+    const view = item.dataset.view;
+    if (view) switchView(view);
+  });
+});
+function calculateLevel(xp) {
+  let level = 1;
+  let threshold = 100;
+  while (xp >= threshold) {
+    level++;
+    threshold += 100 * (level * 0.5);
+  }
+  return { level, nextXp: Math.floor(threshold) };
+}
+async function refreshSidebarProfile() {
+  const settings = await api.getSettings();
+  personnelName = settings.personnelName || "İsimsiz";
+  sideName.textContent = personnelName.toUpperCase();
+  const users = await api.getUsers();
+  const me = users?.find((u) => u.username === settings.username);
+  if (me) {
+    const { level, nextXp } = calculateLevel(me.xp || 0);
+    sideLevel.textContent = String(level);
+    sideXp.textContent = String(me.xp || 0);
+    const progress = (me.xp || 0) / nextXp * 100;
+    sideXpFill.style.width = `${Math.min(100, progress)}%`;
+    if (pMyLevel) {
+      pMyLevel.textContent = String(level);
+      pMyName.textContent = me.fullName || me.username;
+      pMyRole.textContent = me.role === "mh" ? "Müşteri Hizmetleri" : "Kargo Kabul";
+      pMyXp.textContent = String(me.xp || 0);
+      pNextLevelXp.textContent = String(nextXp);
+      pXpFill.style.width = `${Math.min(100, progress)}%`;
+    }
+  }
+}
+clearCacheBtn.onclick = async () => {
+  const confirmed = await showConfirm(
+    "Tüm Geçmişi Temizle",
+    "Tüm sorgu geçmişiniz kalıcı olarak silinecektir. Emin misiniz?",
+    "Tümünü Sil"
+  );
+  if (confirmed) {
+    try {
+      await api.clearCache();
+      loadCards();
+      showToast("Tüm önbellek başarıyla temizlendi.", "success");
+    } catch (e) {
+      showToast("Temizleme hatası: " + e.message, "error");
+    }
+  }
+};
+window.deleteEntry = async (serial) => {
+  const confirmed = await showConfirm(
+    "Kaydı Sil",
+    `${serial} seri numaralı cihazı listeden silmek istediğinizden emin misiniz?`
+  );
+  if (confirmed) {
+    try {
+      await api.deleteEntry(serial);
+      loadCards();
+      showToast(`${serial} kaydı silindi.`, "success");
+    } catch (e) {
+      showToast("Silinemedi: " + e.message, "error");
+    }
+  }
+};
+function updateDCUI(enabled) {
+  dcBtn.textContent = enabled ? "🔄 Double Copy: Açık" : "🔄 Double Copy: Kapalı";
+  dcBtn.classList.toggle("btn-warning", !enabled);
+  dcBtn.classList.toggle("btn-primary", enabled);
+}
+api.getDoubleCopy().then((enabled) => updateDCUI(enabled));
+dcBtn.onclick = async () => {
+  const current = dcBtn.textContent.includes("Açık");
+  try {
+    await api.toggleDoubleCopy(!current);
+    updateDCUI(!current);
+    showToast(`Double Copy modu ${!current ? "açıldı" : "kapatıldı"}.`, "info");
+  } catch (e) {
+    showToast("Double Copy değişemedi: " + e.message, "error");
+  }
+};
+api.onServerStatusUpdate((status) => {
+  statusDot.className = "status-dot " + (status.online ? status.latency > 1e3 ? "slow" : "online" : "offline");
+  statusInfo.textContent = status.online ? `Sunucu: ${status.latency}ms` : "Sunucu: Erişilemiyor";
+  statusRefreshBtn.classList.remove("rotating");
+});
+statusRefreshBtn.addEventListener("click", () => {
+  statusRefreshBtn.classList.add("rotating");
+  api.manualServerStatusRefresh();
+});
+api.onCacheCleared(() => loadCards());
+api.onMonitoringToggled((enabled) => {
+  monitoringEnabled = enabled;
+  const span = toggleBtn.querySelector("span");
+  if (span) {
+    span.textContent = monitoringEnabled ? "👁️ Clipboard İzleme: Aktif" : "👁️ Clipboard İzleme: Devre Dışı";
+  }
+  toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
+});
+api.onTicketUpdate((tickets) => {
+  activeTickets = tickets;
+  const pendingCount = tickets.filter((t) => t.status === "pending" || t.status === "in_progress").length;
+  if (pendingCount > 0) {
+    ticketBadge.style.display = "block";
+    ticketBadge.textContent = String(pendingCount);
+  } else {
+    ticketBadge.style.display = "none";
+  }
+  loadCards();
+});
+api.onPriorityDeviceMatch((device) => {
+  const alertDiv = document.createElement("div");
+  alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background: #ef4444;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 300px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        animation: slideDownIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    `;
+  alertDiv.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:1.1rem;">⚠️ ÖNCELİKLİ CİHAZ!</strong>
+            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
+        </div>
+        <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
+        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+    `;
+  if (!document.getElementById("priority-animations")) {
+    const style = document.createElement("style");
+    style.id = "priority-animations";
+    style.textContent = `
+            @keyframes slideDownIn {
+                from { opacity: 0; transform: translate(-50%, -40px); }
+                to { opacity: 1; transform: translate(-50%, 0); }
+            }
+        `;
+    document.head.appendChild(style);
+  }
+  document.body.appendChild(alertDiv);
+  const closeBtn = alertDiv.querySelector("#close-priority-alert");
+  closeBtn.onclick = () => alertDiv.remove();
+  setTimeout(() => {
+    if (alertDiv.parentNode) alertDiv.remove();
+  }, 15e3);
+});
+const { loadTickets, renderTicketsList } = initTicketLogic(
+  api,
+  { ticketList, tSearchInput, tFilterTabs, tcPending, tcProgress, tcCompleted },
+  () => currentRole,
+  () => personnelName
+);
+const { loadProfileScoreboard } = initProfileLogic(
+  api,
+  {
+    scoreboardContainer,
+    profileFilterBtns,
+    pMyLevel,
+    pMyName,
+    pMyRole,
+    pMyXp,
+    pNextLevelXp,
+    pXpFill
+  },
+  personnelName,
+  calculateLevel,
+  refreshSidebarProfile
+);
+const { loadPriorityDevices } = initPriorityLogic(api, {
+  prioList,
+  addPrioBtn,
+  pSerial,
+  pCustomer,
+  pDesc
+});
+const { loadSettingsToUI } = initSettingsLogic(api, {
+  sPersonnelName,
+  sUserRole,
+  sShortcutClear,
+  sShortcutCopy,
+  sPopupSize,
+  sPopupTimeout,
+  sAutoStart,
+  sPreventDuplicate,
+  sSaveBtn
+}, refreshSidebarProfile);
+window.deletePriority = async (id) => {
+  await api.deletePriorityDevice(id);
+  loadPriorityDevices();
+};
+Promise.all([
+  api.getSettings(),
+  api.getTickets(),
+  api.getUsers().catch(() => [])
+]).then(([s, tickets, users]) => {
+  currentRole = s.role || "kargo_kabul";
+  personnelName = s.personnelName || "";
+  const isAdmin = s.isAdmin === true || s.username === "KursatS";
+  const isLoggedIn = !!s.personnelName?.trim();
+  const sideBonus = document.getElementById("side-bonus-btn");
+  const sideAdmin = document.getElementById("side-admin-btn");
+  const sideProfile = document.getElementById("side-profile-btn");
+  if (sideBonus) sideBonus.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+  if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
+  if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
+  if (tickets) {
+    activeTickets = tickets;
+    const pendingCount = tickets.filter((t) => t.status === "pending" || t.status === "in_progress").length;
+    ticketBadge.style.display = pendingCount > 0 ? "flex" : "none";
+    ticketBadge.textContent = String(pendingCount);
+  }
+  refreshSidebarProfile();
+  loadCards();
+});
+api.onRefreshCards(() => {
+  api.getSettings().then((s) => {
+    personnelName = s.personnelName || "";
+    const isAdmin = s.isAdmin === true || s.username === "KursatS";
+    const isLoggedIn = !!s.personnelName?.trim();
+    const sideBonus = document.getElementById("side-bonus-btn");
+    const sideAdmin = document.getElementById("side-admin-btn");
+    const sideProfile = document.getElementById("side-profile-btn");
+    if (sideBonus) sideBonus.style.display = s.role === "kargo_kabul" ? "flex" : "none";
+    if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
+    if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
+    refreshSidebarProfile();
+    loadCards();
+  });
+});
+api.onTicketUpdate((tickets) => {
+  activeTickets = tickets;
+  const pendingCount = tickets.filter((t) => t.status === "pending" || t.status === "in_progress").length;
+  ticketBadge.style.display = pendingCount > 0 ? "flex" : "none";
+  ticketBadge.textContent = String(pendingCount);
+  if (document.getElementById("view-tickets")?.classList.contains("active")) {
+    renderTicketsList(tickets);
+  }
+  loadCards();
+});
+initBonusLogic(api, {
+  bonusDropZone,
+  bonusFileInput,
+  bonusResults,
+  bonusAnalytics,
+  workStartInput,
+  workEndInput
+});
+const { loadAdminUsers } = initAdminLogic(api, {
+  adminUserList,
+  btnAddUser,
+  adminModal,
+  adminModalTitle,
+  adminUserId,
+  adminUsername,
+  adminPassword,
+  adminFullname,
+  adminRole,
+  btnCancelAdminModal,
+  btnSaveAdminUser
+});
