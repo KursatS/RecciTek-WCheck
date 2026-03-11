@@ -19,13 +19,7 @@ export const POPUP_SIZE_LEVELS: PopupSize[] = [
 
 export class WindowManager {
     private mainWindow: BrowserWindow | null = null;
-    private settingsWindow: BrowserWindow | null = null;
-    private bonusWindow: BrowserWindow | null = null;
-    private ticketsWindow: BrowserWindow | null = null;
-    private priorityWindow: BrowserWindow | null = null;
     private loginWindow: BrowserWindow | null = null;
-    private adminWindow: BrowserWindow | null = null;
-    private profileWindow: BrowserWindow | null = null;
     private currentPopup: BrowserWindow | null = null;
     private popupTimeout: NodeJS.Timeout | null = null;
     private popupVisible: boolean = false;
@@ -110,8 +104,8 @@ export class WindowManager {
         this.loginWindow.once('ready-to-show', () => this.loginWindow?.show());
 
         this.loginWindow.on('closed', () => {
-            if (!this.mainWindow?.isVisible() && this.loginWindow) {
-                // If login window is closed and main is not active, quit app
+            // If main window is not visible (login was not completed), quit the app
+            if (!this.mainWindow?.isVisible()) {
                 app.quit();
             }
             this.loginWindow = null;
@@ -133,168 +127,6 @@ export class WindowManager {
 
     getMainWindow(): BrowserWindow | null {
         return this.mainWindow;
-    }
-
-    openSettingsWindow(): void {
-        if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
-            this.settingsWindow.focus();
-            return;
-        }
-
-        this.settingsWindow = new BrowserWindow({
-            width: 720,
-            height: 520,
-            resizable: false,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Ayarlar',
-            autoHideMenuBar: true
-        });
-
-        this.settingsWindow.setMenuBarVisibility(false);
-        this.loadFile(this.settingsWindow, 'settings.html');
-        this.settingsWindow.on('closed', () => {
-            this.settingsWindow = null;
-        });
-    }
-
-    openBonusWindow(): void {
-        if (this.bonusWindow && !this.bonusWindow.isDestroyed()) {
-            this.bonusWindow.focus();
-            return;
-        }
-
-        this.bonusWindow = new BrowserWindow({
-            width: 900,
-            height: 700,
-            resizable: true,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Prim Hesaplama',
-            autoHideMenuBar: true
-        });
-
-        this.bonusWindow.setMenuBarVisibility(false);
-        this.loadFile(this.bonusWindow, 'bonus.html');
-        this.bonusWindow.on('closed', () => {
-            this.bonusWindow = null;
-        });
-    }
-
-    openTicketsWindow(): void {
-        if (this.ticketsWindow && !this.ticketsWindow.isDestroyed()) {
-            this.ticketsWindow.focus();
-            return;
-        }
-
-        this.ticketsWindow = new BrowserWindow({
-            width: 1000,
-            height: 700,
-            resizable: true,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Bildirim Paneli',
-            autoHideMenuBar: true
-        });
-
-        this.ticketsWindow.setMenuBarVisibility(false);
-        this.loadFile(this.ticketsWindow, 'tickets.html');
-        this.ticketsWindow.on('closed', () => {
-            this.ticketsWindow = null;
-        });
-    }
-
-    openPriorityWindow(): void {
-        if (this.priorityWindow && !this.priorityWindow.isDestroyed()) {
-            this.priorityWindow.focus();
-            return;
-        }
-
-        this.priorityWindow = new BrowserWindow({
-            width: 800,
-            height: 600,
-            resizable: true,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Öncelikli Cihazlar',
-            autoHideMenuBar: true
-        });
-
-        this.priorityWindow.setMenuBarVisibility(false);
-        this.loadFile(this.priorityWindow, 'priority.html');
-        this.priorityWindow.on('closed', () => {
-            this.priorityWindow = null;
-        });
-    }
-
-    openAdminWindow(): void {
-        if (this.adminWindow && !this.adminWindow.isDestroyed()) {
-            this.adminWindow.focus();
-            return;
-        }
-
-        this.adminWindow = new BrowserWindow({
-            width: 900,
-            height: 600,
-            resizable: true,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Admin Paneli',
-            autoHideMenuBar: true
-        });
-
-        this.adminWindow.setMenuBarVisibility(false);
-        this.loadFile(this.adminWindow, 'admin.html');
-        this.adminWindow.on('closed', () => {
-            this.adminWindow = null;
-        });
-    }
-
-    openProfileWindow(): void {
-        if (this.profileWindow && !this.profileWindow.isDestroyed()) {
-            this.profileWindow.focus();
-            return;
-        }
-
-        this.profileWindow = new BrowserWindow({
-            width: 800,
-            height: 600,
-            resizable: true,
-            frame: true,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            },
-            title: 'Profil ve Liderlik Tablosu',
-            autoHideMenuBar: true
-        });
-
-        this.profileWindow.setMenuBarVisibility(false);
-        this.loadFile(this.profileWindow, 'profile.html');
-        this.profileWindow.on('closed', () => {
-            this.profileWindow = null;
-        });
     }
 
     showPopup(info: any, timeoutDuration: number, sizeLevel: number): void {
@@ -386,7 +218,7 @@ export class WindowManager {
     }
 
     forceQuit(): void {
-        [this.mainWindow, this.settingsWindow, this.currentPopup].forEach(win => {
+        [this.mainWindow, this.loginWindow, this.currentPopup].forEach(win => {
             if (win && !win.isDestroyed()) {
                 win.destroy();
             }

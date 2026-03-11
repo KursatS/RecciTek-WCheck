@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-FpU5ZSpp.js","./input-BgXuQ7kZ.css","./theme-KfOaIftU.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index.es-DJdWjCKR.js","./input-BgXuQ7kZ.css","./theme-CtxYo9VL.css"])))=>i.map(i=>d[i]);
 /* empty css               */
 /* empty css               */
 const scriptRel = /* @__PURE__ */ (function detectScriptRel() {
@@ -7578,7 +7578,7 @@ function ee(t2) {
  */
 (function(t2) {
   function e() {
-    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-FpU5ZSpp.js"), true ? __vite__mapDeps([0,1,2]) : void 0, import.meta.url)).catch((function(t3) {
+    return (n.canvg ? Promise.resolve(n.canvg) : __vitePreload(() => import("./index.es-DJdWjCKR.js"), true ? __vite__mapDeps([0,1,2]) : void 0, import.meta.url)).catch((function(t3) {
       return Promise.reject(new Error("Could not load canvg: " + t3));
     })).then((function(t3) {
       return t3.default ? t3.default : t3;

@@ -1,6 +1,12 @@
 export { }
 import { showToast } from './utils/toastUtils'
 import { SVG_EMPTY_FOLDER } from './utils/svgUtils'
+import { initTicketLogic } from './utils/ticketLogic'
+import { initProfileLogic } from './utils/profileLogic'
+import { initPriorityLogic } from './utils/priorityLogic'
+import { initSettingsLogic } from './utils/settingsLogic'
+import { initBonusLogic } from './utils/bonusLogic'
+import { initAdminLogic } from './utils/adminLogic'
 
 // ── Element References ──────────────────────────────────────────────
 const cardsDiv = document.getElementById('cards')!
@@ -8,17 +14,77 @@ const searchInput = document.getElementById('search') as HTMLInputElement
 const toggleBtn = document.getElementById('toggle')!
 const themeBtn = document.getElementById('theme-toggle')!
 const clearCacheBtn = document.getElementById('clear-cache')!
-const settingsBtn = document.getElementById('settings-btn')!
-const bonusBtn = document.getElementById('bonus-btn')!
-const profileBtn = document.getElementById('profile-btn')!
-const adminBtn = document.getElementById('admin-btn')!
-const ticketsBtn = document.getElementById('tickets-btn')!
-const priorityBtn = document.getElementById('priority-btn')!
-const ticketBadge = document.getElementById('ticket-badge')!
 const dcBtn = document.getElementById('double-copy-toggle')!
 const statusDot = document.getElementById('status-dot')!
 const statusInfo = document.getElementById('status-info')!
 const statusRefreshBtn = document.getElementById('status-refresh-btn')!
+
+// Sidebar Elements
+const sideLevel = document.getElementById('side-level')!
+const sideName = document.getElementById('side-name')!
+const sideXp = document.getElementById('side-xp')!
+const sideXpFill = document.getElementById('side-xp-fill')!
+const navItems = document.querySelectorAll('.nav-item')
+const viewSections = document.querySelectorAll('.view-section')
+const ticketBadge = document.getElementById('ticket-badge')!
+
+// Tickets View Elements
+const ticketList = document.getElementById('ticket-list')!
+const tcPending = document.getElementById('count-pending')!
+const tcProgress = document.getElementById('count-progress')!
+const tcCompleted = document.getElementById('count-completed')!
+const tSearchInput = document.getElementById('ticket-search') as HTMLInputElement
+const tFilterTabs = document.getElementById('filter-tabs')!
+
+// Profile View Elements
+const pMyLevel = document.getElementById('my-level')!
+const pMyName = document.getElementById('my-name')!
+const pMyRole = document.getElementById('my-role')!
+const pMyXp = document.getElementById('my-xp')!
+const pNextLevelXp = document.getElementById('next-level-xp')!
+const pXpFill = document.getElementById('my-xp-fill')!
+const scoreboardContainer = document.getElementById('scoreboard')!
+const profileFilterBtns = document.querySelectorAll('.filter-btn')
+
+// Priority View Elements
+const prioList = document.getElementById('priority-list')!
+const pSerial = document.getElementById('p-serial') as HTMLInputElement
+const pCustomer = document.getElementById('p-customer') as HTMLInputElement
+const pDesc = document.getElementById('p-desc') as HTMLInputElement
+const addPrioBtn = document.getElementById('add-priority-btn')!
+
+// Settings View Elements
+const sPersonnelName = document.getElementById('personnel-name') as HTMLInputElement
+const sUserRole = document.getElementById('user-role') as HTMLInputElement
+const sShortcutClear = document.getElementById('shortcut-clear') as HTMLInputElement
+const sShortcutCopy = document.getElementById('shortcut-copy') as HTMLInputElement
+const sPopupSize = document.getElementById('popup-size') as HTMLSelectElement
+const sPopupTimeout = document.getElementById('popup-timeout') as HTMLInputElement
+const sAutoStart = document.getElementById('auto-start') as HTMLInputElement
+const sPreventDuplicate = document.getElementById('prevent-duplicate') as HTMLInputElement
+const sSaveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement
+
+// Bonus View Elements
+const bonusDropZone = document.getElementById('bonus-drop-zone')!
+const bonusFileInput = document.getElementById('bonus-file-input') as HTMLInputElement
+const bonusResults = document.getElementById('bonus-results')!
+const bonusAnalytics = document.getElementById('bonus-analytics')!
+const workStartInput = document.getElementById('work-start') as HTMLInputElement
+const workEndInput = document.getElementById('work-end') as HTMLInputElement
+
+// Admin View Elements
+const adminUserList = document.getElementById('admin-user-list')!
+const btnAddUser = document.getElementById('btn-add-user')!
+const adminModal = document.getElementById('admin-user-modal')!
+const adminModalTitle = document.getElementById('admin-modal-title')!
+const adminUserId = document.getElementById('admin-user-id') as HTMLInputElement
+const adminUsername = document.getElementById('admin-user-username') as HTMLInputElement
+const adminPassword = document.getElementById('admin-user-password') as HTMLInputElement
+const adminFullname = document.getElementById('admin-user-fullname') as HTMLInputElement
+const adminRole = document.getElementById('admin-user-role') as HTMLSelectElement
+const btnCancelAdminModal = document.getElementById('btn-cancel-admin-modal')!
+const btnSaveAdminUser = document.getElementById('btn-save-admin-user')!
+
 
 // Modal elements
 const modalOverlay = document.getElementById('modal-overlay')!
@@ -35,7 +101,7 @@ let personnelName = ''
 let activeTickets: any[] = []
 
 // ── Custom Confirm Modal ────────────────────────────────────────────
-function showConfirm(title: string, message: string, confirmText = 'Evet, Sil'): Promise<boolean> {
+export function showConfirm(title: string, message: string, confirmText = 'Evet, Sil'): Promise<boolean> {
     return new Promise((resolve) => {
         modalTitle.textContent = title
         modalText.textContent = message
@@ -283,15 +349,81 @@ api.getSettings().then((s: any) => {
 })
 
 // ── Search ──────────────────────────────────────────────────────────
-searchInput.oninput = () => loadCards()
+let mainSearchTimeout: NodeJS.Timeout
+searchInput.oninput = () => {
+    clearTimeout(mainSearchTimeout)
+    mainSearchTimeout = setTimeout(() => {
+        loadCards()
+    }, 300)
+}
 
-// ── Navigation Buttons ──────────────────────────────────────────────
-settingsBtn.onclick = () => api.openSettings()
-bonusBtn.onclick = () => api.openBonus()
-ticketsBtn.onclick = () => api.openTickets()
-priorityBtn.onclick = () => api.openPriority()
-profileBtn.onclick = () => api.openProfile()
-adminBtn.onclick = () => api.openAdmin()
+// ── Sidebar Navigation ──────────────────────────────────────────────
+function switchView(viewName: string) {
+    viewSections.forEach(sec => sec.classList.remove('active'))
+    navItems.forEach(item => item.classList.remove('active'))
+
+    const targetSec = document.getElementById(`view-${viewName}`)
+    const targetNavItem = document.querySelector(`[data-view="${viewName}"]`)
+
+    if (targetSec && targetNavItem) {
+        targetSec.classList.add('active')
+        targetNavItem.classList.add('active')
+    }
+
+    // Refresh data based on view
+    if (viewName === 'history') loadCards()
+    else if (viewName === 'tickets') loadTickets()
+    else if (viewName === 'profile') loadProfileScoreboard()
+    else if (viewName === 'priority') loadPriorityDevices()
+    else if (viewName === 'admin') loadAdminUsers()
+    else if (viewName === 'settings') loadSettingsToUI()
+}
+
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const view = (item as HTMLElement).dataset.view
+        if (view) switchView(view)
+    })
+})
+
+// ── Shared Profile Logic ────────────────────────────────────────────
+function calculateLevel(xp: number): { level: number, nextXp: number } {
+    let level = 1
+    let threshold = 100
+    while (xp >= threshold) {
+        level++
+        threshold += 100 * (level * 0.5)
+    }
+    return { level, nextXp: Math.floor(threshold) }
+}
+
+async function refreshSidebarProfile() {
+    const settings = await api.getSettings()
+    personnelName = settings.personnelName || 'İsimsiz'
+    sideName.textContent = personnelName.toUpperCase()
+
+    // Fetch user from DB for XP
+    const users = await api.getUsers() // I need to add this IPC if it doesn't exist, or use scoreboard data
+    const me = users?.find((u: any) => u.username === settings.username)
+    if (me) {
+        const { level, nextXp } = calculateLevel(me.xp || 0)
+        sideLevel.textContent = String(level)
+        sideXp.textContent = String(me.xp || 0)
+        const progress = ((me.xp || 0) / nextXp) * 100
+        sideXpFill.style.width = `${Math.min(100, progress)}%`
+
+        // Also update Profile view if active
+        if (pMyLevel) {
+            pMyLevel.textContent = String(level)
+            pMyName.textContent = me.fullName || me.username
+            pMyRole.textContent = me.role === 'mh' ? 'Müşteri Hizmetleri' : 'Kargo Kabul'
+            pMyXp.textContent = String(me.xp || 0)
+            pNextLevelXp.textContent = String(nextXp)
+            pXpFill.style.width = `${Math.min(100, progress)}%`
+        }
+    }
+}
+
 
 // ── Clear Cache ─────────────────────────────────────────────────────
 clearCacheBtn.onclick = async () => {
@@ -360,28 +492,6 @@ statusRefreshBtn.addEventListener('click', () => {
     api.manualServerStatusRefresh()
 })
 
-// ── IPC Event Listeners ─────────────────────────────────────────────
-api.onRefreshCards(() => {
-    api.getSettings().then((s: any) => {
-        currentRole = s.role || 'kargo_kabul'
-        personnelName = s.personnelName || ''
-
-        const isAdmin = s.isAdmin === true || s.username === 'KursatS'
-        const isLoggedIn = s.isLoggedIn === true || !!s.personnelName?.trim()
-
-        if (bonusBtn) {
-            bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
-        }
-        if (adminBtn) {
-            adminBtn.style.display = isAdmin ? 'flex' : 'none'
-        }
-        if (profileBtn) {
-            profileBtn.style.display = isLoggedIn ? 'flex' : 'none'
-        }
-
-        loadCards()
-    })
-})
 api.onCacheCleared(() => loadCards())
 
 api.onMonitoringToggled((enabled: boolean) => {
@@ -461,44 +571,120 @@ api.onPriorityDeviceMatch((device: any) => {
     setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove() }, 15000)
 })
 
+// ── Sub-view Initialization Logic ──────────────────────────────────
+const { loadTickets, renderTicketsList } = initTicketLogic(
+    api,
+    { ticketList, tSearchInput, tFilterTabs, tcPending, tcProgress, tcCompleted },
+    () => currentRole,
+    () => personnelName
+)
+
+const { loadProfileScoreboard } = initProfileLogic(
+    api,
+    {
+        scoreboardContainer,
+        profileFilterBtns,
+        pMyLevel,
+        pMyName,
+        pMyRole,
+        pMyXp,
+        pNextLevelXp,
+        pXpFill
+    },
+    personnelName,
+    calculateLevel,
+    refreshSidebarProfile
+)
+
+const { loadPriorityDevices } = initPriorityLogic(api, {
+    prioList, addPrioBtn, pSerial, pCustomer, pDesc
+})
+
+const { loadSettingsToUI } = initSettingsLogic(api, {
+    sPersonnelName, sUserRole, sShortcutClear, sShortcutCopy,
+    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sSaveBtn
+}, refreshSidebarProfile)
+
+// Global window function for deletion
+;(window as any).deletePriority = async (id: string) => {
+    await api.deletePriorityDevice(id)
+    loadPriorityDevices()
+}
+
 // ── Initial Load ────────────────────────────────────────────────────
 Promise.all([
     api.getSettings(),
-    api.getTickets()
-]).then(([s, tickets]: [any, any[]]) => {
+    api.getTickets(),
+    api.getUsers().catch(() => [])
+]).then(([s, tickets, users]: [any, any[], any[]]) => {
     currentRole = s.role || 'kargo_kabul'
     personnelName = s.personnelName || ''
-
+    
     const isAdmin = s.isAdmin === true || s.username === 'KursatS'
-    const isLoggedIn = s.isLoggedIn === true || !!s.personnelName?.trim()
+    const isLoggedIn = !!s.personnelName?.trim()
 
-    if (bonusBtn) {
-        bonusBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
-    }
-    if (adminBtn) {
-        adminBtn.style.display = isAdmin ? 'flex' : 'none'
-    }
-    if (profileBtn) {
-        profileBtn.style.display = isLoggedIn ? 'flex' : 'none'
-    }
+    // Sidebar role-based items
+    const sideBonus = document.getElementById('side-bonus-btn')
+    const sideAdmin = document.getElementById('side-admin-btn')
+    const sideProfile = document.getElementById('side-profile-btn')
 
-    // Login kontrolü
-    if (!personnelName.trim()) {
-        setTimeout(() => {
-            api.openSettings()
-        }, 1000)
-    }
+    if (sideBonus) sideBonus.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
+    if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
+    if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 
     if (tickets) {
-        activeTickets = tickets;
-
+        activeTickets = tickets
         const pendingCount = tickets.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').length
-        if (pendingCount > 0) {
-            ticketBadge.style.display = 'block'
-            ticketBadge.textContent = String(pendingCount)
-        } else {
-            ticketBadge.style.display = 'none'
-        }
+        ticketBadge.style.display = pendingCount > 0 ? 'flex' : 'none'
+        ticketBadge.textContent = String(pendingCount)
     }
-    loadCards();
-});
+    
+    refreshSidebarProfile()
+    loadCards()
+})
+
+api.onRefreshCards(() => {
+    api.getSettings().then((s: any) => {
+        personnelName = s.personnelName || ''
+        
+        const isAdmin = s.isAdmin === true || s.username === 'KursatS'
+        const isLoggedIn = !!s.personnelName?.trim()
+        
+        const sideBonus = document.getElementById('side-bonus-btn')
+        const sideAdmin = document.getElementById('side-admin-btn')
+        const sideProfile = document.getElementById('side-profile-btn')
+
+        if (sideBonus) sideBonus.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
+        if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
+        if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
+
+        refreshSidebarProfile()
+        loadCards()
+    })
+})
+
+api.onTicketUpdate((tickets: any[]) => {
+    activeTickets = tickets
+    const pendingCount = tickets.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').length
+    ticketBadge.style.display = pendingCount > 0 ? 'flex' : 'none'
+    ticketBadge.textContent = String(pendingCount)
+    if (document.getElementById('view-tickets')?.classList.contains('active')) {
+        renderTicketsList(tickets)
+    }
+    loadCards()
+})
+
+initBonusLogic(api, {
+    bonusDropZone,
+    bonusFileInput,
+    bonusResults,
+    bonusAnalytics,
+    workStartInput,
+    workEndInput
+})
+
+const { loadAdminUsers } = initAdminLogic(api, {
+    adminUserList, btnAddUser, adminModal, adminModalTitle,
+    adminUserId, adminUsername, adminPassword, adminFullname,
+    adminRole, btnCancelAdminModal, btnSaveAdminUser
+}, undefined as any)

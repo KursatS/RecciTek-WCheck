@@ -4,9 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Öncelikli Cihazlar</title>
-    <link rel="stylesheet" href="./input.css">
-    <link rel="stylesheet" href="./theme.css">
+    <title>Öncelikli Cihazlar</title>
     <style>
         body {
             margin: 0;
@@ -53,7 +51,9 @@
             transition: border-color 0.2s;
             box-sizing: border-box;
             pointer-events: all;
-            user-select: text;
+            -webkit-user-select: text;
+               -moz-user-select: text;
+                    user-select: text;
         }
 
         .search-bar input:focus {
@@ -97,7 +97,9 @@
             width: 100%;
             box-sizing: border-box;
             pointer-events: all;
-            user-select: text;
+            -webkit-user-select: text;
+               -moz-user-select: text;
+                    user-select: text;
             transition: border-color 0.2s;
         }
 
@@ -229,6 +231,10 @@
             background: #f8fafc;
         }
     </style>
+  <script type="module" crossorigin src="./assets/priority-CLgYbNb4.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/svgUtils-BxY6k_uX.js">
+  <link rel="stylesheet" crossorigin href="./assets/input-BgXuQ7kZ.css">
+  <link rel="stylesheet" crossorigin href="./assets/theme-CtxYo9VL.css">
 </head>
 
 <body class="dark">
@@ -258,8 +264,7 @@
     <div class="priority-list" id="priority-list">
         <!-- JS Tarafından doldurulacak -->
     </div>
-
-    <script type="module" src="./priority-renderer.ts"></script>
+
 </body>
 
 </html>

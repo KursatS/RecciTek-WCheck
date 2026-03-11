@@ -291,13 +291,7 @@ class WindowManager {
   constructor(appPath) {
     this.appPath = appPath;
     this.mainWindow = null;
-    this.settingsWindow = null;
-    this.bonusWindow = null;
-    this.ticketsWindow = null;
-    this.priorityWindow = null;
     this.loginWindow = null;
-    this.adminWindow = null;
-    this.profileWindow = null;
     this.currentPopup = null;
     this.popupTimeout = null;
     this.popupVisible = false;
@@ -370,7 +364,7 @@ class WindowManager {
     this.loadFile(this.loginWindow, "login.html");
     this.loginWindow.once("ready-to-show", () => this.loginWindow?.show());
     this.loginWindow.on("closed", () => {
-      if (!this.mainWindow?.isVisible() && this.loginWindow) {
+      if (!this.mainWindow?.isVisible()) {
         electron$1.app.quit();
       }
       this.loginWindow = null;
@@ -389,150 +383,6 @@ class WindowManager {
   }
   getMainWindow() {
     return this.mainWindow;
-  }
-  openSettingsWindow() {
-    if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
-      this.settingsWindow.focus();
-      return;
-    }
-    this.settingsWindow = new electron$1.BrowserWindow({
-      width: 720,
-      height: 520,
-      resizable: false,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Ayarlar",
-      autoHideMenuBar: true
-    });
-    this.settingsWindow.setMenuBarVisibility(false);
-    this.loadFile(this.settingsWindow, "settings.html");
-    this.settingsWindow.on("closed", () => {
-      this.settingsWindow = null;
-    });
-  }
-  openBonusWindow() {
-    if (this.bonusWindow && !this.bonusWindow.isDestroyed()) {
-      this.bonusWindow.focus();
-      return;
-    }
-    this.bonusWindow = new electron$1.BrowserWindow({
-      width: 900,
-      height: 700,
-      resizable: true,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Prim Hesaplama",
-      autoHideMenuBar: true
-    });
-    this.bonusWindow.setMenuBarVisibility(false);
-    this.loadFile(this.bonusWindow, "bonus.html");
-    this.bonusWindow.on("closed", () => {
-      this.bonusWindow = null;
-    });
-  }
-  openTicketsWindow() {
-    if (this.ticketsWindow && !this.ticketsWindow.isDestroyed()) {
-      this.ticketsWindow.focus();
-      return;
-    }
-    this.ticketsWindow = new electron$1.BrowserWindow({
-      width: 1e3,
-      height: 700,
-      resizable: true,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Bildirim Paneli",
-      autoHideMenuBar: true
-    });
-    this.ticketsWindow.setMenuBarVisibility(false);
-    this.loadFile(this.ticketsWindow, "tickets.html");
-    this.ticketsWindow.on("closed", () => {
-      this.ticketsWindow = null;
-    });
-  }
-  openPriorityWindow() {
-    if (this.priorityWindow && !this.priorityWindow.isDestroyed()) {
-      this.priorityWindow.focus();
-      return;
-    }
-    this.priorityWindow = new electron$1.BrowserWindow({
-      width: 800,
-      height: 600,
-      resizable: true,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Öncelikli Cihazlar",
-      autoHideMenuBar: true
-    });
-    this.priorityWindow.setMenuBarVisibility(false);
-    this.loadFile(this.priorityWindow, "priority.html");
-    this.priorityWindow.on("closed", () => {
-      this.priorityWindow = null;
-    });
-  }
-  openAdminWindow() {
-    if (this.adminWindow && !this.adminWindow.isDestroyed()) {
-      this.adminWindow.focus();
-      return;
-    }
-    this.adminWindow = new electron$1.BrowserWindow({
-      width: 900,
-      height: 600,
-      resizable: true,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Admin Paneli",
-      autoHideMenuBar: true
-    });
-    this.adminWindow.setMenuBarVisibility(false);
-    this.loadFile(this.adminWindow, "admin.html");
-    this.adminWindow.on("closed", () => {
-      this.adminWindow = null;
-    });
-  }
-  openProfileWindow() {
-    if (this.profileWindow && !this.profileWindow.isDestroyed()) {
-      this.profileWindow.focus();
-      return;
-    }
-    this.profileWindow = new electron$1.BrowserWindow({
-      width: 800,
-      height: 600,
-      resizable: true,
-      frame: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      },
-      title: "Profil ve Liderlik Tablosu",
-      autoHideMenuBar: true
-    });
-    this.profileWindow.setMenuBarVisibility(false);
-    this.loadFile(this.profileWindow, "profile.html");
-    this.profileWindow.on("closed", () => {
-      this.profileWindow = null;
-    });
   }
   showPopup(info, timeoutDuration, sizeLevel) {
     this.closePopup();
@@ -609,7 +459,7 @@ class WindowManager {
     }
   }
   forceQuit() {
-    [this.mainWindow, this.settingsWindow, this.currentPopup].forEach((win) => {
+    [this.mainWindow, this.loginWindow, this.currentPopup].forEach((win) => {
       if (win && !win.isDestroyed()) {
         win.destroy();
       }
@@ -852,6 +702,29 @@ function subscribeToPriorityDevices(callback) {
     callback(devices);
   }, (error) => console.error("Firestore listener error (PriorityDevices):", error));
 }
+async function getUsers() {
+  const q = firestore.query(firestore.collection(db, "users"));
+  const snapshot = await firestore.getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+async function createUser(data) {
+  const docRef = await firestore.addDoc(firestore.collection(db, "users"), {
+    ...data,
+    level: 1,
+    xp: 0,
+    createdAt: firestore.serverTimestamp()
+  });
+  return docRef.id;
+}
+async function updateUser(id, data) {
+  await firestore.updateDoc(firestore.doc(db, "users", id), { ...data, updatedAt: firestore.serverTimestamp() });
+}
+async function deleteUser(id) {
+  await firestore.deleteDoc(firestore.doc(db, "users", id));
+}
+async function resetUserXp(id) {
+  await firestore.updateDoc(firestore.doc(db, "users", id), { xp: 0, level: 1 });
+}
 const gotTheLock = electron$1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
   electron$1.app.quit();
@@ -945,28 +818,28 @@ function handleDoubleCopy() {
     windowManager.closePopup();
   }
 }
-async function handleDetection(serial) {
-  if (!currentSettings.isLoggedIn) return;
-  if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
-    return;
-  }
-  lastDetectedSerial = serial;
+function shouldSkipDetection(serial) {
+  if (!currentSettings.isLoggedIn) return true;
+  if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) return true;
+  return false;
+}
+async function processWarrantyRequest(serial) {
   const cached = await getCachedData(serial);
-  if (cached) {
-    currentPopupData = cached;
-    windowManager.showPopup(cached, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
-    windowManager.getMainWindow()?.webContents.send("refresh-cards");
-    checkPriorityMatch(serial);
-    return;
-  }
+  if (cached) return cached;
+  const warrantyInfo = await checkWarranty(serial);
+  await saveToCache(serial, warrantyInfo);
+  return warrantyInfo;
+}
+async function handleDetection(serial) {
+  if (shouldSkipDetection(serial)) return;
+  lastDetectedSerial = serial;
   try {
-    const warrantyInfo = await checkWarranty(serial);
-    await saveToCache(serial, warrantyInfo);
-    currentPopupData = warrantyInfo;
-    windowManager.showPopup(warrantyInfo, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
+    const data = await processWarrantyRequest(serial);
+    currentPopupData = data;
+    windowManager.showPopup(data, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send("refresh-cards");
     checkPriorityMatch(serial);
-  } catch {
+  } catch (error) {
     windowManager.showPopup({
       serial,
       warranty_status: "İnternet Bağlantı Hatası",
@@ -1004,7 +877,10 @@ function setupIpcHandlers() {
     isAdmin: currentSettings.isAdmin,
     isLoggedIn: currentSettings.isLoggedIn,
     theme: currentSettings.theme,
-    workingHours: currentSettings.workingHours
+    workingHours: currentSettings.workingHours,
+    rememberMe: currentSettings.rememberMe,
+    savedUsername: currentSettings.savedUsername,
+    savedPassword: currentSettings.savedPassword
   }));
   electron$1.ipcMain.handle("save-settings", async (_, settings) => {
     currentSettings = { ...currentSettings, ...settings };
@@ -1031,19 +907,28 @@ function setupIpcHandlers() {
     windowManager.getMainWindow()?.webContents.send("monitoring-toggled", monitoringEnabled);
   });
   electron$1.ipcMain.on("open-settings", () => {
-    windowManager.openSettingsWindow();
+    windowManager.getMainWindow()?.webContents.send("switch-view", "settings");
+    windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.on("open-bonus", () => {
-    windowManager.openBonusWindow();
+    windowManager.getMainWindow()?.webContents.send("switch-view", "bonus");
+    windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.on("open-admin", () => {
-    windowManager.openAdminWindow();
+    windowManager.getMainWindow()?.webContents.send("switch-view", "admin");
+    windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.on("open-profile", () => {
-    windowManager.openProfileWindow();
+    windowManager.getMainWindow()?.webContents.send("switch-view", "profile");
+    windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.on("open-priority", () => {
-    windowManager.openPriorityWindow();
+    windowManager.getMainWindow()?.webContents.send("switch-view", "priority");
+    windowManager.getMainWindow()?.show();
+  });
+  electron$1.ipcMain.on("open-tickets", () => {
+    windowManager.getMainWindow()?.webContents.send("switch-view", "tickets");
+    windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.handle("login-success", async () => {
     windowManager.onLoginSuccess();
@@ -1093,6 +978,50 @@ function setupIpcHandlers() {
     await deleteEntry(s);
     return await loadCache();
   });
+  electron$1.ipcMain.handle("get-users", async () => {
+    try {
+      return await getUsers();
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      return [];
+    }
+  });
+  electron$1.ipcMain.handle("create-user", async (_, data) => {
+    try {
+      const id = await createUser(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("update-user", async (_, id, data) => {
+    try {
+      await updateUser(id, data);
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("delete-user", async (_, id) => {
+    try {
+      await deleteUser(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("reset-user-xp", async (_, id) => {
+    try {
+      await resetUserXp(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error resetting XP:", error);
+      return { success: false, error: String(error) };
+    }
+  });
   electron$1.ipcMain.handle("get-tickets", async () => cachedTickets);
   electron$1.ipcMain.handle("create-ticket", async (_, data) => {
     try {
@@ -1138,9 +1067,6 @@ function setupIpcHandlers() {
       console.error("Error updating ticket details:", error);
       return { success: false, error: String(error) };
     }
-  });
-  electron$1.ipcMain.on("open-tickets", () => {
-    windowManager.openTicketsWindow();
   });
   electron$1.ipcMain.handle("get-priority-devices", async () => cachedPriorityDevices);
   electron$1.ipcMain.handle("add-priority-device", async (_, data) => {

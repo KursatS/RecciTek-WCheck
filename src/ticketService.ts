@@ -185,3 +185,31 @@ export function subscribeToPriorityDevices(
         callback(devices as any)
     }, (error) => console.error('Firestore listener error (PriorityDevices):', error))
 }
+// ── Users ───────────────────────────────────────────────────────────
+export async function getUsers(): Promise<any[]> {
+    const q = query(collection(db, 'users'))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function createUser(data: { username: string, password: string, fullName: string, role: string }): Promise<string> {
+    const docRef = await addDoc(collection(db, 'users'), {
+        ...data,
+        level: 1,
+        xp: 0,
+        createdAt: serverTimestamp()
+    })
+    return docRef.id
+}
+
+export async function updateUser(id: string, data: any): Promise<void> {
+    await updateDoc(doc(db, 'users', id), { ...data, updatedAt: serverTimestamp() })
+}
+
+export async function deleteUser(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'users', id))
+}
+
+export async function resetUserXp(id: string): Promise<void> {
+    await updateDoc(doc(db, 'users', id), { xp: 0, level: 1 })
+}

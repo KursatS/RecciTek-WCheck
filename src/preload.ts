@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openBonus: () => ipcRenderer.send('open-bonus'),
     openAdmin: () => ipcRenderer.send('open-admin'),
     openProfile: () => ipcRenderer.send('open-profile'),
+    getUsers: () => safeInvoke('get-users'),
     loginSuccess: () => safeInvoke('login-success'),
     getSettings: () => safeInvoke('get-settings'),
     saveSettings: (settings: any) => safeInvoke('save-settings', settings),
@@ -56,6 +57,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('cache-cleared', () => callback()),
     onMonitoringToggled: (callback: any) =>
         ipcRenderer.on('monitoring-toggled', (_event, enabled) => callback(enabled)),
+    onSwitchView: (callback: any) =>
+        ipcRenderer.on('switch-view', (_event, view) => callback(view)),
 
     // Ticket System
     getTickets: () => safeInvoke('get-tickets'),
@@ -78,5 +81,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onPriorityDeviceMatch: (callback: any) =>
         ipcRenderer.on('priority-device-match', (_event, device) => callback(device)),
     onPriorityDevicesUpdate: (callback: any) =>
-        ipcRenderer.on('priority-devices-update', (_event, devices) => callback(devices))
+        ipcRenderer.on('priority-devices-update', (_event, devices) => callback(devices)),
+
+    // Admin CRUD
+    createUser: (data: any) => safeInvoke('create-user', data),
+    updateUser: (id: string, data: any) => safeInvoke('update-user', id, data),
+    deleteUser: (id: string) => safeInvoke('delete-user', id),
+    resetUserXp: (id: string) => safeInvoke('reset-user-xp', id)
 })

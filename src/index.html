@@ -15,7 +15,8 @@
       color: var(--text-main);
       transition: all 0.3s ease;
       min-height: 100vh;
-      padding: 40px 20px;
+      margin: 0;
+      padding: 0;
       background-image: radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 400px),
         radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 400px);
       background-attachment: fixed;
@@ -481,55 +482,727 @@
     </div>
   </div>
 
-  <div class="container">
-    <div class="top-bar">
-      <div class="nav-group">
-        <button id="profile-btn" class="nav-btn" title="Profil & Liderlik">🏆</button>
-        <button id="priority-btn" class="nav-btn" title="Öncelikli Cihazlar (Müşteri İstekleri)">⚠️</button>
-        <button id="admin-btn" class="nav-btn" title="Yönetici Paneli" style="display:none;">👨‍💼</button>
-        <button id="settings-btn" class="nav-btn" title="Ayarlar">⚙️</button>
-        <button id="bonus-btn" class="nav-btn" title="Prim Analizi" style="display:none;">💰</button>
-        <button id="tickets-btn" class="nav-btn" title="Bildirimler" style="position:relative;">📋<span
-            id="ticket-badge"
-            style="display:none;position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#0f172a;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:50%;line-height:16px;text-align:center;">0</span></button>
+  <!-- Admin User Modal -->
+  <div class="admin-modal-overlay" id="admin-user-modal">
+    <div class="admin-modal-content">
+      <h2 id="admin-modal-title">Yeni Kullanıcı</h2>
+      <input type="hidden" id="admin-user-id">
+      <div class="form-group">
+        <label>Kullanıcı Adı</label>
+        <input type="text" id="admin-user-username" placeholder="Sisteme giriş adı...">
       </div>
+      <div class="form-group">
+        <label>Şifre</label>
+        <input type="text" id="admin-user-password" placeholder="Giriş şifresi...">
+      </div>
+      <div class="form-group">
+        <label>Ad Soyad</label>
+        <input type="text" id="admin-user-fullname" placeholder="Personel ad soyad...">
+      </div>
+      <div class="form-group">
+        <label>Rol (Görev)</label>
+        <select id="admin-user-role">
+          <option value="kargo_kabul">Kargo Kabul</option>
+          <option value="mh">Müşteri Hizmetleri</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="btn-cancel-admin-modal" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1;">İptal</button>
+        <button class="btn btn-primary" id="btn-save-admin-user">Kaydet</button>
+      </div>
+    </div>
+  </div>
 
-      <div class="nav-group">
-        <div class="server-status" id="server-status-box">
-          <div class="status-dot" id="status-dot"></div>
-          <span id="status-info">Sunucu: —</span>
-          <div id="status-refresh-btn" title="Manuel Yenile">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 4v6h-6"></path>
-              <path d="M1 20v-6h6"></path>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
+  <div class="app-layout">
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="profile-compact">
+          <div class="level-circle">
+            <span id="side-level">1</span>
+          </div>
+          <div class="profile-info">
+            <div class="name" id="side-name">Yükleniyor...</div>
+            <div class="xp-container">
+              <div class="xp-bar">
+                <div class="xp-fill" id="side-xp-fill" style="width: 0%"></div>
+              </div>
+              <span class="xp-text"><span id="side-xp">0</span> XP</span>
+            </div>
           </div>
         </div>
-        <button id="theme-toggle" class="nav-btn">🌙</button>
       </div>
-    </div>
 
-    <header>
-      <h1>Cihaz Geçmişi</h1>
-      <p style="color: var(--text-muted)">Toplam sorgulanan cihazlar ve garanti durumları</p>
-    </header>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="history" title="Sorgu Geçmişi">
+          <span class="icon">🕒</span>
+          <span class="label">Geçmiş</span>
+        </button>
+        <button class="nav-item" data-view="tickets" title="Bildirim Paneli">
+          <span class="icon">📋</span>
+          <span class="label">Bildirimler</span>
+          <span id="ticket-badge" class="badge" style="display:none;">0</span>
+        </button>
+        <button class="nav-item" data-view="profile" id="side-profile-btn" title="Profil & Sıralama">
+          <span class="icon">🏆</span>
+          <span class="label">Sıralama</span>
+        </button>
+        <button class="nav-item" data-view="priority" title="Öncelikli Cihazlar">
+          <span class="icon">⚠️</span>
+          <span class="label">Öncelikli</span>
+        </button>
+        <button class="nav-item" data-view="bonus" id="side-bonus-btn" title="Prim Analizi" style="display:none;">
+          <span class="icon">💰</span>
+          <span class="label">Prim</span>
+        </button>
+        <button class="nav-item" data-view="admin" id="side-admin-btn" title="Yönetici Paneli" style="display:none;">
+          <span class="icon">👨‍💼</span>
+          <span class="label">Yönetici</span>
+        </button>
+        <div class="nav-spacer"></div>
+        <button class="nav-item" data-view="settings" id="side-settings-btn" title="Ayarlar">
+          <span class="icon">⚙️</span>
+          <span class="label">Ayarlar</span>
+        </button>
+      </nav>
 
-    <div class="controls">
-      <div class="search-wrapper">
-        <input type="text" id="search" placeholder="Seri numarası ile filtrele...">
+      <div class="sidebar-footer">
+        <div class="server-status-compact">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-info">Sunucu: --</span>
+          <div id="status-refresh-btn" title="Yenile" style="cursor:pointer;">🔄</div>
+        </div>
+        <button id="theme-toggle" class="theme-btn">🌙</button>
       </div>
-      <button id="toggle" class="btn btn-primary">
-        <span>👁️ Clipboard İzleme: Aktif</span>
-      </button>
-      <button id="double-copy-toggle" class="btn btn-warning" title="Kısayol: Ctrl+Shift+C">🔄 Double Copy:
-        Kapalı</button>
-      <button id="clear-cache" class="btn btn-danger">🗑️ Tümünü Temizle</button>
-    </div>
+    </aside>
 
-    <div class="cards-grid" id="cards"></div>
+    <!-- ── Main Content ── -->
+    <main class="main-content">
+      <!-- View: History (Default) -->
+      <section id="view-history" class="view-section active">
+        <header class="view-header">
+          <h1>Cihaz Geçmişi</h1>
+          <p>Toplam sorgulanan cihazlar ve garanti durumları</p>
+        </header>
+
+        <div class="controls">
+          <div class="search-wrapper">
+            <input type="text" id="search" placeholder="Seri numarası ile filtrele...">
+          </div>
+          <button id="toggle" class="btn btn-primary">
+            <span>👁️ Clipboard İzleme: Aktif</span>
+          </button>
+          <button id="double-copy-toggle" class="btn btn-warning">🔄 Double Copy: Kapalı</button>
+          <button id="clear-cache" class="btn btn-danger">🗑️ Temizle</button>
+        </div>
+
+        <div class="cards-grid" id="cards"></div>
+      </section>
+
+      <!-- View: Tickets (Embedded) -->
+      <section id="view-tickets" class="view-section">
+        <header class="view-header">
+          <h1>📋 Bildirim Paneli</h1>
+          <p>Eksik bilgi talepleri — gerçek zamanlı</p>
+        </header>
+        <div class="stats-bar" id="stats-bar">
+          <div class="stat-chip"><div class="dot dot-pending"></div> Bekleyen: <span id="count-pending">0</span></div>
+          <div class="stat-chip"><div class="dot dot-progress"></div> İşleniyor: <span id="count-progress">0</span></div>
+          <div class="stat-chip"><div class="dot dot-completed"></div> Tamamlanan: <span id="count-completed">0</span></div>
+        </div>
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
+        </div>
+        <div class="filter-tabs" id="filter-tabs">
+          <button class="filter-tab active" data-filter="all">Tümü</button>
+          <button class="filter-tab" data-filter="pending">Bekleyen</button>
+          <button class="filter-tab" data-filter="in_progress">İşleniyor</button>
+          <button class="filter-tab" data-filter="completed">Tamamlanan</button>
+          <button class="filter-tab" data-filter="aras">📦 ARAS</button>
+        </div>
+        <div class="ticket-list" id="ticket-list">
+          <div class="empty-state" id="empty-state">
+            <div class="icon" style="animation: pulse-soft 2s ease-in-out infinite;">📭</div>
+            <h3>Henüz talep yok</h3>
+            <p>Yeni talepler otomatik olarak burada görünecek</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Profile (Embedded) -->
+      <section id="view-profile" class="view-section">
+        <header class="view-header">
+          <h1>🏆 Liderlik Tablosu</h1>
+          <p>Tüm çalışma arkadaşlarınız arasındaki sıralamanız</p>
+        </header>
+        <div class="profile-banner">
+          <div class="level-badge"><span>Level</span><span id="my-level">1</span></div>
+          <div class="profile-details" style="flex:1;">
+            <h3 id="my-name">—</h3>
+            <p id="my-role">—</p>
+            <div class="xp-bar-container"><div class="xp-bar-fill" id="my-xp-fill"></div></div>
+            <div class="xp-text">
+              <span>Mevcut XP: <strong id="my-xp">0</strong></span>
+              <span>Sonraki Seviye: <strong id="next-level-xp">100</strong> XP</span>
+            </div>
+          </div>
+        </div>
+        <div class="scoreboard-header">
+          <h2>Sıralama</h2>
+          <div class="filter-group">
+            <button class="filter-btn active" data-role="all">Tümü</button>
+            <button class="filter-btn" data-role="mh">MH</button>
+            <button class="filter-btn" data-role="kargo_kabul">Kargo Kabul</button>
+          </div>
+        </div>
+        <div class="scoreboard" id="scoreboard"></div>
+      </section>
+
+      <!-- View: Priority (Embedded) -->
+      <section id="view-priority" class="view-section">
+        <header class="view-header">
+          <h1>⚠️ Öncelikli Cihazlar</h1>
+          <p>Müşteri hizmetleri tarafından iletilen acil takibi gereken cihazlar</p>
+        </header>
+        <div class="priority-panel">
+          <div class="priority-panel-title">🚩 Yeni Öncelikli Kayıt Ekle</div>
+          <div class="priority-form">
+            <input type="text" id="p-serial" class="priority-input" placeholder="Seri Numarası...">
+            <input type="text" id="p-customer" class="priority-input" placeholder="Müşteri Adı...">
+            <input type="text" id="p-desc" class="priority-input full-width" placeholder="Açıklama / Not...">
+            <button id="add-priority-btn" class="btn-add-priority full-width">LİSTEYE EKLE</button>
+          </div>
+          <div class="priority-list" id="priority-list"></div>
+        </div>
+      </section>
+
+      <!-- View: Bonus (Embedded) -->
+      <section id="view-bonus" class="view-section">
+        <header class="view-header">
+          <h1>💰 Prim Analizi</h1>
+          <p>CRM kayıtlarınızı yükleyin ve aylık prim durumunuzu görün</p>
+        </header>
+        <div style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 30px;">
+          <div id="bonus-drop-zone" class="upload-area" style="flex: 2;">
+            <span style="font-size: 3rem; margin-bottom: 20px; display: block;">📊</span>
+            <h2 style="font-size: 1.25rem;">Dosyayı Sürükleyin</h2>
+            <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">veya tıklayarak seçin</p>
+            <input type="file" id="bonus-file-input" style="display: none;" accept=".xlsx, .xls, .csv">
+          </div>
+          <div style="flex: 1; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+            <h3 style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Mesai Saatleri</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Başlangıç</label>
+                <input type="time" id="work-start" value="08:00" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px;">
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Bitiş</label>
+                <input type="time" id="work-end" value="18:30" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px;">
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">Saatleri değiştirdiğinizde veriler anlık olarak yeniden hesaplanır.</p>
+          </div>
+        </div>
+        <div id="bonus-results" class="results-container"></div>
+        <div id="bonus-analytics" class="analytics-panel" style="display:none;"></div>
+      </section>
+
+      <!-- View: Admin (Embedded) -->
+      <section id="view-admin" class="view-section">
+        <header class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h1>👨‍💼 Yönetici Paneli</h1>
+            <p>Kullanıcı yönetimi ve sistem ayarları</p>
+          </div>
+          <button id="btn-add-user" class="btn btn-primary" style="margin-top: 10px;">+ Yeni Kullanıcı Ekle</button>
+        </header>
+        <div id="admin-user-list" class="users-grid"></div>
+      </section>
+
+      <!-- View: Settings (Embedded) -->
+      <section id="view-settings" class="view-section">
+        <header class="view-header">
+          <h1>⚙️ Uygulama Ayarları</h1>
+          <p>Kişiselleştirme ve sistem tercihleri</p>
+        </header>
+
+        <div style="max-width: 660px;">
+          <!-- Profil -->
+          <h3 class="settings-group-title">Profil</h3>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Personel Adı</div><div class="setting-desc">Taleplerde görünecek isminiz</div></div>
+              <input type="text" id="personnel-name" placeholder="ADINIZI GİRİN..." class="setting-input" style="width: 200px;">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Rol</div><div class="setting-desc">Sizin atandığınız görev (Değiştirilemez)</div></div>
+              <input type="text" id="user-role" readonly class="setting-input" style="width: 200px; opacity: 0.5; cursor: not-allowed;">
+            </div>
+          </div>
+
+          <!-- Kısayol Yöneticisi -->
+          <h3 class="settings-group-title">Kısayol Yöneticisi</h3>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Geçmişi Temizle</div><div class="setting-desc">Global kısayol (örn: Ctrl+Shift+X)</div></div>
+              <input type="text" id="shortcut-clear" readonly placeholder="Kısayol tuşlayın..." class="shortcut-input">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">İzlemeyi Aç/Kapat</div><div class="setting-desc">Global kısayol (örn: Ctrl+Shift+M)</div></div>
+              <input type="text" id="shortcut-copy" readonly placeholder="Kısayol tuşlayın..." class="shortcut-input">
+            </div>
+          </div>
+
+          <!-- Popup & Sistem -->
+          <div class="setting-group">
+            <div class="setting-row">
+              <div><div class="setting-label">Popup Boyutu</div><div class="setting-desc">Bildirim penceresinin ölçeği</div></div>
+              <select id="popup-size" class="setting-input">
+                <option value="1">Küçük</option>
+                <option value="2">Orta</option>
+                <option value="3">Büyük</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Görüntüleme Süresi</div><div class="setting-desc">Kapanış zamanı (ms)</div></div>
+              <input type="number" id="popup-timeout" min="1000" max="30000" step="500" class="setting-input" style="width: 120px;">
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Otomatik Başlat</div><div class="setting-desc">Windows açıldığında başlasın</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="auto-start"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Aynı Seriyi Engelle</div><div class="setting-desc">Tekrar eden popup bildirimlerini önler</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="prevent-duplicate"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+
+          <button id="save-settings-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">
+            Değişiklikleri Kaydet
+          </button>
+        </div>
+      </section>
+    </main>
   </div>
+
+  <style>
+    /* ── Layout ── */
+    body {
+      overflow: hidden;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+    }
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 260px;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      z-index: 100;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      margin-bottom: 30px;
+    }
+
+    .profile-compact {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .level-circle {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: white;
+      font-size: 1.2rem;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+      flex-shrink: 0;
+    }
+
+    .profile-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .profile-info .name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .xp-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .xp-bar {
+      height: 4px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .xp-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.5s ease;
+    }
+
+    .xp-text {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* ── Nav Items ── */
+    .sidebar-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: transparent;
+      border: none;
+      border-radius: 14px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.95rem;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      padding-left: 20px;
+    }
+
+    .nav-item.active {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px 14px 14px 4px;
+    }
+
+    .nav-item .icon { font-size: 1.2rem; }
+
+    .nav-spacer { flex: 1; }
+
+    .badge {
+      position: absolute;
+      right: 12px;
+      background: #f59e0b;
+      color: #0f172a;
+      font-size: 10px;
+      font-weight: 800;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Sidebar Footer ── */
+    .sidebar-footer {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .server-status-compact {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .theme-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Main Content ── */
+    .main-content {
+      flex: 1;
+      position: relative;
+      overflow-y: auto;
+      padding: 40px;
+    }
+
+    .view-section {
+      display: none;
+      animation: viewSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    @keyframes viewSlideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .view-header { margin-bottom: 40px; }
+    .view-header h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+    .view-header p { color: var(--text-muted); }
+
+    /* ── Reuse existing styles ── */
+    .controls { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+    .btn { padding: 10px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .btn-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .search-wrapper { flex: 1; max-width: 400px; }
+    #search { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline: none; }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    
+    /* ── Tickets Styles ── */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; }
+    .stat-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); font-size: 0.8rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-pending { background: var(--pending); }
+    .dot-progress { background: var(--progress); }
+    .dot-completed { background: var(--completed); }
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .filter-tab { padding: 6px 14px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-muted); cursor: pointer; font-size: 0.8rem; }
+    .filter-tab.active { background: var(--accent); color: #0f172a; }
+    .ticket-list { display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Profile Styles (with medals) ── */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+      50% { box-shadow: 0 0 36px rgba(56, 189, 248, 0.8), 0 0 60px rgba(56, 189, 248, 0.3); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes rankPop {
+      0% { transform: scale(0.5); opacity: 0; }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .profile-banner { background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.05) 100%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 24px; display: flex; gap: 24px; align-items: center; margin-bottom: 24px; animation: fadeInUp 0.5s ease 0.1s both; }
+    .level-badge { width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, #38bdf8 0%, #0369a1 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; color: white; border: 4px solid rgba(255,255,255,0.2); animation: pulseGlow 3s ease-in-out infinite; flex-shrink: 0; transition: transform 0.3s; }
+    .level-badge:hover { transform: scale(1.08); }
+    .level-badge span:first-child { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); }
+    .level-badge span:last-child { font-size: 1.8rem; font-weight: bold; display: block; margin-top: -4px; }
+    .profile-details h3 { margin: 0 0 8px 0; font-size: 1.5rem; color: white; }
+    .profile-details p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
+    .xp-bar-container { margin-top: 16px; width: 100%; background: rgba(0,0,0,0.3); border-radius: 10px; height: 12px; position: relative; overflow: hidden; }
+    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc); background-size: 200% 100%; width: 0%; border-radius: 10px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); animation: shimmer 2.5s linear infinite; }
+    .xp-text { font-size: 0.8rem; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
+    .scoreboard-header { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; margin-bottom: 12px; }
+    .scoreboard-header h2 { margin: 0; }
+    .filter-group { display: flex; gap: 6px; }
+    .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #94a3b8; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+    .filter-btn.active { background: rgba(56,189,248,0.15); border-color: #38bdf8; color: #38bdf8; }
+    .scoreboard { background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden; animation: fadeInUp 0.5s ease 0.3s both; }
+    .score-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); opacity: 0; animation: slideInLeft 0.4s ease calc(var(--i, 0) * 60ms) both; transition: background 0.2s; }
+    .score-row:last-child { border-bottom: none; }
+    .score-row:hover { background: rgba(255,255,255,0.04); }
+    .score-rank { width: 40px; font-weight: bold; color: #94a3b8; font-size: 1.1rem; }
+    .rank-1 .score-rank { color: #fbbf24; font-size: 1.3rem; animation: rankPop 0.6s ease both; }
+    .rank-2 .score-rank { color: #9ca3af; font-size: 1.2rem; animation: rankPop 0.6s ease 0.1s both; }
+    .rank-3 .score-rank { color: #b45309; font-size: 1.15rem; animation: rankPop 0.6s ease 0.2s both; }
+    .score-name { flex: 1; font-weight: 500; font-size: 1rem; color: #f8fafc; }
+    .score-role { width: 150px; font-size: 0.85rem; color: #cbd5e1; }
+    .score-level { width: 100px; font-weight: bold; color: #38bdf8; text-align: right; }
+    .score-xp { width: 80px; color: #94a3b8; font-size: 0.9rem; text-align: right; }
+    .rank-1 { background: rgba(251,191,36,0.04); }
+    .rank-2 { background: rgba(156,163,175,0.02); }
+    .rank-3 { background: rgba(180,83,9,0.03); }
+
+    /* ── Priority Styles ── */
+    .priority-panel { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.2); border-radius: 20px; padding: 20px 24px; }
+    .priority-panel-title { font-size: 1rem; font-weight: 700; color: #ef4444; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .priority-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .priority-form .full-width { grid-column: 1 / -1; }
+    .priority-input { padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text-main); font-size: 0.9rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
+    .priority-input:focus { border-color: rgba(239,68,68,0.5); }
+    .btn-add-priority { padding: 10px 20px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; border-radius: 12px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+    .btn-add-priority:hover { background: rgba(239,68,68,0.25); transform: translateY(-1px); }
+    .priority-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+    .priority-item { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 14px; padding: 16px 20px; display: flex; align-items: flex-start; gap: 16px; transition: transform 0.2s, box-shadow 0.2s; }
+    .priority-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239,68,68,0.1); }
+    .priority-item-body { flex: 1; font-size: 0.95rem; }
+    .priority-item-name { font-weight: 700; color: var(--text-main); font-size: 1.05rem; margin-bottom: 4px; }
+    .priority-item-serial { font-size: 0.85rem; color: #f59e0b; font-weight: 600; background: rgba(245,158,11,0.1); padding: 2px 8px; border-radius: 6px; display: inline-block; }
+    .priority-item-desc { margin-top: 8px; color: var(--text-muted); line-height: 1.5; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+    .btn-del-priority { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; cursor: pointer; font-size: 1.1rem; padding: 6px 10px; border-radius: 8px; flex-shrink: 0; transition: all 0.2s; }
+    .btn-del-priority:hover { background: #ef4444; color: white; }
+    .priority-empty { text-align: center; padding: 40px 20px; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px dashed var(--glass-border); color: var(--text-muted); font-size: 0.95rem; }
+
+    /* ── Tickets Search Bar ── */
+    .search-bar { position: relative; margin-bottom: 16px; }
+    .search-bar input { width: 100%; padding: 10px 16px 10px 40px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 14px; color: var(--text-main); font-size: 0.88rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1rem; pointer-events: none; }
+
+    /* ── Ticket Card Styles ── */
+    .ticket-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px 24px; display: flex; align-items: flex-start; gap: 20px; transition: all 0.3s; position: relative; overflow: hidden; }
+    .ticket-card::before { content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; }
+    .ticket-card.status-pending::before { background: var(--pending); }
+    .ticket-card.status-in_progress::before { background: var(--progress); }
+    .ticket-card.status-completed::before { background: var(--completed); }
+    .ticket-card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .ticket-body { flex: 1; }
+    .ticket-serial { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+    .ticket-model { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .ticket-missing-type { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 6px; background: rgba(245,158,11,0.1); color: var(--pending); }
+    .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; }
+    .ticket-note { font-size: 0.85rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
+    .ticket-note strong { color: var(--text-main); }
+    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; max-height: 120px; overflow-y: auto; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
+    .ticket-response strong { color: var(--completed); }
+    .ticket-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+    .response-input { width: 100%; padding: 8px 14px; margin-top: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); font-size: 0.85rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+    .response-input:focus { border-color: var(--accent); }
+    .collab-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); }
+    .collab-group { display: flex; flex-direction: column; gap: 4px; }
+    .collab-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .btn-sm { padding: 8px 18px; border-radius: 12px; border: none; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+    .btn-claim { background: var(--progress); color: white; }
+    .btn-claim:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .btn-complete { background: var(--completed); color: white; }
+    .btn-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    .btn-update { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid rgba(255,255,255,0.2); margin-top: 12px; width: fit-content; align-self: flex-start; }
+    .btn-update:hover { background: rgba(255,255,255,0.2); }
+    .btn-reopen { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+    .badge-pending { background: rgba(245,158,11,0.15); color: var(--pending); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
+    .badge-in_progress { background: rgba(59,130,246,0.15); color: var(--progress); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
+    .badge-completed { background: rgba(16,185,129,0.15); color: var(--completed); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
+    .stat-chip .dot { box-shadow: 0 0 8px currentColor; }
+
+    /* ── Admin Styles ── */
+    .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .user-card { background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; position: relative; }
+    .user-card h3 { margin: 0 0 8px 0; font-size: 1.1rem; color: #f8fafc; }
+    .user-card p { margin: 4px 0; font-size: 0.9rem; color: #cbd5e1; }
+    .badge-admin { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; margin-bottom: 8px; background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-mh { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; margin-bottom: 8px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-kargo { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; margin-bottom: 8px; background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .actions { margin-top: 12px; display: flex; gap: 8px; }
+    .btn-edit { padding: 4px 10px; font-size: 0.8rem; border: none; border-radius: 6px; cursor: pointer; background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+    .btn-delete { padding: 4px 10px; font-size: 0.8rem; border: none; border-radius: 6px; cursor: pointer; background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-reset-xp { padding: 4px 10px; font-size: 0.8rem; border: none; border-radius: 6px; cursor: pointer; }
+    .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .admin-modal-overlay.active { display: flex; }
+    .admin-modal-content { background: #1e293b; padding: 24px; border-radius: 16px; width: 400px; max-width: 90vw; border: 1px solid rgba(255,255,255,0.1); z-index: 1001; pointer-events: all; }
+    .admin-modal-content h2 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #94a3b8; }
+    .form-group input, .form-group select { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; box-sizing: border-box; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+
+    /* ── Bonus Styles ── */
+    .upload-area { background: var(--card-bg); border: 2px dashed var(--glass-border); border-radius: 24px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: rgba(56,189,248,0.05); }
+    .results-container { display: grid; gap: 20px; }
+    .result-card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
+    .result-card:hover { transform: scale(1.02); border-color: var(--accent); }
+    .result-card.active { border-color: var(--accent); background: rgba(56,189,248,0.1); }
+    .result-info h3 { font-size: 1.2rem; margin-bottom: 4px; }
+    .result-stats { display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-muted); }
+    .stat-item strong { color: var(--text-main); }
+    .status-badge { padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+    .status-eligible { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+    .status-pending-badge { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+    .analytics-panel { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; margin-top: 30px; width: 100%; }
+
+    /* Pre-existing Card Styles from original HTML (keeping them active) */
+    .card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); position: relative; transition: transform 0.2s; }
+    .card:hover { transform: translateY(-4px); }
+    .status-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px; }
+    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; }
+    .card:hover .delete-btn { opacity: 1; }
+
+    /* ── Settings Styles ── */
+    .settings-group-title { margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+    .settings-group-title:first-child { margin-top: 0; }
+    .setting-group { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; margin-bottom: 24px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .setting-desc { font-size: 0.8rem; color: var(--text-muted); }
+    .setting-input { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); padding: 10px 14px; border-radius: 12px; outline: none; font-size: 0.95rem; transition: all 0.3s ease; min-width: 120px; }
+    .setting-input:hover { border-color: rgba(56,189,248,0.5); }
+    .setting-input:focus { border-color: var(--accent); }
+    .setting-input option { background-color: var(--bg-color); color: var(--text-main); }
+    .shortcut-input { width: 220px; padding: 12px 18px; background: rgba(255,255,255,0.05); border: 2px solid var(--glass-border); border-radius: 12px; color: var(--accent); font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; outline: none; transition: border-color 0.2s; }
+    .shortcut-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(56,189,248,0.3); }
+
+    /* Toggle Switch */
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 24px; border: 1px solid var(--glass-border); }
+    .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+    .toggle-switch input:checked + .toggle-slider { background-color: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+  </style>
+
   <script type="module" src="./index-renderer.ts"></script>
 </body>
 

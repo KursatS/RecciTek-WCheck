@@ -26,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 
@@ -135,32 +135,33 @@ function handleDoubleCopy(): void {
   }
 }
 
-async function handleDetection(serial: string): Promise<void> {
-  // Bypas önlemi: Uygulamaya login olunmamışsa (öğrenci ekranı/login sayfası vb) hiçbir şey yapma
-  if (!currentSettings.isLoggedIn) return;
+// Helper functions for handleDetection to reduce complexity
+function shouldSkipDetection(serial: string): boolean {
+  if (!currentSettings.isLoggedIn) return true;
+  if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) return true;
+  return false;
+}
 
-  if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) {
-    return;
-  }
+async function processWarrantyRequest(serial: string) {
+  const cached = await getCachedData(serial);
+  if (cached) return cached;
+
+  const warrantyInfo = await checkWarranty(serial);
+  await saveToCache(serial, warrantyInfo);
+  return warrantyInfo;
+}
+
+async function handleDetection(serial: string): Promise<void> {
+  if (shouldSkipDetection(serial)) return;
   lastDetectedSerial = serial;
 
-  const cached = await getCachedData(serial);
-  if (cached) {
-    currentPopupData = cached;
-    windowManager.showPopup(cached, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
-    windowManager.getMainWindow()?.webContents.send('refresh-cards');
-    checkPriorityMatch(serial);
-    return;
-  }
-
   try {
-    const warrantyInfo = await checkWarranty(serial);
-    await saveToCache(serial, warrantyInfo);
-    currentPopupData = warrantyInfo;
-    windowManager.showPopup(warrantyInfo, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
+    const data = await processWarrantyRequest(serial);
+    currentPopupData = data;
+    windowManager.showPopup(data, currentSettings.popupTimeout, currentSettings.popupSizeLevel);
     windowManager.getMainWindow()?.webContents.send('refresh-cards');
     checkPriorityMatch(serial);
-  } catch {
+  } catch (error) {
     windowManager.showPopup({
       serial,
       warranty_status: 'İnternet Bağlantı Hatası',
@@ -236,23 +237,28 @@ function setupIpcHandlers() {
   });
 
   ipcMain.on('open-settings', () => {
-    windowManager.openSettingsWindow();
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'settings');
+    windowManager.getMainWindow()?.show();
   });
-
   ipcMain.on('open-bonus', () => {
-    windowManager.openBonusWindow();
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'bonus');
+    windowManager.getMainWindow()?.show();
   });
-
   ipcMain.on('open-admin', () => {
-    windowManager.openAdminWindow();
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'admin');
+    windowManager.getMainWindow()?.show();
   });
-
   ipcMain.on('open-profile', () => {
-    windowManager.openProfileWindow();
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'profile');
+    windowManager.getMainWindow()?.show();
   });
-
   ipcMain.on('open-priority', () => {
-    windowManager.openPriorityWindow();
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'priority');
+    windowManager.getMainWindow()?.show();
+  });
+  ipcMain.on('open-tickets', () => {
+    windowManager.getMainWindow()?.webContents.send('switch-view', 'tickets');
+    windowManager.getMainWindow()?.show();
   });
 
   ipcMain.handle('login-success', async () => {
@@ -313,6 +319,55 @@ function setupIpcHandlers() {
     return await loadCache();
   });
 
+  ipcMain.handle('get-users', async () => {
+    try {
+      return await getUsers();
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('create-user', async (_, data) => {
+    try {
+      const id = await createUser(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('update-user', async (_, id, data) => {
+    try {
+      await updateUser(id, data);
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('delete-user', async (_, id) => {
+    try {
+      await deleteUser(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('reset-user-xp', async (_, id) => {
+    try {
+      await resetUserXp(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error resetting XP:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
   // ── Ticket System IPC ─────────────────────────────────────────────
   ipcMain.handle('get-tickets', async () => cachedTickets);
 
@@ -366,9 +421,7 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.on('open-tickets', () => {
-    windowManager.openTicketsWindow();
-  });
+
 
   // ── Priority Devices IPC ──────────────────────────────────────────
   ipcMain.handle('get-priority-devices', async () => cachedPriorityDevices);

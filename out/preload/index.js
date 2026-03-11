@@ -23,6 +23,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   openBonus: () => electron.ipcRenderer.send("open-bonus"),
   openAdmin: () => electron.ipcRenderer.send("open-admin"),
   openProfile: () => electron.ipcRenderer.send("open-profile"),
+  getUsers: () => safeInvoke("get-users"),
   loginSuccess: () => safeInvoke("login-success"),
   getSettings: () => safeInvoke("get-settings"),
   saveSettings: (settings) => safeInvoke("save-settings", settings),
@@ -43,6 +44,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   onRefreshCards: (callback) => electron.ipcRenderer.on("refresh-cards", () => callback()),
   onCacheCleared: (callback) => electron.ipcRenderer.on("cache-cleared", () => callback()),
   onMonitoringToggled: (callback) => electron.ipcRenderer.on("monitoring-toggled", (_event, enabled) => callback(enabled)),
+  onSwitchView: (callback) => electron.ipcRenderer.on("switch-view", (_event, view) => callback(view)),
   // Ticket System
   getTickets: () => safeInvoke("get-tickets"),
   createTicket: (data) => safeInvoke("create-ticket", data),
@@ -59,5 +61,10 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   addPriorityDevice: (data) => safeInvoke("add-priority-device", data),
   deletePriorityDevice: (id) => safeInvoke("delete-priority-device", id),
   onPriorityDeviceMatch: (callback) => electron.ipcRenderer.on("priority-device-match", (_event, device) => callback(device)),
-  onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices))
+  onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices)),
+  // Admin CRUD
+  createUser: (data) => safeInvoke("create-user", data),
+  updateUser: (id, data) => safeInvoke("update-user", id, data),
+  deleteUser: (id) => safeInvoke("delete-user", id),
+  resetUserXp: (id) => safeInvoke("reset-user-xp", id)
 });
