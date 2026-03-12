@@ -26,10 +26,10 @@ export function initPriorityLogic(api: any, elements: any) {
     addPrioBtn.onclick = async () => {
         const data = {
             serial: pSerial.value.trim().toUpperCase(),
-            customer_name: pCustomer.value.trim(),
+            customer_name: pCustomer.value.trim() || 'Belirtilmedi',
             description: pDesc.value.trim()
         }
-        if (!data.serial || !data.customer_name) return
+        if (!data.serial) return
         await api.addPriorityDevice(data)
         pSerial.value = ''; pCustomer.value = ''; pDesc.value = ''
         loadPriorityDevices()

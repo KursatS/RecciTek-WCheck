@@ -40,8 +40,24 @@ export function initCache() {
         console.error('Failed to add status column:', err);
       }
     }
+
+    // Purge entries older than 2 days to prevent stale warranty data
+    purgeOldCache();
   } catch (err) {
     console.error('Error in initCache:', err);
+  }
+}
+
+export function purgeOldCache(): void {
+  if (!db) return;
+  try {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const result = db.prepare('DELETE FROM cache WHERE copy_date < ?').run(twoDaysAgo);
+    if (result.changes > 0) {
+      console.log(`Cache: ${result.changes} eski kayıt silindi (2 günden eski).`);
+    }
+  } catch (err) {
+    console.error('Error purging old cache:', err);
   }
 }
 

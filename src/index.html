@@ -779,6 +779,30 @@
             </div>
           </div>
 
+          <!-- Tema Seçimi -->
+          <h3 class="settings-group-title">Tema</h3>
+          <div class="setting-group">
+            <div class="theme-picker" id="theme-picker">
+              <div class="theme-card selected" data-theme="dark">
+                <div class="theme-preview" style="background:#0f172a;border:2px solid #38bdf8;"><div style="background:#1e293b;height:40%;border-radius:4px;margin:6px;"></div></div>
+                <span>Karanlık</span>
+              </div>
+
+              <div class="theme-card" data-theme="midnight">
+                <div class="theme-preview" style="background:#0d0a1e;border:2px solid #a78bfa;"><div style="background:#1e1637;height:40%;border-radius:4px;margin:6px;"></div></div>
+                <span>Gece Yarısı</span>
+              </div>
+              <div class="theme-card" data-theme="ocean">
+                <div class="theme-preview" style="background:#042f2e;border:2px solid #2dd4bf;"><div style="background:#064e4b;height:40%;border-radius:4px;margin:6px;"></div></div>
+                <span>Okyanus</span>
+              </div>
+              <div class="theme-card" data-theme="sunset">
+                <div class="theme-preview" style="background:#1c0a00;border:2px solid #fb923c;"><div style="background:#371605;height:40%;border-radius:4px;margin:6px;"></div></div>
+                <span>Gün Batımı</span>
+              </div>
+            </div>
+          </div>
+
           <button id="save-settings-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">
             Değişiklikleri Kaydet
           </button>
@@ -803,7 +827,7 @@
     /* ── Sidebar ── */
     .sidebar {
       width: 260px;
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--sidebar-bg);
       backdrop-filter: blur(20px);
       border-right: 1px solid var(--glass-border);
       display: flex;
@@ -971,6 +995,46 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* ── Theme Picker ── */
+    .theme-picker {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 4px 0;
+    }
+    .theme-card {
+      cursor: pointer;
+      text-align: center;
+      border-radius: 12px;
+      padding: 8px;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+      min-width: 90px;
+    }
+    .theme-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .theme-card.selected {
+      border-color: var(--accent);
+      background: rgba(255,255,255,0.06);
+    }
+    .theme-preview {
+      width: 80px;
+      height: 50px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+    .theme-card span {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .theme-card.selected span {
+      color: var(--accent);
     }
 
     /* ── Main Content ── */

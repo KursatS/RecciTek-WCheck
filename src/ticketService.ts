@@ -92,15 +92,21 @@ export async function claimTicket(ticketId: string, personnelName: string): Prom
 export async function completeTicket(ticketId: string, response: string): Promise<void> {
     const ticketDoc = await getDocs(query(collection(db, TICKETS_COLLECTION), where('__name__', '==', ticketId)))
     let respondedBy = ''
-    if (!ticketDoc.empty) respondedBy = ticketDoc.docs[0].data().responded_by
+    let xp_awarded = false
+    if (!ticketDoc.empty) {
+        const data = ticketDoc.docs[0].data()
+        respondedBy = data.responded_by
+        xp_awarded = data.xp_awarded || false
+    }
 
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'completed',
         response,
-        responded_at: serverTimestamp()
+        responded_at: serverTimestamp(),
+        xp_awarded: true
     })
 
-    if (respondedBy) {
+    if (respondedBy && !xp_awarded) {
         try {
             const q = query(collection(db, 'users'), where('fullName', '==', respondedBy))
             const snapshot = await getDocs(q)

@@ -8,6 +8,7 @@ const XLSX = require("xlsx");
 const dateFns = require("date-fns");
 const firestore = require("firebase/firestore");
 const app$2 = require("firebase/app");
+const electronUpdater = require("electron-updater");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
@@ -27,6 +28,14 @@ function _interopNamespaceDefault(e) {
 const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path);
 const fs__namespace = /* @__PURE__ */ _interopNamespaceDefault(fs);
 const XLSX__namespace = /* @__PURE__ */ _interopNamespaceDefault(XLSX);
+const is = {
+  dev: !electron$1.app.isPackaged
+};
+({
+  isWindows: process.platform === "win32",
+  isMacOS: process.platform === "darwin",
+  isLinux: process.platform === "linux"
+});
 async function checkWarranty(serial) {
   function makeRequest(url) {
     return new Promise((resolve, reject) => {
@@ -191,8 +200,21 @@ function initCache() {
         console.error("Failed to add status column:", err);
       }
     }
+    purgeOldCache();
   } catch (err) {
     console.error("Error in initCache:", err);
+  }
+}
+function purgeOldCache() {
+  if (!db$1) return;
+  try {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1e3).toISOString();
+    const result = db$1.prepare("DELETE FROM cache WHERE copy_date < ?").run(twoDaysAgo);
+    if (result.changes > 0) {
+      console.log(`Cache: ${result.changes} eski kayıt silindi (2 günden eski).`);
+    }
+  } catch (err) {
+    console.error("Error purging old cache:", err);
   }
 }
 function loadCache() {
@@ -232,14 +254,6 @@ function deleteEntry(serial) {
   stmt.run(serial);
   return Promise.resolve();
 }
-const is = {
-  dev: !electron$1.app.isPackaged
-};
-({
-  isWindows: process.platform === "win32",
-  isMacOS: process.platform === "darwin",
-  isLinux: process.platform === "linux"
-});
 function getSettingsPath() {
   return path__namespace.join(electron$1.app.getPath("documents"), "RecciTek", "settings.json");
 }
@@ -324,9 +338,13 @@ class WindowManager {
     return splash;
   }
   createMainWindow() {
+    const settings = loadSettings();
+    const bounds = settings.windowBounds;
     this.mainWindow = new electron$1.BrowserWindow({
-      width: 800,
-      height: 600,
+      width: bounds?.width || 800,
+      height: bounds?.height || 600,
+      x: bounds?.x,
+      y: bounds?.y,
       minWidth: 475,
       minHeight: 400,
       show: false,
@@ -339,6 +357,19 @@ class WindowManager {
       autoHideMenuBar: true
     });
     this.loadFile(this.mainWindow, "index.html");
+    let saveBoundsTimer = null;
+    const saveBounds = () => {
+      if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
+      saveBoundsTimer = setTimeout(() => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isMaximized()) {
+          const b = this.mainWindow.getBounds();
+          const s = loadSettings();
+          saveSettings({ ...s, windowBounds: b });
+        }
+      }, 800);
+    };
+    this.mainWindow.on("resize", saveBounds);
+    this.mainWindow.on("move", saveBounds);
     this.mainWindow.on("close", (e) => {
       if (this.mainWindow) {
         e.preventDefault();
@@ -503,52 +534,75 @@ function parseBonusData(buffer, workingHours) {
   const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1 });
+  const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1, defval: null });
   const monthlyStats = {};
+  const headers = rows[0] || [];
+  let dateIndex = 14;
+  const priority1 = headers.findIndex((h) => h && h.toString().toLowerCase() === "kayıt tarihi");
+  const priority2 = headers.findIndex((h) => h && (h.toString().toLowerCase().includes("kayıt") && h.toString().toLowerCase().includes("tarih")));
+  const priority3 = headers.findIndex((h) => h && (h.toString().toLowerCase().includes("oluşturma") || h.toString().toLowerCase().includes("zaman")));
+  if (priority1 >= 0) dateIndex = priority1;
+  else if (priority2 >= 0) dateIndex = priority2;
+  else if (priority3 >= 0) dateIndex = priority3;
   const [startH, startM] = workingHours.start.split(":").map(Number);
   const [endH, endM] = workingHours.end.split(":").map(Number);
-  rows.forEach((row) => {
-    let dateCell = row[14];
-    if (dateCell) {
-      let date;
-      try {
-        if (dateCell instanceof Date) {
-          date = dateCell;
-        } else if (typeof dateCell === "string") {
-          const formatStr = dateCell.includes("/") ? "dd/MM/yyyy HH:mm" : "dd-MM-yyyy HH:mm";
-          date = dateFns.parse(dateCell, formatStr, /* @__PURE__ */ new Date());
-        } else if (typeof dateCell === "number") {
-          date = XLSX__namespace.SSF.parse_date_code(dateCell);
-          date = new Date(Date.UTC(date.y, date.m - 1, date.d, date.H, date.M, date.S));
-        } else {
-          return;
-        }
-        if (isNaN(date.getTime())) return;
-        const monthKey = dateFns.format(date, "MM-yyyy");
-        const dayKey = dateFns.format(date, "yyyy-MM-dd");
-        if (!monthlyStats[monthKey]) {
-          monthlyStats[monthKey] = {
-            total: 0,
-            valid: 0,
-            overtime: 0,
-            date: dateFns.startOfMonth(date),
-            days: {}
-          };
-        }
-        if (!monthlyStats[monthKey].days[dayKey]) {
-          monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
-        }
-        monthlyStats[monthKey].total++;
-        const startLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), startH), startM);
-        const endLimit = dateFns.setMinutes(dateFns.setHours(new Date(date), endH), endM);
-        if (dateFns.isWithinInterval(date, { start: startLimit, end: endLimit })) {
-          monthlyStats[monthKey].valid++;
-          monthlyStats[monthKey].days[dayKey].valid++;
-        } else {
-          monthlyStats[monthKey].overtime++;
-          monthlyStats[monthKey].days[dayKey].overtime++;
-        }
-      } catch (e) {
+  rows.forEach((row, rowIndex) => {
+    if (rowIndex === 0 || !row) return;
+    let date = null;
+    const extractDate = (cell) => {
+      if (cell === null || cell === void 0 || cell === "") return null;
+      let d;
+      if (cell instanceof Date) {
+        d = cell;
+      } else if (typeof cell === "number") {
+        if (cell <= 0) return null;
+        const parsed = XLSX__namespace.SSF.parse_date_code(cell);
+        if (!parsed || !parsed.y) return null;
+        d = new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+      } else if (typeof cell === "string") {
+        const clean = cell.trim();
+        if (!clean || clean.length < 8) return null;
+        const parts = clean.split(" ");
+        const datePart = parts[0];
+        const timePart = parts[1] || "00:00";
+        let dateFmt = "dd.MM.yyyy";
+        if (datePart.includes("/")) dateFmt = "dd/MM/yyyy";
+        else if (datePart.includes("-")) dateFmt = "dd-MM-yyyy";
+        const timeFmt = timePart.split(":").length === 3 ? "HH:mm:ss" : "HH:mm";
+        const fullFmt = `${dateFmt} ${timeFmt}`;
+        d = dateFns.parse(`${datePart} ${timePart}`, fullFmt, /* @__PURE__ */ new Date());
+      } else {
+        return null;
+      }
+      if (!d || !dateFns.isValid(d) || d.getFullYear() < 2e3) return null;
+      return d;
+    };
+    date = extractDate(row[dateIndex]);
+    if (date) {
+      const monthKey = dateFns.format(date, "MM-yyyy");
+      const dayKey = dateFns.format(date, "yyyy-MM-dd");
+      if (!monthlyStats[monthKey]) {
+        monthlyStats[monthKey] = {
+          total: 0,
+          valid: 0,
+          overtime: 0,
+          date: dateFns.startOfMonth(date),
+          days: {}
+        };
+      }
+      if (!monthlyStats[monthKey].days[dayKey]) {
+        monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
+      }
+      monthlyStats[monthKey].total++;
+      const checkDate = new Date(date);
+      const startLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), startH, startM, 0);
+      const endLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), endH, endM, 0);
+      if (dateFns.isWithinInterval(date, { start: startLimit, end: endLimit })) {
+        monthlyStats[monthKey].valid++;
+        monthlyStats[monthKey].days[dayKey].valid++;
+      } else {
+        monthlyStats[monthKey].overtime++;
+        monthlyStats[monthKey].days[dayKey].overtime++;
       }
     }
   });
@@ -586,9 +640,7 @@ function parseBonusData(buffer, workingHours) {
       dailyStats
     };
   });
-  if (results.length > 1) {
-    results.pop();
-  }
+  if (results.length > 1) ;
   return results;
 }
 const firebaseConfig = {
@@ -632,13 +684,19 @@ async function claimTicket(ticketId, personnelName) {
 async function completeTicket(ticketId, response) {
   const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
   let respondedBy = "";
-  if (!ticketDoc.empty) respondedBy = ticketDoc.docs[0].data().responded_by;
+  let xp_awarded = false;
+  if (!ticketDoc.empty) {
+    const data = ticketDoc.docs[0].data();
+    respondedBy = data.responded_by;
+    xp_awarded = data.xp_awarded || false;
+  }
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
     status: "completed",
     response,
-    responded_at: firestore.serverTimestamp()
+    responded_at: firestore.serverTimestamp(),
+    xp_awarded: true
   });
-  if (respondedBy) {
+  if (respondedBy && !xp_awarded) {
     try {
       const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", respondedBy));
       const snapshot = await firestore.getDocs(q);
@@ -942,10 +1000,15 @@ function setupIpcHandlers() {
     const win = electron$1.BrowserWindow.fromWebContents(e.sender);
     win?.close();
   });
-  electron$1.ipcMain.handle("calculate-bonus", async (_, filePath, customHours) => {
+  electron$1.ipcMain.handle("calculate-bonus", async (_, fileData, customHours) => {
     try {
       const settings = loadSettings();
-      const buffer = fs__namespace.readFileSync(filePath);
+      let buffer;
+      if (typeof fileData === "string") {
+        buffer = fs__namespace.readFileSync(fileData);
+      } else {
+        buffer = Buffer.from(fileData);
+      }
       const workingHours = customHours || settings.workingHours || { start: "08:00", end: "18:30" };
       return parseBonusData(buffer, workingHours);
     } catch (error) {
@@ -1245,6 +1308,39 @@ electron$1.app.whenReady().then(() => {
   }
   initCache();
   initializeApp();
+  if (!is.dev) {
+    electronUpdater.autoUpdater.autoDownload = false;
+    electronUpdater.autoUpdater.autoInstallOnAppQuit = true;
+    electronUpdater.autoUpdater.on("update-available", (info) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("update-available", info.version);
+      }
+    });
+    electronUpdater.autoUpdater.on("download-progress", (progress) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("update-progress", Math.round(progress.percent));
+      }
+    });
+    electronUpdater.autoUpdater.on("update-downloaded", () => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("update-downloaded");
+      }
+    });
+    electron$1.ipcMain.on("start-update-download", () => {
+      electronUpdater.autoUpdater.downloadUpdate();
+    });
+    electron$1.ipcMain.on("install-update", () => {
+      electronUpdater.autoUpdater.quitAndInstall();
+    });
+    setTimeout(() => {
+      electronUpdater.autoUpdater.checkForUpdates().catch((err) => {
+        console.log("Update check failed:", err?.message);
+      });
+    }, 1e4);
+  }
 });
 electron$1.app.on("will-quit", () => {
   electron$1.globalShortcut.unregisterAll();

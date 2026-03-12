@@ -8,7 +8,7 @@ export function initBonusLogic(api: any, elements: any) {
         workEndInput
     } = elements
 
-    let lastBonusFilePath = ''
+    let lastBonusFile: File | null = null
 
     bonusDropZone.onclick = () => bonusFileInput.click()
     bonusDropZone.ondragover = (e: any) => { e.preventDefault(); bonusDropZone.classList.add('dragover') }
@@ -18,28 +18,30 @@ export function initBonusLogic(api: any, elements: any) {
         bonusDropZone.classList.remove('dragover')
         const file = e.dataTransfer?.files[0]
         if (file) {
-            lastBonusFilePath = (file as any).path || file.name
-            await handleBonusFile(lastBonusFilePath)
+            lastBonusFile = file
+            await handleBonusFile(file)
         }
     }
 
     bonusFileInput.onchange = async () => {
         if (bonusFileInput.files && bonusFileInput.files[0]) {
-            lastBonusFilePath = (bonusFileInput.files[0] as any).path || bonusFileInput.files[0].name
-            await handleBonusFile(lastBonusFilePath)
+            const file = bonusFileInput.files[0]
+            lastBonusFile = file
+            await handleBonusFile(file)
         }
     }
 
-    workStartInput.onchange = () => { if (lastBonusFilePath) handleBonusFile(lastBonusFilePath) }
-    workEndInput.onchange = () => { if (lastBonusFilePath) handleBonusFile(lastBonusFilePath) }
+    workStartInput.onchange = () => { if (lastBonusFile) handleBonusFile(lastBonusFile!) }
+    workEndInput.onchange = () => { if (lastBonusFile) handleBonusFile(lastBonusFile!) }
 
-    async function handleBonusFile(path: string) {
-        if (!path) return
+    async function handleBonusFile(file: File) {
+        if (!file) return
         bonusResults.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Hesaplanıyor...</div>'
         bonusAnalytics.style.display = 'none'
         try {
+            const buffer = await file.arrayBuffer()
             const customHours = { start: workStartInput.value, end: workEndInput.value }
-            const results = await api.calculateBonus(path, customHours)
+            const results = await api.calculateBonus(buffer, customHours)
             displayBonusResults(results)
         } catch (err) {
             bonusResults.innerHTML = '<div style="text-align:center; color:#ef4444;">Dosya okunurken hata oluştu.</div>'
@@ -66,6 +68,35 @@ export function initBonusLogic(api: any, elements: any) {
                 const remaining = 850 - res.validCount
                 statusText = index === 0 ? `Eksik: ${remaining}` : 'Prim tamamlanamadı'
                 statusClass = 'status-pending-badge'
+
+                if (index === 0) {
+                    const monthParts = res.month.split(' ');
+                    const mName = monthParts[0];
+                    const y = parseInt(monthParts[1] || new Date().getFullYear().toString());
+                    const mNamesToNum: any = { 'Ocak':1, 'Şubat':2, 'Mart':3, 'Nisan':4, 'Mayıs':5, 'Haziran':6, 'Temmuz':7, 'Ağustos':8, 'Eylül':9, 'Ekim':10, 'Kasım':11, 'Aralık':12 };
+                    const mNum = mNamesToNum[mName];
+                    if (mNum) {
+                        const today = new Date();
+                        let daysRemaining = 1;
+                        if (today.getMonth() + 1 === mNum && today.getFullYear() === y) {
+                            const lastDay = new Date(y, mNum, 0).getDate();
+                            const currentDay = today.getDate();
+                            daysRemaining = 0;
+                            for (let d = currentDay; d <= lastDay; d++) {
+                                const dayOfWeek = new Date(y, mNum - 1, d).getDay();
+                                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                                    daysRemaining += 1;
+                                } else if (dayOfWeek === 6) {
+                                    daysRemaining += 0.5;
+                                }
+                            }
+                        }
+                        if (daysRemaining > 0) {
+                            const dailyAvg = Math.ceil(remaining / daysRemaining);
+                            statusText += ` (Günde ~${dailyAvg} cihaz)`;
+                        }
+                    }
+                }
             }
 
             card.innerHTML = `

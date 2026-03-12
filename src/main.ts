@@ -29,6 +29,7 @@ import { parseBonusData } from './bonusCalculator';
 import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
+import { autoUpdater } from 'electron-updater';
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -276,10 +277,15 @@ function setupIpcHandlers() {
     win?.close();
   });
 
-  ipcMain.handle('calculate-bonus', async (_, filePath, customHours) => {
+  ipcMain.handle('calculate-bonus', async (_, fileData, customHours) => {
     try {
       const settings = loadSettings();
-      const buffer = fs.readFileSync(filePath);
+      let buffer: Buffer;
+      if (typeof fileData === 'string') {
+        buffer = fs.readFileSync(fileData);
+      } else {
+        buffer = Buffer.from(fileData);
+      }
       const workingHours = customHours || settings.workingHours || { start: '08:00', end: '18:30' };
       return parseBonusData(buffer, workingHours);
     } catch (error) {
@@ -641,6 +647,47 @@ app.whenReady().then(() => {
   }
   initCache();
   initializeApp();
+
+  // Auto-updater setup (only in production)
+  if (!is.dev) {
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-available', (info) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-available', info.version);
+      }
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-progress', Math.round(progress.percent));
+      }
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-downloaded');
+      }
+    });
+
+    ipcMain.on('start-update-download', () => {
+      autoUpdater.downloadUpdate();
+    });
+
+    ipcMain.on('install-update', () => {
+      autoUpdater.quitAndInstall();
+    });
+
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log('Update check failed:', err?.message);
+      });
+    }, 10000);
+  }
 });
 
 app.on('will-quit', () => {

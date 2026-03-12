@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { parse, format, isWithinInterval, setHours, setMinutes, startOfMonth, compareDesc } from 'date-fns';
+import { format, isWithinInterval, startOfMonth, compareDesc, isValid, parse } from 'date-fns';
 
 export interface DailyStat {
     date: string;
@@ -21,9 +21,7 @@ export function parseBonusData(buffer: Buffer, workingHours: { start: string, en
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Read rows as JSON to handle column index issues more robustly if needed
-    // But we stay with header: 1 for performance if format is fixed
-    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
     const monthlyStats: {
         [key: string]: {
@@ -35,62 +33,97 @@ export function parseBonusData(buffer: Buffer, workingHours: { start: string, en
         }
     } = {};
 
+    const headers = rows[0] || [];
+    let dateIndex = 14; // Default fallback: 'Kayıt Tarihi'
+
+    // Öncelik sırasıyla ara: 1) 'kayıt tarihi' tam eşleşme, 2) 'oluşturma' / 'zaman', 3) col 14 fallback
+    const priority1 = headers.findIndex((h: any) => h && h.toString().toLowerCase() === 'kayıt tarihi');
+    const priority2 = headers.findIndex((h: any) => h && (h.toString().toLowerCase().includes('kayıt') && h.toString().toLowerCase().includes('tarih')));
+    const priority3 = headers.findIndex((h: any) => h && (h.toString().toLowerCase().includes('oluşturma') || h.toString().toLowerCase().includes('zaman')));
+
+    if (priority1 >= 0) dateIndex = priority1;
+    else if (priority2 >= 0) dateIndex = priority2;
+    else if (priority3 >= 0) dateIndex = priority3;
+
     const [startH, startM] = workingHours.start.split(':').map(Number);
     const [endH, endM] = workingHours.end.split(':').map(Number);
 
-    rows.forEach(row => {
-        let dateCell = row[14]; // Adjust index if necessary based on CRM export
+    rows.forEach((row, rowIndex) => {
+        if (rowIndex === 0 || !row) return;
 
-        if (dateCell) {
-            let date: Date;
-            try {
-                if (dateCell instanceof Date) {
-                    date = dateCell;
-                } else if (typeof dateCell === 'string') {
-                    const formatStr = dateCell.includes('/') ? 'dd/MM/yyyy HH:mm' : 'dd-MM-yyyy HH:mm';
-                    date = parse(dateCell, formatStr, new Date());
-                } else if (typeof dateCell === 'number') {
-                    // Excel serial date
-                    date = XLSX.SSF.parse_date_code(dateCell) as any;
-                    date = new Date(Date.UTC((date as any).y, (date as any).m - 1, (date as any).d, (date as any).H, (date as any).M, (date as any).S));
-                } else {
-                    return;
-                }
+        let date: Date | null = null;
 
-                if (isNaN(date.getTime())) return;
+        // Tarih çözümleme fonksiyonu
+        const extractDate = (cell: any): Date | null => {
+            if (cell === null || cell === undefined || cell === '') return null;
 
-                const monthKey = format(date, 'MM-yyyy');
-                const dayKey = format(date, 'yyyy-MM-dd');
+            let d: Date | undefined;
 
-                if (!monthlyStats[monthKey]) {
-                    monthlyStats[monthKey] = {
-                        total: 0,
-                        valid: 0,
-                        overtime: 0,
-                        date: startOfMonth(date),
-                        days: {}
-                    };
-                }
+            if (cell instanceof Date) {
+                d = cell;
+            } else if (typeof cell === 'number') {
+                if (cell <= 0) return null;
+                const parsed = XLSX.SSF.parse_date_code(cell);
+                if (!parsed || !parsed.y) return null;
+                d = new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+            } else if (typeof cell === 'string') {
+                const clean = cell.trim();
+                if (!clean || clean.length < 8) return null;
 
-                if (!monthlyStats[monthKey].days[dayKey]) {
-                    monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
-                }
+                const parts = clean.split(' ');
+                const datePart = parts[0];
+                const timePart = parts[1] || '00:00';
 
-                monthlyStats[monthKey].total++;
+                let dateFmt = 'dd.MM.yyyy';
+                if (datePart.includes('/')) dateFmt = 'dd/MM/yyyy';
+                else if (datePart.includes('-')) dateFmt = 'dd-MM-yyyy';
 
-                // Work hours limits
-                const startLimit = setMinutes(setHours(new Date(date), startH), startM);
-                const endLimit = setMinutes(setHours(new Date(date), endH), endM);
+                const timeFmt = timePart.split(':').length === 3 ? 'HH:mm:ss' : 'HH:mm';
+                const fullFmt = `${dateFmt} ${timeFmt}`;
 
-                if (isWithinInterval(date, { start: startLimit, end: endLimit })) {
-                    monthlyStats[monthKey].valid++;
-                    monthlyStats[monthKey].days[dayKey].valid++;
-                } else {
-                    monthlyStats[monthKey].overtime++;
-                    monthlyStats[monthKey].days[dayKey].overtime++;
-                }
-            } catch (e) {
-                // Silently skip
+                d = parse(`${datePart} ${timePart}`, fullFmt, new Date());
+            } else {
+                return null;
+            }
+
+            if (!d || !isValid(d) || d.getFullYear() < 2000) return null;
+            return d;
+        };
+
+        // SADECE 'Kayit Tarihi' kolonuna bak
+        date = extractDate(row[dateIndex]);
+
+        if (date) {
+            const monthKey = format(date, 'MM-yyyy');
+            const dayKey = format(date, 'yyyy-MM-dd');
+
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = {
+                    total: 0,
+                    valid: 0,
+                    overtime: 0,
+                    date: startOfMonth(date),
+                    days: {}
+                };
+            }
+
+            if (!monthlyStats[monthKey].days[dayKey]) {
+                monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
+            }
+
+            monthlyStats[monthKey].total++;
+
+            // Çalışma saatleri kontrolü (Aynı günün sınırları içinde)
+            const checkDate = new Date(date);
+            const startLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), startH, startM, 0);
+            const endLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), endH, endM, 0);
+
+            if (isWithinInterval(date, { start: startLimit, end: endLimit })) {
+                monthlyStats[monthKey].valid++;
+                monthlyStats[monthKey].days[dayKey].valid++;
+            } else {
+                monthlyStats[monthKey].overtime++;
+                monthlyStats[monthKey].days[dayKey].overtime++;
             }
         }
     });
@@ -100,7 +133,6 @@ export function parseBonusData(buffer: Buffer, workingHours: { start: string, en
         '07': 'Temmuz', '08': 'Ağustos', '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
     };
 
-    // Build results list sorted by date descending
     const sortedMonthKeys = Object.keys(monthlyStats).sort((a, b) =>
         compareDesc(monthlyStats[a].date, monthlyStats[b].date)
     );
@@ -127,9 +159,10 @@ export function parseBonusData(buffer: Buffer, workingHours: { start: string, en
         };
     });
 
-    // Remove the oldest month rule
+    // Sadece gerçekten birden fazla ay varsa ve en eski veri hatalıysa pop yapın.
+    // Ancak 1900 filtresi eklediğimiz için bu pop artık verinizi bozmayacaktır.
     if (results.length > 1) {
-        results.pop();
+        // results.pop(); // Eğer en eski ayı silmek istemiyorsanız burayı yorum satırı yapın.
     }
 
     return results;

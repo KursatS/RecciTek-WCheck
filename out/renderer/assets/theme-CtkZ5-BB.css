@@ -16,16 +16,67 @@
     --pending: #f59e0b;
     --progress: #3b82f6;
     --completed: #10b981;
+    --sidebar-bg: rgba(15, 23, 42, 0.8);
 }
 
-.light {
-    --bg-color: #cbd5e1;
-    --card-bg: rgba(241, 245, 249, 0.9);
-    --glass-border: rgba(0, 0, 0, 0.15);
-    --text-main: #020617;
-    --text-muted: #334155;
-    --accent: #0369a1;
+
+/* ─── Midnight Theme (Deep Purple) ─── */
+.midnight {
+    --bg-color: #0d0a1e;
+    --card-bg: rgba(30, 22, 55, 0.75);
+    --glass-border: rgba(167, 139, 250, 0.15);
+    --text-main: #ede9fe;
+    --text-muted: #a78bfa;
+    --accent: #a78bfa;
+    --recci: #34d399;
+    --kvk: #818cf8;
+    --none: #6b7280;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --pending: #fbbf24;
+    --progress: #818cf8;
+    --completed: #34d399;
+    --sidebar-bg: rgba(13, 10, 30, 0.85);
 }
+
+/* ─── Ocean Theme (Deep Teal) ─── */
+.ocean {
+    --bg-color: #042f2e;
+    --card-bg: rgba(6, 78, 75, 0.7);
+    --glass-border: rgba(45, 212, 191, 0.2);
+    --text-main: #ccfbf1;
+    --text-muted: #5eead4;
+    --accent: #2dd4bf;
+    --recci: #34d399;
+    --kvk: #38bdf8;
+    --none: #4b5563;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --pending: #fbbf24;
+    --progress: #38bdf8;
+    --completed: #34d399;
+    --sidebar-bg: rgba(4, 47, 46, 0.85);
+}
+
+/* ─── Sunset Theme (Warm Amber / Rose) ─── */
+.sunset {
+    --bg-color: #1c0a00;
+    --card-bg: rgba(55, 22, 5, 0.78);
+    --glass-border: rgba(251, 146, 60, 0.2);
+    --text-main: #fff7ed;
+    --text-muted: #fdba74;
+    --accent: #fb923c;
+    --recci: #4ade80;
+    --kvk: #60a5fa;
+    --none: #6b7280;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --pending: #fb923c;
+    --progress: #60a5fa;
+    --completed: #4ade80;
+    --sidebar-bg: rgba(28, 10, 0, 0.85);
+}
+
 
 /* ─── Global Reset ─── */
 * {
@@ -70,10 +121,6 @@ select:focus-visible {
     min-height: 20px;
 }
 
-.light .skeleton {
-    background: linear-gradient(90deg, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 75%);
-    background-size: 200% 100%;
-}
 
 @keyframes skeleton-loading {
     0% { background-position: 200% 0; }

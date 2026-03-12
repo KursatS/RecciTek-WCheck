@@ -1,7 +1,7 @@
 import { BrowserWindow, screen, app, shell, ipcMain } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
-import { loadSettings } from './settingsManager';
+import { loadSettings, saveSettings } from './settingsManager';
 
 export interface PopupSize {
     level: number;
@@ -58,9 +58,14 @@ export class WindowManager {
     }
 
     createMainWindow(): BrowserWindow {
+        const settings = loadSettings()
+        const bounds = settings.windowBounds
+
         this.mainWindow = new BrowserWindow({
-            width: 800,
-            height: 600,
+            width: bounds?.width || 800,
+            height: bounds?.height || 600,
+            x: bounds?.x,
+            y: bounds?.y,
             minWidth: 475,
             minHeight: 400,
             show: false,
@@ -74,6 +79,21 @@ export class WindowManager {
         });
 
         this.loadFile(this.mainWindow, 'index.html');
+
+        // Save window bounds on resize/move (debounced)
+        let saveBoundsTimer: NodeJS.Timeout | null = null
+        const saveBounds = () => {
+            if (saveBoundsTimer) clearTimeout(saveBoundsTimer)
+            saveBoundsTimer = setTimeout(() => {
+                if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isMaximized()) {
+                    const b = this.mainWindow.getBounds()
+                    const s = loadSettings()
+                    saveSettings({ ...s, windowBounds: b })
+                }
+            }, 800)
+        }
+        this.mainWindow.on('resize', saveBounds)
+        this.mainWindow.on('move', saveBounds)
 
         this.mainWindow.on('close', (e) => {
             if (this.mainWindow) {

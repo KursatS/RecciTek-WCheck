@@ -73,6 +73,32 @@ const SVG_EMPTY_FOLDER = `
 </defs>
 </svg>
 `;
+function formatWaitTime(ms) {
+  const mins = Math.floor(ms / 6e4);
+  if (mins < 1) return "Az önce eklendi";
+  if (mins < 60) return `${mins} dakikadır cevap bekliyor`;
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (remMins === 0) return `${hrs} saattir cevap bekliyor`;
+  return `${hrs} sa ${remMins} dk bekleniyor`;
+}
+let waitTimerInterval = null;
+function startWaitingTimers() {
+  if (waitTimerInterval) return;
+  waitTimerInterval = setInterval(() => {
+    document.querySelectorAll(".wait-timer[data-created-at]").forEach((el) => {
+      const createdAt = parseInt(el.dataset.createdAt, 10);
+      if (!createdAt) return;
+      el.textContent = formatWaitTime(Date.now() - createdAt);
+    });
+  }, 6e4);
+}
+function stopWaitingTimers() {
+  if (waitTimerInterval) {
+    clearInterval(waitTimerInterval);
+    waitTimerInterval = null;
+  }
+}
 function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
   const { ticketList: ticketList2, tSearchInput: tSearchInput2, tFilterTabs: tFilterTabs2, tcPending: tcPending2, tcProgress: tcProgress2, tcCompleted: tcCompleted2 } = elements;
   async function loadTickets2() {
@@ -111,6 +137,11 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
       const missingLabel = missingLabels[ticket.missing_type] || ticket.missing_type;
       const createdDate = ticket.created_at ? new Date(ticket.created_at).toLocaleString("tr-TR") : "";
       let actionsHTML = "";
+      let waitTimerHTML = "";
+      if (ticket.status === "pending") {
+        const waitMs = ticket.created_at ? Date.now() - ticket.created_at : 0;
+        waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ""}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">⏳ ${formatWaitTime(waitMs)}</div>`;
+      }
       if (ticket.status === "pending" && currentRole2 === "mh") {
         actionsHTML = `<button class="btn-sm btn-claim" data-action="claim" data-id="${ticket.id}">Üstlen</button>`;
       } else if (ticket.status === "in_progress" && currentRole2 === "mh") {
@@ -118,7 +149,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
                     <input class="response-input" id="resp-${ticket.id}" placeholder="Yanıtınızı yazın...">
                     <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}">Tamamla</button>
                 `;
-      } else if (ticket.status === "completed") {
+      } else if (ticket.status === "completed" && currentRole2 === "mh") {
         actionsHTML = `<button class="btn-sm btn-reopen" data-action="reopen" data-id="${ticket.id}">Yeniden Aç</button>`;
       }
       let responseHTML = "";
@@ -140,6 +171,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
                     <span class="ticket-missing-type">${missingLabel}</span>
                     ${ticket.note ? `<div class="ticket-note"><strong>Not:</strong> ${ticket.note}</div>` : ""}
                     ${responseHTML}
+                    ${waitTimerHTML}
                     ${collabHTML}
                     <div class="ticket-time">${createdDate}</div>
                 </div>
@@ -151,6 +183,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
       fragment.appendChild(card);
     });
     ticketList2.appendChild(fragment);
+    startWaitingTimers();
     ticketList2.querySelectorAll("[data-action]").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const el = e.target;
@@ -190,7 +223,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
       loadTickets2();
     }, 300);
   });
-  return { loadTickets: loadTickets2, renderTicketsList: renderTicketsList2 };
+  return { loadTickets: loadTickets2, renderTicketsList: renderTicketsList2, stopWaitingTimers };
 }
 function initProfileLogic(api2, elements, personnelName2, calculateLevel2, refreshSidebarProfile2) {
   const {
@@ -283,10 +316,10 @@ function initPriorityLogic(api2, elements) {
   addPrioBtn2.onclick = async () => {
     const data = {
       serial: pSerial2.value.trim().toUpperCase(),
-      customer_name: pCustomer2.value.trim(),
+      customer_name: pCustomer2.value.trim() || "Belirtilmedi",
       description: pDesc2.value.trim()
     };
-    if (!data.serial || !data.customer_name) return;
+    if (!data.serial) return;
     await api2.addPriorityDevice(data);
     pSerial2.value = "";
     pCustomer2.value = "";
@@ -383,7 +416,7 @@ function initBonusLogic(api2, elements) {
     workStartInput: workStartInput2,
     workEndInput: workEndInput2
   } = elements;
-  let lastBonusFilePath = "";
+  let lastBonusFile = null;
   bonusDropZone2.onclick = () => bonusFileInput2.click();
   bonusDropZone2.ondragover = (e) => {
     e.preventDefault();
@@ -395,29 +428,31 @@ function initBonusLogic(api2, elements) {
     bonusDropZone2.classList.remove("dragover");
     const file = e.dataTransfer?.files[0];
     if (file) {
-      lastBonusFilePath = file.path || file.name;
-      await handleBonusFile(lastBonusFilePath);
+      lastBonusFile = file;
+      await handleBonusFile(file);
     }
   };
   bonusFileInput2.onchange = async () => {
     if (bonusFileInput2.files && bonusFileInput2.files[0]) {
-      lastBonusFilePath = bonusFileInput2.files[0].path || bonusFileInput2.files[0].name;
-      await handleBonusFile(lastBonusFilePath);
+      const file = bonusFileInput2.files[0];
+      lastBonusFile = file;
+      await handleBonusFile(file);
     }
   };
   workStartInput2.onchange = () => {
-    if (lastBonusFilePath) handleBonusFile(lastBonusFilePath);
+    if (lastBonusFile) handleBonusFile(lastBonusFile);
   };
   workEndInput2.onchange = () => {
-    if (lastBonusFilePath) handleBonusFile(lastBonusFilePath);
+    if (lastBonusFile) handleBonusFile(lastBonusFile);
   };
-  async function handleBonusFile(path) {
-    if (!path) return;
+  async function handleBonusFile(file) {
+    if (!file) return;
     bonusResults2.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Hesaplanıyor...</div>';
     bonusAnalytics2.style.display = "none";
     try {
+      const buffer = await file.arrayBuffer();
       const customHours = { start: workStartInput2.value, end: workEndInput2.value };
-      const results = await api2.calculateBonus(path, customHours);
+      const results = await api2.calculateBonus(buffer, customHours);
       displayBonusResults(results);
     } catch (err) {
       bonusResults2.innerHTML = '<div style="text-align:center; color:#ef4444;">Dosya okunurken hata oluştu.</div>';
@@ -442,6 +477,34 @@ function initBonusLogic(api2, elements) {
         const remaining = 850 - res.validCount;
         statusText = index === 0 ? `Eksik: ${remaining}` : "Prim tamamlanamadı";
         statusClass = "status-pending-badge";
+        if (index === 0) {
+          const monthParts = res.month.split(" ");
+          const mName = monthParts[0];
+          const y = parseInt(monthParts[1] || (/* @__PURE__ */ new Date()).getFullYear().toString());
+          const mNamesToNum = { "Ocak": 1, "Şubat": 2, "Mart": 3, "Nisan": 4, "Mayıs": 5, "Haziran": 6, "Temmuz": 7, "Ağustos": 8, "Eylül": 9, "Ekim": 10, "Kasım": 11, "Aralık": 12 };
+          const mNum = mNamesToNum[mName];
+          if (mNum) {
+            const today = /* @__PURE__ */ new Date();
+            let daysRemaining = 1;
+            if (today.getMonth() + 1 === mNum && today.getFullYear() === y) {
+              const lastDay = new Date(y, mNum, 0).getDate();
+              const currentDay = today.getDate();
+              daysRemaining = 0;
+              for (let d = currentDay; d <= lastDay; d++) {
+                const dayOfWeek = new Date(y, mNum - 1, d).getDay();
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                  daysRemaining += 1;
+                } else if (dayOfWeek === 6) {
+                  daysRemaining += 0.5;
+                }
+              }
+            }
+            if (daysRemaining > 0) {
+              const dailyAvg = Math.ceil(remaining / daysRemaining);
+              statusText += ` (Günde ~${dailyAvg} cihaz)`;
+            }
+          }
+        }
       }
       card.innerHTML = `
                 <div class="result-info">
@@ -893,22 +956,41 @@ toggleBtn.onclick = () => {
   toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
   api.toggleMonitoring(monitoringEnabled);
 };
-function applyTheme(isDark) {
-  document.body.classList.toggle("dark", isDark);
-  document.body.classList.toggle("light", !isDark);
-  themeBtn.textContent = isDark ? "🌙" : "☀️";
+const ALL_THEMES = ["dark", "midnight", "ocean", "sunset"];
+const THEME_ICONS = { dark: "🌙", midnight: "🔮", ocean: "🌊", sunset: "🌅" };
+let currentTheme = "dark";
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.classList.remove(...ALL_THEMES);
+  document.body.classList.add(theme);
+  themeBtn.textContent = THEME_ICONS[theme] || "🌙";
+  document.querySelectorAll(".theme-card").forEach((c) => {
+    c.classList.toggle("selected", c.dataset.theme === theme);
+  });
 }
 themeBtn.onclick = () => {
-  const isDark = document.body.classList.contains("dark");
-  const newDark = !isDark;
-  applyTheme(newDark);
+  const idx = ALL_THEMES.indexOf(currentTheme);
+  const next = ALL_THEMES[(idx + 1) % ALL_THEMES.length];
+  applyTheme(next);
   api.getSettings().then((s) => {
-    api.saveSettings({ ...s, theme: newDark ? "dark" : "light" });
+    api.saveSettings({ ...s, theme: next });
   });
 };
+const themePicker = document.getElementById("theme-picker");
+if (themePicker) {
+  themePicker.addEventListener("click", (e) => {
+    const card = e.target.closest(".theme-card");
+    if (!card || !card.dataset.theme) return;
+    const theme = card.dataset.theme;
+    applyTheme(theme);
+    api.getSettings().then((s) => {
+      api.saveSettings({ ...s, theme });
+    });
+  });
+}
 api.getSettings().then((s) => {
   const theme = s.theme || "dark";
-  applyTheme(theme === "dark");
+  applyTheme(theme);
 });
 let mainSearchTimeout;
 searchInput.oninput = () => {
@@ -1133,8 +1215,16 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
   sSaveBtn
 }, refreshSidebarProfile);
 window.deletePriority = async (id) => {
-  await api.deletePriorityDevice(id);
-  loadPriorityDevices();
+  const confirmed = await showConfirm(
+    "Öncelikli Cihazı Sil",
+    "Bu cihazı öncelikli listeden silmek istediğinize emin misiniz?",
+    "Evet, Sil"
+  );
+  if (confirmed) {
+    await api.deletePriorityDevice(id);
+    loadPriorityDevices();
+    showToast("Cihaz başarıyla silindi.", "success");
+  }
 };
 Promise.all([
   api.getSettings(),
@@ -1162,6 +1252,7 @@ Promise.all([
 });
 api.onRefreshCards(() => {
   api.getSettings().then((s) => {
+    currentRole = s.role || "kargo_kabul";
     personnelName = s.personnelName || "";
     const isAdmin = s.isAdmin === true || s.username === "KursatS";
     const isLoggedIn = !!s.personnelName?.trim();
@@ -1206,3 +1297,53 @@ const { loadAdminUsers } = initAdminLogic(api, {
   btnCancelAdminModal,
   btnSaveAdminUser
 });
+(function setupAutoUpdater() {
+  const bar = document.createElement("div");
+  bar.id = "update-bar";
+  bar.style.cssText = "display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid var(--accent);padding:10px 20px;align-items:center;gap:12px;font-size:0.85rem;color:var(--text-main);";
+  bar.innerHTML = `
+        <span id="update-msg">🚀 Yeni sürüm mevcut!</span>
+        <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+            <div id="update-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <button id="update-action-btn" style="padding:6px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">İndir</button>
+        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">✕</button>
+    `;
+  document.body.appendChild(bar);
+  const updateMsg = document.getElementById("update-msg");
+  const progressWrap = document.getElementById("update-progress-wrap");
+  const progressBar = document.getElementById("update-progress-bar");
+  const actionBtn = document.getElementById("update-action-btn");
+  const dismissBtn = document.getElementById("update-dismiss-btn");
+  let updateState = "available";
+  api.onUpdateAvailable((version) => {
+    updateMsg.textContent = `🚀 Yeni sürüm mevcut: v${version}`;
+    bar.style.display = "flex";
+    updateState = "available";
+    actionBtn.textContent = "İndir";
+  });
+  api.onUpdateProgress((percent) => {
+    progressWrap.style.display = "block";
+    progressBar.style.width = `${percent}%`;
+    updateMsg.textContent = `⏬ İndiriliyor... %${percent}`;
+  });
+  api.onUpdateDownloaded(() => {
+    updateState = "ready";
+    progressWrap.style.display = "none";
+    updateMsg.textContent = "✅ Güncelleme hazır!";
+    actionBtn.textContent = "Yeniden Başlat";
+  });
+  actionBtn.onclick = () => {
+    if (updateState === "available") {
+      updateState = "downloading";
+      actionBtn.textContent = "İndiriliyor...";
+      actionBtn.style.opacity = "0.6";
+      api.startUpdateDownload();
+    } else if (updateState === "ready") {
+      api.installUpdate();
+    }
+  };
+  dismissBtn.onclick = () => {
+    bar.style.display = "none";
+  };
+})();

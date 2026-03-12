@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     restartApp: (settings?: any) => safeInvoke('restart-app', settings),
 
     // Bonus Calculation
-    calculateBonus: (filePath: string, customHours?: any) => safeInvoke('calculate-bonus', filePath, customHours),
+    calculateBonus: (fileData: ArrayBuffer | string, customHours?: any) => safeInvoke('calculate-bonus', fileData, customHours),
 
     // Popup Specific
     onPopupData: (callback: any) =>
@@ -87,5 +87,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createUser: (data: any) => safeInvoke('create-user', data),
     updateUser: (id: string, data: any) => safeInvoke('update-user', id, data),
     deleteUser: (id: string) => safeInvoke('delete-user', id),
-    resetUserXp: (id: string) => safeInvoke('reset-user-xp', id)
+    resetUserXp: (id: string) => safeInvoke('reset-user-xp', id),
+
+    // Auto-Updater
+    onUpdateAvailable: (callback: any) =>
+        ipcRenderer.on('update-available', (_event, version) => callback(version)),
+    onUpdateProgress: (callback: any) =>
+        ipcRenderer.on('update-progress', (_event, percent) => callback(percent)),
+    onUpdateDownloaded: (callback: any) =>
+        ipcRenderer.on('update-downloaded', () => callback()),
+    startUpdateDownload: () => ipcRenderer.send('start-update-download'),
+    installUpdate: () => ipcRenderer.send('install-update')
 })

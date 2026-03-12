@@ -29,7 +29,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   saveSettings: (settings) => safeInvoke("save-settings", settings),
   restartApp: (settings) => safeInvoke("restart-app", settings),
   // Bonus Calculation
-  calculateBonus: (filePath, customHours) => safeInvoke("calculate-bonus", filePath, customHours),
+  calculateBonus: (fileData, customHours) => safeInvoke("calculate-bonus", fileData, customHours),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),
@@ -66,5 +66,11 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   createUser: (data) => safeInvoke("create-user", data),
   updateUser: (id, data) => safeInvoke("update-user", id, data),
   deleteUser: (id) => safeInvoke("delete-user", id),
-  resetUserXp: (id) => safeInvoke("reset-user-xp", id)
+  resetUserXp: (id) => safeInvoke("reset-user-xp", id),
+  // Auto-Updater
+  onUpdateAvailable: (callback) => electron.ipcRenderer.on("update-available", (_event, version) => callback(version)),
+  onUpdateProgress: (callback) => electron.ipcRenderer.on("update-progress", (_event, percent) => callback(percent)),
+  onUpdateDownloaded: (callback) => electron.ipcRenderer.on("update-downloaded", () => callback()),
+  startUpdateDownload: () => electron.ipcRenderer.send("start-update-download"),
+  installUpdate: () => electron.ipcRenderer.send("install-update")
 });

@@ -325,28 +325,47 @@ toggleBtn.onclick = () => {
 }
 
 // ── Theme Management ────────────────────────────────────────────────
-function applyTheme(isDark: boolean) {
-    document.body.classList.toggle('dark', isDark)
-    document.body.classList.toggle('light', !isDark)
-    themeBtn.textContent = isDark ? '🌙' : '☀️'
-}
+const ALL_THEMES = ['dark', 'midnight', 'ocean', 'sunset'] as const
+const THEME_ICONS: Record<string, string> = { dark: '🌙', midnight: '🔮', ocean: '🌊', sunset: '🌅' }
+let currentTheme = 'dark'
 
-themeBtn.onclick = () => {
-    const isDark = document.body.classList.contains('dark')
-    const newDark = !isDark
-    applyTheme(newDark)
-
-    // Save to settings
-    api.getSettings().then((s: any) => {
-        api.saveSettings({ ...s, theme: newDark ? 'dark' : 'light' })
+function applyTheme(theme: string) {
+    currentTheme = theme
+    document.body.classList.remove(...ALL_THEMES)
+    document.body.classList.add(theme)
+    themeBtn.textContent = THEME_ICONS[theme] || '🌙'
+    document.querySelectorAll('.theme-card').forEach((c: any) => {
+        c.classList.toggle('selected', c.dataset.theme === theme)
     })
 }
 
-// Initial theme load
+themeBtn.onclick = () => {
+    const idx = ALL_THEMES.indexOf(currentTheme as any)
+    const next = ALL_THEMES[(idx + 1) % ALL_THEMES.length]
+    applyTheme(next)
+    api.getSettings().then((s: any) => {
+        api.saveSettings({ ...s, theme: next })
+    })
+}
+
+const themePicker = document.getElementById('theme-picker')
+if (themePicker) {
+    themePicker.addEventListener('click', (e: Event) => {
+        const card = (e.target as HTMLElement).closest('.theme-card') as HTMLElement | null
+        if (!card || !card.dataset.theme) return
+        const theme = card.dataset.theme
+        applyTheme(theme)
+        api.getSettings().then((s: any) => {
+            api.saveSettings({ ...s, theme })
+        })
+    })
+}
+
 api.getSettings().then((s: any) => {
     const theme = s.theme || 'dark'
-    applyTheme(theme === 'dark')
+    applyTheme(theme)
 })
+
 
 // ── Search ──────────────────────────────────────────────────────────
 let mainSearchTimeout: NodeJS.Timeout
@@ -607,8 +626,16 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
 
 // Global window function for deletion
 ;(window as any).deletePriority = async (id: string) => {
-    await api.deletePriorityDevice(id)
-    loadPriorityDevices()
+    const confirmed = await showConfirm(
+        'Öncelikli Cihazı Sil',
+        'Bu cihazı öncelikli listeden silmek istediğinize emin misiniz?',
+        'Evet, Sil'
+    )
+    if (confirmed) {
+        await api.deletePriorityDevice(id)
+        loadPriorityDevices()
+        showToast('Cihaz başarıyla silindi.', 'success')
+    }
 }
 
 // ── Initial Load ────────────────────────────────────────────────────
@@ -645,6 +672,7 @@ Promise.all([
 
 api.onRefreshCards(() => {
     api.getSettings().then((s: any) => {
+        currentRole = s.role || 'kargo_kabul'
         personnelName = s.personnelName || ''
         
         const isAdmin = s.isAdmin === true || s.username === 'KursatS'
@@ -688,3 +716,62 @@ const { loadAdminUsers } = initAdminLogic(api, {
     adminUserId, adminUsername, adminPassword, adminFullname,
     adminRole, btnCancelAdminModal, btnSaveAdminUser
 }, undefined as any)
+
+// ── Auto-Updater UI ─────────────────────────────────────────────────
+;(function setupAutoUpdater() {
+    const bar = document.createElement('div')
+    bar.id = 'update-bar'
+    bar.style.cssText = 'display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid var(--accent);padding:10px 20px;align-items:center;gap:12px;font-size:0.85rem;color:var(--text-main);'
+    bar.innerHTML = `
+        <span id="update-msg">🚀 Yeni sürüm mevcut!</span>
+        <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+            <div id="update-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <button id="update-action-btn" style="padding:6px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">İndir</button>
+        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">✕</button>
+    `
+    document.body.appendChild(bar)
+
+    const updateMsg = document.getElementById('update-msg')!
+    const progressWrap = document.getElementById('update-progress-wrap')!
+    const progressBar = document.getElementById('update-progress-bar')!
+    const actionBtn = document.getElementById('update-action-btn')!
+    const dismissBtn = document.getElementById('update-dismiss-btn')!
+
+    let updateState: 'available' | 'downloading' | 'ready' = 'available'
+
+    api.onUpdateAvailable((version: string) => {
+        updateMsg.textContent = `🚀 Yeni sürüm mevcut: v${version}`
+        bar.style.display = 'flex'
+        updateState = 'available'
+        actionBtn.textContent = 'İndir'
+    })
+
+    api.onUpdateProgress((percent: number) => {
+        progressWrap.style.display = 'block'
+        progressBar.style.width = `${percent}%`
+        updateMsg.textContent = `⏬ İndiriliyor... %${percent}`
+    })
+
+    api.onUpdateDownloaded(() => {
+        updateState = 'ready'
+        progressWrap.style.display = 'none'
+        updateMsg.textContent = '✅ Güncelleme hazır!'
+        actionBtn.textContent = 'Yeniden Başlat'
+    })
+
+    actionBtn.onclick = () => {
+        if (updateState === 'available') {
+            updateState = 'downloading'
+            actionBtn.textContent = 'İndiriliyor...'
+            actionBtn.style.opacity = '0.6'
+            api.startUpdateDownload()
+        } else if (updateState === 'ready') {
+            api.installUpdate()
+        }
+    }
+
+    dismissBtn.onclick = () => {
+        bar.style.display = 'none'
+    }
+})()

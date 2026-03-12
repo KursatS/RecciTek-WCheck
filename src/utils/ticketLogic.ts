@@ -1,5 +1,35 @@
 import { showToast } from './toastUtils'
 
+function formatWaitTime(ms: number): string {
+    const mins = Math.floor(ms / 60000)
+    if (mins < 1) return 'Az önce eklendi'
+    if (mins < 60) return `${mins} dakikadır cevap bekliyor`
+    const hrs = Math.floor(mins / 60)
+    const remMins = mins % 60
+    if (remMins === 0) return `${hrs} saattir cevap bekliyor`
+    return `${hrs} sa ${remMins} dk bekleniyor`
+}
+
+let waitTimerInterval: ReturnType<typeof setInterval> | null = null
+
+function startWaitingTimers() {
+    if (waitTimerInterval) return
+    waitTimerInterval = setInterval(() => {
+        document.querySelectorAll('.wait-timer[data-created-at]').forEach((el: any) => {
+            const createdAt = parseInt(el.dataset.createdAt, 10)
+            if (!createdAt) return
+            el.textContent = formatWaitTime(Date.now() - createdAt)
+        })
+    }, 60000)
+}
+
+function stopWaitingTimers() {
+    if (waitTimerInterval) {
+        clearInterval(waitTimerInterval)
+        waitTimerInterval = null
+    }
+}
+
 export function initTicketLogic(
     api: any,
     elements: any,
@@ -53,6 +83,13 @@ export function initTicketLogic(
             const createdDate = ticket.created_at ? new Date(ticket.created_at).toLocaleString('tr-TR') : ''
 
             let actionsHTML = ''
+            let waitTimerHTML = ''
+
+            if (ticket.status === 'pending') {
+                const waitMs = ticket.created_at ? Date.now() - ticket.created_at : 0
+                waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ''}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">⏳ ${formatWaitTime(waitMs)}</div>`
+            }
+
             if (ticket.status === 'pending' && currentRole === 'mh') {
                 actionsHTML = `<button class="btn-sm btn-claim" data-action="claim" data-id="${ticket.id}">Üstlen</button>`
             } else if (ticket.status === 'in_progress' && currentRole === 'mh') {
@@ -60,7 +97,7 @@ export function initTicketLogic(
                     <input class="response-input" id="resp-${ticket.id}" placeholder="Yanıtınızı yazın...">
                     <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}">Tamamla</button>
                 `
-            } else if (ticket.status === 'completed') {
+            } else if (ticket.status === 'completed' && currentRole === 'mh') {
                 actionsHTML = `<button class="btn-sm btn-reopen" data-action="reopen" data-id="${ticket.id}">Yeniden Aç</button>`
             }
 
@@ -85,6 +122,7 @@ export function initTicketLogic(
                     <span class="ticket-missing-type">${missingLabel}</span>
                     ${ticket.note ? `<div class="ticket-note"><strong>Not:</strong> ${ticket.note}</div>` : ''}
                     ${responseHTML}
+                    ${waitTimerHTML}
                     ${collabHTML}
                     <div class="ticket-time">${createdDate}</div>
                 </div>
@@ -97,6 +135,7 @@ export function initTicketLogic(
         })
 
         ticketList.appendChild(fragment)
+        startWaitingTimers()
 
         // Bind ticket action buttons
         ticketList.querySelectorAll('[data-action]').forEach((btn: any) => {
@@ -138,5 +177,5 @@ export function initTicketLogic(
         }, 300)
     })
 
-    return { loadTickets, renderTicketsList }
+    return { loadTickets, renderTicketsList, stopWaitingTimers }
 }

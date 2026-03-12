@@ -20,10 +20,16 @@ export interface AppSettings {
   rememberMe?: boolean;
   savedUsername?: string;
   savedPassword?: string;
-  theme?: 'dark' | 'light';
+  theme?: 'dark' | 'midnight' | 'ocean' | 'sunset';
   workingHours?: {
     start: string;
     end: string;
+  };
+  windowBounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   };
 }
 
