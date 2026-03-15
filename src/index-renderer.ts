@@ -763,7 +763,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
         updateState = 'ready'
         progressWrap.style.display = 'none'
         updateMsg.textContent = '✅ Güncelleme hazır!'
-        actionBtn.textContent = 'Yeniden Başlat'
+        actionBtn.textContent = 'Güncelle'
     })
 
     actionBtn.onclick = () => {

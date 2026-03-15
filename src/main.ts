@@ -712,7 +712,11 @@ app.whenReady().then(() => {
     });
 
     ipcMain.on('install-update', () => {
-      autoUpdater.quitAndInstall();
+      autoUpdater.autoInstallOnAppQuit = false;
+      // Force quit: isSilent=false shows NSIS UI, isForceRunAfter=true restarts app after setup
+      autoUpdater.quitAndInstall(false, true);
+      // Force-kill the process (including tray) so setup.exe isn't blocked
+      setTimeout(() => app.exit(0), 500);
     });
 
     setTimeout(() => {
