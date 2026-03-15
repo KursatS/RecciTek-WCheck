@@ -34,7 +34,10 @@ const tcPending = document.getElementById('count-pending')!
 const tcProgress = document.getElementById('count-progress')!
 const tcCompleted = document.getElementById('count-completed')!
 const tSearchInput = document.getElementById('ticket-search') as HTMLInputElement
-const tFilterTabs = document.getElementById('filter-tabs')!
+const tFilterStatus = document.getElementById('filter-status')!
+const tFilterVisibility = document.getElementById('filter-visibility')!
+const tFilterOwnership = document.getElementById('filter-ownership')!
+const btnManualTicket = document.getElementById('btn-manual-ticket')
 
 // Profile View Elements
 const pMyLevel = document.getElementById('my-level')!
@@ -593,7 +596,7 @@ api.onPriorityDeviceMatch((device: any) => {
 // ── Sub-view Initialization Logic ──────────────────────────────────
 const { loadTickets, renderTicketsList } = initTicketLogic(
     api,
-    { ticketList, tSearchInput, tFilterTabs, tcPending, tcProgress, tcCompleted },
+    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tcPending, tcProgress, tcCompleted, btnManualTicket },
     () => currentRole,
     () => personnelName
 )

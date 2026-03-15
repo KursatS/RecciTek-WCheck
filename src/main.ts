@@ -26,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { autoUpdater } from 'electron-updater';
@@ -427,8 +427,35 @@ function setupIpcHandlers() {
     }
   });
 
+  ipcMain.handle('hide-ticket', async (_, id, personnelName) => {
+    try {
+      await hideTicket(id, personnelName);
+      return { success: true };
+    } catch (error) {
+      console.error('Error hiding ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 
-
+  ipcMain.handle('unhide-ticket', async (_, id) => {
+    try {
+      await unhideTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error unhiding ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  ipcMain.handle('delete-ticket', async (_, id) => {
+    try {
+      await deleteTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      return { success: false, error: String(error) };
+    }
+  });
   // ── Priority Devices IPC ──────────────────────────────────────────
   ipcMain.handle('get-priority-devices', async () => cachedPriorityDevices);
 

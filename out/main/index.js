@@ -710,9 +710,24 @@ async function completeTicket(ticketId, response) {
 }
 async function reopenTicket(ticketId) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    status: "in_progress",
-    response: ""
+    status: "in_progress"
+    // Do not clear response so the user can edit their previous response.
   });
+}
+async function hideTicket(ticketId, personnelName) {
+  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
+    is_hidden: true,
+    hidden_by: personnelName
+  });
+}
+async function unhideTicket(ticketId) {
+  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
+    is_hidden: false,
+    hidden_by: ""
+  });
+}
+async function deleteTicket(ticketId) {
+  await firestore.deleteDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId));
 }
 async function updateTicketDetails(ticketId, details) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), { ...details });
@@ -1128,6 +1143,33 @@ function setupIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error("Error updating ticket details:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("hide-ticket", async (_, id, personnelName) => {
+    try {
+      await hideTicket(id, personnelName);
+      return { success: true };
+    } catch (error) {
+      console.error("Error hiding ticket:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("unhide-ticket", async (_, id) => {
+    try {
+      await unhideTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error unhiding ticket:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("delete-ticket", async (_, id) => {
+    try {
+      await deleteTicket(id);
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting ticket:", error);
       return { success: false, error: String(error) };
     }
   });

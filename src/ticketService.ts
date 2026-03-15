@@ -34,6 +34,8 @@ export interface Ticket {
     response: string
     responded_by: string
     responded_at: Timestamp | null
+    is_hidden?: boolean
+    hidden_by?: string
 }
 
 export interface PriorityDevice {
@@ -120,9 +122,29 @@ export async function completeTicket(ticketId: string, response: string): Promis
 // ── Reopen ──────────────────────────────────────────────────────────
 export async function reopenTicket(ticketId: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
-        status: 'in_progress',
-        response: ''
+        status: 'in_progress'
+        // Do not clear response so the user can edit their previous response.
     })
+}
+
+// ── Hide / Unhide ───────────────────────────────────────────────────
+export async function hideTicket(ticketId: string, personnelName: string): Promise<void> {
+    await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
+        is_hidden: true,
+        hidden_by: personnelName
+    })
+}
+
+export async function unhideTicket(ticketId: string): Promise<void> {
+    await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
+        is_hidden: false,
+        hidden_by: ''
+    })
+}
+
+// ── Delete ──────────────────────────────────────────────────────────
+export async function deleteTicket(ticketId: string): Promise<void> {
+    await deleteDoc(doc(db, TICKETS_COLLECTION, ticketId))
 }
 
 // ── Update Details ──────────────────────────────────────────────────

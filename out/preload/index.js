@@ -51,6 +51,9 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   claimTicket: (id, name) => safeInvoke("claim-ticket", id, name),
   completeTicket: (id, response) => safeInvoke("complete-ticket", id, response),
   reopenTicket: (id) => safeInvoke("reopen-ticket", id),
+  hideTicket: (id, personnelName) => safeInvoke("hide-ticket", id, personnelName),
+  unhideTicket: (id) => safeInvoke("unhide-ticket", id),
+  deleteTicket: (id) => safeInvoke("delete-ticket", id),
   updateTicketDetails: (id, details) => safeInvoke("update-ticket-details", id, details),
   onTicketUpdate: (callback) => electron.ipcRenderer.on("ticket-update", (_event, tickets) => callback(tickets)),
   // Tickets & Priority Windows
