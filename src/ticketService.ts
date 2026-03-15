@@ -13,7 +13,8 @@ import {
     Unsubscribe,
     limit,
     increment,
-    deleteDoc
+    deleteDoc,
+    arrayUnion
 } from 'firebase/firestore'
 import { db } from './firebaseConfig'
 
@@ -68,7 +69,12 @@ export async function createTicket(data: {
         status: 'pending',
         response: '',
         responded_by: '',
-        responded_at: null
+        responded_at: null,
+        action_history: [{
+            action: 'Oluşturuldu',
+            user: data.created_by,
+            timestamp: Date.now()
+        }]
     })
 
     try {
@@ -86,7 +92,12 @@ export async function createTicket(data: {
 export async function claimTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'in_progress',
-        responded_by: personnelName
+        responded_by: personnelName,
+        action_history: arrayUnion({
+            action: 'Üstlendi',
+            user: personnelName,
+            timestamp: Date.now()
+        })
     })
 }
 
@@ -105,7 +116,12 @@ export async function completeTicket(ticketId: string, response: string): Promis
         status: 'completed',
         response,
         responded_at: serverTimestamp(),
-        xp_awarded: true
+        xp_awarded: true,
+        action_history: arrayUnion({
+            action: 'Tamamlandı',
+            user: respondedBy || 'Bilinmiyor',
+            timestamp: Date.now()
+        })
     })
 
     if (respondedBy && !xp_awarded) {
@@ -120,9 +136,14 @@ export async function completeTicket(ticketId: string, response: string): Promis
 }
 
 // ── Reopen ──────────────────────────────────────────────────────────
-export async function reopenTicket(ticketId: string): Promise<void> {
+export async function reopenTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
-        status: 'in_progress'
+        status: 'in_progress',
+        action_history: arrayUnion({
+            action: 'Yeniden Açtı',
+            user: personnelName,
+            timestamp: Date.now()
+        })
         // Do not clear response so the user can edit their previous response.
     })
 }
@@ -150,6 +171,24 @@ export async function deleteTicket(ticketId: string): Promise<void> {
 // ── Update Details ──────────────────────────────────────────────────
 export async function updateTicketDetails(ticketId: string, details: Partial<Ticket>): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), { ...details })
+}
+
+export async function markTicketUnreachable(ticketId: string, personnelName: string): Promise<void> {
+    const ticketDoc = await getDocs(query(collection(db, TICKETS_COLLECTION), where('__name__', '==', ticketId)))
+    if (!ticketDoc.empty) {
+        const data = ticketDoc.docs[0].data()
+        await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
+            status: 'pending',
+            responded_by: '',
+            unreachable_count: increment(1),
+            created_at: serverTimestamp(),
+            action_history: arrayUnion({
+                action: 'Ulaşılamadı Olarak İşaretledi',
+                user: personnelName,
+                timestamp: Date.now()
+            })
+        })
+    }
 }
 
 // ── Realtime Listeners ──────────────────────────────────────────────

@@ -26,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { autoUpdater } from 'electron-updater';
@@ -407,9 +407,9 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.handle('reopen-ticket', async (_, id) => {
+  ipcMain.handle('reopen-ticket', async (_, id, name) => {
     try {
-      await reopenTicket(id);
+      await reopenTicket(id, name);
       return { success: true };
     } catch (error) {
       console.error('Error reopening ticket:', error);
@@ -423,6 +423,16 @@ function setupIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error('Error updating ticket details:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('mark-ticket-unreachable', async (_, id, name) => {
+    try {
+      await markTicketUnreachable(id, name);
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking ticket unreachable:', error);
       return { success: false, error: String(error) };
     }
   });
@@ -595,18 +605,14 @@ function startTicketListener() {
             silent: true
           }).show();
         } else if (old && old.status !== ticket.status) {
-          if (ticket.status === 'in_progress' && currentSettings.role === 'kargo_kabul') {
-            new Notification({
-              title: 'Talep Üstlenildi',
-              body: `${ticket.serial || 'Bilinmeyen'} talebiniz üstlenildi`,
-              silent: true
-            }).show();
-          } else if (ticket.status === 'completed' && currentSettings.role === 'kargo_kabul') {
-            new Notification({
-              title: 'Talep Tamamlandı',
-              body: `${ticket.serial || 'Bilinmeyen'} talebiniz tamamlandı`,
-              silent: true
-            }).show();
+          if (currentSettings.role === 'kargo_kabul' && ticket.created_by === (currentSettings.personnelName || 'İsimsiz Personel')) {
+            if (ticket.status === 'completed') {
+              new Notification({
+                title: 'Talep Tamamlandı',
+                body: `${ticket.serial || 'Bilinmeyen'} talebiniz tamamlandı`,
+                silent: true
+              }).show();
+            }
           }
         }
       });

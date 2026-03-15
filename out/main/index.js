@@ -662,7 +662,12 @@ async function createTicket(data) {
     status: "pending",
     response: "",
     responded_by: "",
-    responded_at: null
+    responded_at: null,
+    action_history: [{
+      action: "Oluşturuldu",
+      user: data.created_by,
+      timestamp: Date.now()
+    }]
   });
   try {
     const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", data.created_by));
@@ -678,7 +683,12 @@ async function createTicket(data) {
 async function claimTicket(ticketId, personnelName) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
     status: "in_progress",
-    responded_by: personnelName
+    responded_by: personnelName,
+    action_history: firestore.arrayUnion({
+      action: "Üstlendi",
+      user: personnelName,
+      timestamp: Date.now()
+    })
   });
 }
 async function completeTicket(ticketId, response) {
@@ -694,7 +704,12 @@ async function completeTicket(ticketId, response) {
     status: "completed",
     response,
     responded_at: firestore.serverTimestamp(),
-    xp_awarded: true
+    xp_awarded: true,
+    action_history: firestore.arrayUnion({
+      action: "Tamamlandı",
+      user: respondedBy || "Bilinmiyor",
+      timestamp: Date.now()
+    })
   });
   if (respondedBy && !xp_awarded) {
     try {
@@ -708,9 +723,14 @@ async function completeTicket(ticketId, response) {
     }
   }
 }
-async function reopenTicket(ticketId) {
+async function reopenTicket(ticketId, personnelName) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    status: "in_progress"
+    status: "in_progress",
+    action_history: firestore.arrayUnion({
+      action: "Yeniden Açtı",
+      user: personnelName,
+      timestamp: Date.now()
+    })
     // Do not clear response so the user can edit their previous response.
   });
 }
@@ -731,6 +751,23 @@ async function deleteTicket(ticketId) {
 }
 async function updateTicketDetails(ticketId, details) {
   await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), { ...details });
+}
+async function markTicketUnreachable(ticketId, personnelName) {
+  const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
+  if (!ticketDoc.empty) {
+    ticketDoc.docs[0].data();
+    await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
+      status: "pending",
+      responded_by: "",
+      unreachable_count: firestore.increment(1),
+      created_at: firestore.serverTimestamp(),
+      action_history: firestore.arrayUnion({
+        action: "Ulaşılamadı Olarak İşaretledi",
+        user: personnelName,
+        timestamp: Date.now()
+      })
+    });
+  }
 }
 function subscribeAsKargoKabul(personnelName, callback) {
   const q = firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(200));
@@ -1128,9 +1165,9 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
-  electron$1.ipcMain.handle("reopen-ticket", async (_, id) => {
+  electron$1.ipcMain.handle("reopen-ticket", async (_, id, name) => {
     try {
-      await reopenTicket(id);
+      await reopenTicket(id, name);
       return { success: true };
     } catch (error) {
       console.error("Error reopening ticket:", error);
@@ -1143,6 +1180,15 @@ function setupIpcHandlers() {
       return { success: true };
     } catch (error) {
       console.error("Error updating ticket details:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("mark-ticket-unreachable", async (_, id, name) => {
+    try {
+      await markTicketUnreachable(id, name);
+      return { success: true };
+    } catch (error) {
+      console.error("Error marking ticket unreachable:", error);
       return { success: false, error: String(error) };
     }
   });
@@ -1283,18 +1329,14 @@ function startTicketListener() {
             silent: true
           }).show();
         } else if (old && old.status !== ticket.status) {
-          if (ticket.status === "in_progress" && currentSettings.role === "kargo_kabul") {
-            new electron$1.Notification({
-              title: "Talep Üstlenildi",
-              body: `${ticket.serial || "Bilinmeyen"} talebiniz üstlenildi`,
-              silent: true
-            }).show();
-          } else if (ticket.status === "completed" && currentSettings.role === "kargo_kabul") {
-            new electron$1.Notification({
-              title: "Talep Tamamlandı",
-              body: `${ticket.serial || "Bilinmeyen"} talebiniz tamamlandı`,
-              silent: true
-            }).show();
+          if (currentSettings.role === "kargo_kabul" && ticket.created_by === (currentSettings.personnelName || "İsimsiz Personel")) {
+            if (ticket.status === "completed") {
+              new electron$1.Notification({
+                title: "Talep Tamamlandı",
+                body: `${ticket.serial || "Bilinmeyen"} talebiniz tamamlandı`,
+                silent: true
+              }).show();
+            }
           }
         }
       });

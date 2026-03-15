@@ -36,7 +36,8 @@ const tcCompleted = document.getElementById('count-completed')!
 const tSearchInput = document.getElementById('ticket-search') as HTMLInputElement
 const tFilterStatus = document.getElementById('filter-status')!
 const tFilterVisibility = document.getElementById('filter-visibility')!
-const tFilterOwnership = document.getElementById('filter-ownership')!
+const tFilterOwnership = document.getElementById('filter-ownership-toggle')!
+const tFilterAras = document.getElementById('filter-aras-toggle')!
 const btnManualTicket = document.getElementById('btn-manual-ticket')
 
 // Profile View Elements
@@ -596,7 +597,7 @@ api.onPriorityDeviceMatch((device: any) => {
 // ── Sub-view Initialization Logic ──────────────────────────────────
 const { loadTickets, renderTicketsList } = initTicketLogic(
     api,
-    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tcPending, tcProgress, tcCompleted, btnManualTicket },
+    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tFilterAras, tcPending, tcProgress, tcCompleted, btnManualTicket },
     () => currentRole,
     () => personnelName
 )
@@ -659,6 +660,7 @@ Promise.all([
     const sideProfile = document.getElementById('side-profile-btn')
 
     if (sideBonus) sideBonus.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
+    if (btnManualTicket) btnManualTicket.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
     if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
     if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 
@@ -686,6 +688,7 @@ api.onRefreshCards(() => {
         const sideProfile = document.getElementById('side-profile-btn')
 
         if (sideBonus) sideBonus.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
+        if (btnManualTicket) btnManualTicket.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
         if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
         if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 

@@ -65,11 +65,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createTicket: (data: any) => safeInvoke('create-ticket', data),
     claimTicket: (id: string, name: string) => safeInvoke('claim-ticket', id, name),
     completeTicket: (id: string, response: string) => safeInvoke('complete-ticket', id, response),
-    reopenTicket: (id: string) => safeInvoke('reopen-ticket', id),
+    reopenTicket: (id: string, name: string) => safeInvoke('reopen-ticket', id, name),
     hideTicket: (id: string, personnelName: string) => safeInvoke('hide-ticket', id, personnelName),
     unhideTicket: (id: string) => safeInvoke('unhide-ticket', id),
     deleteTicket: (id: string) => safeInvoke('delete-ticket', id),
     updateTicketDetails: (id: string, details: any) => safeInvoke('update-ticket-details', id, details),
+    markTicketUnreachable: (id: string, name: string) => safeInvoke('mark-ticket-unreachable', id, name),
     onTicketUpdate: (callback: any) =>
         ipcRenderer.on('ticket-update', (_event, tickets) => callback(tickets)),
 

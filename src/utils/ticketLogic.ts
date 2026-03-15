@@ -30,13 +30,96 @@ function stopWaitingTimers() {
     }
 }
 
+function showTicketHistoryModal(ticket: any) {
+    // Remove any existing history modal
+    document.getElementById('ticket-history-modal')?.remove()
+
+    const overlay = document.createElement('div')
+    overlay.id = 'ticket-history-modal'
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;'
+
+    let historyRows = ''
+    const history: any[] = ticket.action_history || []
+
+    if (history.length > 0) {
+        // Sort by timestamp ascending
+        const sorted = [...history].sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0))
+        sorted.forEach((entry: any, idx: number) => {
+            const date = entry.timestamp ? new Date(entry.timestamp) : null
+            const dateStr = date ? `${date.toLocaleDateString('tr-TR')} ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : '—'
+            const iconMap: any = {
+                'Oluşturuldu': '📝',
+                'Üstlendi': '🤝',
+                'Tamamlandı': '✅',
+                'Ulaşılamadı Olarak İşaretledi': '🚫',
+                'Yeniden Açtı': '🔄'
+            }
+            const icon = iconMap[entry.action] || '📌'
+            const isLast = idx === sorted.length - 1
+            historyRows += `
+                <div style="display:flex;gap:12px;align-items:flex-start;position:relative;">
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;border:1px solid rgba(56,189,248,0.3);">${icon}</div>
+                        ${!isLast ? '<div style="width:2px;flex:1;background:rgba(255,255,255,0.1);margin:4px 0;min-height:20px;"></div>' : ''}
+                    </div>
+                    <div style="flex:1;padding-bottom:${isLast ? '0' : '16px'};">
+                        <div style="font-weight:600;font-size:0.9rem;color:white;">${entry.action}</div>
+                        <div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">${entry.user}</div>
+                        <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${dateStr}</div>
+                    </div>
+                </div>
+            `
+        })
+    } else {
+        // Fallback for old tickets without action_history
+        historyRows = `
+            <div style="display:flex;gap:12px;align-items:center;">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(56,189,248,0.3);">📝</div>
+                <div>
+                    <div style="font-weight:600;font-size:0.9rem;color:white;">Oluşturan</div>
+                    <div style="font-size:0.8rem;color:#94a3b8;">${ticket.created_by || 'Bilinmiyor'}</div>
+                </div>
+            </div>
+            ${ticket.responded_by ? `
+            <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(16,185,129,0.3);">🤝</div>
+                <div>
+                    <div style="font-weight:600;font-size:0.9rem;color:white;">Üstlenen</div>
+                    <div style="font-size:0.8rem;color:#94a3b8;">${ticket.responded_by}</div>
+                </div>
+            </div>` : ''}
+        `
+    }
+
+    overlay.innerHTML = `
+        <div style="background:rgba(15,23,42,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:420px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;font-size:1.1rem;color:white;">📜 İşlem Geçmişi</h3>
+                <button id="close-history-modal" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0 4px;">✕</button>
+            </div>
+            <div style="font-size:0.8rem;color:#64748b;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                ${ticket.serial || 'Seri No Yok'} ${ticket.model_name ? '— ' + ticket.model_name : ''}
+            </div>
+            <div style="display:flex;flex-direction:column;">
+                ${historyRows}
+            </div>
+        </div>
+    `
+
+    document.body.appendChild(overlay)
+
+    // Close handlers
+    overlay.querySelector('#close-history-modal')!.addEventListener('click', () => overlay.remove())
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
 export function initTicketLogic(
     api: any,
     elements: any,
     getCurrentRole: () => string,
     getPersonnelName: () => string
 ) {
-    const { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tcPending, tcProgress, tcCompleted, btnManualTicket } = elements
+    const { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tFilterAras, tcPending, tcProgress, tcCompleted, btnManualTicket } = elements
 
     // Helper for manual ticket opening
     function promptManualTicket() {
@@ -156,18 +239,23 @@ export function initTicketLogic(
 
         const statusFilter = tFilterStatus?.value || 'all'
         const visibilityFilter = tFilterVisibility?.value || 'visible'
-        const ownershipFilter = tFilterOwnership?.value || 'mine'
+        const ownershipFilter = tFilterOwnership?.dataset?.val || 'mine'
+        const arasActive = tFilterAras?.dataset?.active === 'true'
 
         tcPending.textContent = String(tickets.filter((t: any) => t.status === 'pending').length)
         tcProgress.textContent = String(tickets.filter((t: any) => t.status === 'in_progress').length)
         tcCompleted.textContent = String(tickets.filter((t: any) => t.status === 'completed').length)
 
         let filtered = tickets
-        
-        // Status Filter
-        if (statusFilter !== 'all') {
-            if (statusFilter === 'aras') filtered = filtered.filter((t: any) => t.aras_code)
-            else filtered = filtered.filter((t: any) => t.status === statusFilter)
+
+        // Aras Kargo Toggle (takes priority)
+        if (arasActive) {
+            filtered = filtered.filter((t: any) => t.aras_code && !t.phone_number)
+        } else {
+            // Status Filter
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter((t: any) => t.status === statusFilter)
+            }
         }
         
         // Visibility Filter
@@ -212,12 +300,53 @@ export function initTicketLogic(
                 waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ''}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">⏳ ${formatWaitTime(waitMs)}</div>`
             }
 
+            let detailedResponseInputsHTML = ''
+            if (ticket.status === 'in_progress' && currentRole === 'mh') {
+                const requestedTypes = ticket.missing_type.split(',').map((t: string) => t.trim()).filter((t: string) => t !== 'Belirtilmedi' && t !== '')
+                
+                let parsedResponses: Record<string, string> = {}
+                if (ticket.response) {
+                    ticket.response.split(' | ').forEach((part: string) => {
+                        const idx = part.indexOf(': ')
+                        if (idx !== -1) {
+                            const key = part.substring(0, idx).trim()
+                            const val = part.substring(idx + 2).trim()
+                            parsedResponses[key] = val
+                        } else {
+                            parsedResponses['Genel'] = part.trim()
+                        }
+                    })
+                }
+
+                if (requestedTypes.length === 0) {
+                     detailedResponseInputsHTML = `
+                        <div class="detailed-response-field" style="margin-bottom:8px;">
+                            <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">Yanıtınız</label>
+                            <input class="response-input dyn-resp-${ticket.id}" data-reqtype="Genel" value="${parsedResponses['Genel'] || ''}" placeholder="Yanıtınızı yazın..." style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.85rem;outline:none;transition:all 0.3s;">
+                        </div>
+                     `
+                } else {
+                     detailedResponseInputsHTML = requestedTypes.map((reqType: string) => `
+                        <div class="detailed-response-field" style="margin-bottom:8px;">
+                            <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">${reqType}</label>
+                            <input class="response-input dyn-resp-${ticket.id}" data-reqtype="${reqType}" value="${parsedResponses[reqType] || ''}" placeholder="${reqType} değerini girin..." style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.85rem;outline:none;transition:all 0.3s;">
+                        </div>
+                     `).join('')
+                }
+            }
+
             if (ticket.status === 'pending' && currentRole === 'mh') {
                 actionsHTML = `<button class="btn-sm btn-claim" data-action="claim" data-id="${ticket.id}">Üstlen</button>`
             } else if (ticket.status === 'in_progress' && currentRole === 'mh') {
+                card.style.paddingBottom = '32px' // CSS Expansion
                 actionsHTML = `
-                    <input class="response-input" id="resp-${ticket.id}" placeholder="Yanıtınızı yazın...">
-                    <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}">Tamamla</button>
+                    <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+                        ${detailedResponseInputsHTML}
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                            <button class="btn-sm" data-action="unreachable" data-id="${ticket.id}" style="background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);" title="Ulaşılamıyor">🚫 Ulaşılamadı</button>
+                            <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}" style="flex:1;">Tamamla</button>
+                        </div>
+                    </div>
                 `
             } else if (ticket.status === 'completed' && currentRole === 'mh') {
                 actionsHTML = `<button class="btn-sm btn-reopen" data-action="reopen" data-id="${ticket.id}">Yeniden Aç</button>`
@@ -225,15 +354,40 @@ export function initTicketLogic(
 
             let responseHTML = ''
             if (ticket.response) {
-                responseHTML = `<div class="ticket-response"><strong>${ticket.responded_by || 'MH'}:</strong> ${ticket.response}</div>`
+                const responseBlocksHTML = ticket.response.split(' | ').map((part: string) => {
+                    const idx = part.indexOf(': ')
+                    if (idx !== -1) {
+                        const key = part.substring(0, idx).trim()
+                        const val = part.substring(idx + 2).trim()
+                        return `
+                            <div style="background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);margin-bottom:8px;">
+                                <span style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">${key}</span>
+                                <span style="color:white;font-size:0.85rem;">${val}</span>
+                            </div>
+                        `
+                    } else {
+                        return `
+                            <div style="background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);margin-bottom:8px;">
+                                <span style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">Yanıt</span>
+                                <span style="color:white;font-size:0.85rem;">${part.trim()}</span>
+                            </div>
+                        `
+                    }
+                }).join('')
+                responseHTML = `
+                    <div class="ticket-response" style="background:transparent;padding:0;border:none;">
+                        <div style="font-size:0.8rem;color:var(--accent);margin-bottom:8px;"><strong>${ticket.responded_by || 'MH'}</strong> yanıtladı:</div>
+                        ${responseBlocksHTML}
+                    </div>
+                `
             }
 
             let collabHTML = ''
-            if (ticket.customer_name || ticket.aras_code || ticket.phone_number) {
+            
+            if (ticket.customer_name || ticket.aras_code) {
                 collabHTML = `<div class="collab-container">
                     ${ticket.customer_name ? `<div class="collab-group"><span class="collab-label">Müşteri</span><span>${ticket.customer_name}</span></div>` : ''}
                     ${ticket.aras_code ? `<div class="collab-group"><span class="collab-label">Aras Kodu</span><span>${ticket.aras_code}</span></div>` : ''}
-                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>${ticket.phone_number}</span></div>` : ''}
                 </div>`
             }
 
@@ -241,6 +395,20 @@ export function initTicketLogic(
             let deleteHTML = ''
             if (currentRole === 'kargo_kabul') {
                 deleteHTML = `<button class="delete-btn" title="Sil" data-action="delete" data-id="${ticket.id}">🗑️</button>`
+            }
+
+            // Note and Unreachable count indicator
+            let noteHTML = ''
+            if (ticket.note || (ticket.unreachable_count && ticket.unreachable_count > 0)) {
+                let noteContent = ticket.note ? `<span><strong>Not:</strong> ${ticket.note}</span>` : ''
+                let unreachableBadge = (ticket.unreachable_count && ticket.unreachable_count > 0) 
+                    ? `<span style="font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);">🚫 Ulaşılamadı: ${ticket.unreachable_count}</span>`
+                    : ''
+                const hasNote = !!ticket.note
+                noteHTML = `<div ${hasNote ? 'class="ticket-note"' : ''} style="display:inline-flex; align-items:center; gap:8px; ${hasNote ? '' : 'margin-top:4px;'}">
+                    ${unreachableBadge}
+                    ${noteContent}
+                </div>`
             }
 
             // Optional hide/unhide button
@@ -259,17 +427,20 @@ export function initTicketLogic(
                     <div class="ticket-serial">${ticket.serial || 'Seri No Yok'}</div>
                     <div class="ticket-model">${ticket.model_name || ''} ${ticket.model_color ? '- ' + ticket.model_color : ''}</div>
                     <span class="ticket-missing-type">${missingLabel}</span>
-                    ${ticket.note ? `<div class="ticket-note"><strong>Not:</strong> ${ticket.note}</div>` : ''}
+                    ${noteHTML}
                     ${responseHTML}
                     ${waitTimerHTML}
                     ${collabHTML}
-                    <div class="ticket-time">${createdDate}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="ticket-time">${createdDate}</div>
+                        <button class="btn-sm" data-action="info" data-id="${ticket.id}" style="background:transparent;border:none;font-size:1.1rem;cursor:pointer;padding:0 4px;opacity:0.6;transition:opacity 0.2s;" title="İşlem Geçmişi">ℹ️</button>
+                    </div>
                 </div>
-                <div class="ticket-actions">
-                    <span class="${badgeClass}">${statusLabel}</span>
-                    <div style="display: flex; gap: 8px;">
+                <div class="ticket-actions" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+                    ${ticket.status === 'in_progress' && currentRole === 'mh' ? '' : `<span class="${badgeClass}">${statusLabel}</span>`}
+                    <div style="display: flex; gap: 8px; flex:1; justify-content: flex-end; ${ticket.status === 'in_progress' && currentRole === 'mh' ? 'width:100%;' : ''}">
                       ${actionsHTML}
-                      ${hideHTML}
+                      ${ticket.status === 'in_progress' && currentRole === 'mh' ? '' : hideHTML}
                     </div>
                 </div>
             `
@@ -292,13 +463,26 @@ export function initTicketLogic(
                     await api.claimTicket(id, personnelName)
                     showToast('Talep üstlenildi.', 'success')
                 } else if (action === 'complete') {
-                    const input = document.getElementById(`resp-${id}`) as HTMLInputElement
-                    const response = input?.value?.trim()
-                    if (!response) { showToast('Lütfen bir yanıt yazın.', 'error'); return }
-                    await api.completeTicket(id, response)
+                    const inputs = document.querySelectorAll(`.dyn-resp-${id}`) as NodeListOf<HTMLInputElement>
+                    let responseParts: string[] = []
+                    
+                    inputs.forEach(input => {
+                        const val = input.value.trim()
+                        if (val) {
+                            responseParts.push(`${input.dataset.reqtype}: ${val}`)
+                        }
+                    })
+
+                    const finalResponse = responseParts.join(' | ')
+                    if (!finalResponse) { showToast('Lütfen en az bir alanı doldurun.', 'error'); return }
+                    
+                    await api.completeTicket(id, finalResponse)
                     showToast('Talep tamamlandı.', 'success')
+                } else if (action === 'unreachable') {
+                    await api.markTicketUnreachable(id, personnelName)
+                    showToast('Bilet durumu ulaşılamıyor olarak güncellendi.', 'info')
                 } else if (action === 'reopen') {
-                    await api.reopenTicket(id)
+                    await api.reopenTicket(id, personnelName)
                     showToast('Talep yeniden açıldı.', 'info')
                 } else if (action === 'delete') {
                     if (confirm('Bu bileti silmek istediğinize emin misiniz?')) {
@@ -311,6 +495,10 @@ export function initTicketLogic(
                 } else if (action === 'unhide') {
                     await api.unhideTicket(id)
                     showToast('Bilet görünür yapıldı', 'info')
+                } else if (action === 'info') {
+                    const t = filtered.find((x: any) => x.id === id)
+                    if (t) showTicketHistoryModal(t)
+                    return // Do not call loadTickets unnecessarily
                 }
                 loadTickets()
             })
@@ -319,7 +507,26 @@ export function initTicketLogic(
 
     if (tFilterStatus) tFilterStatus.addEventListener('change', loadTickets)
     if (tFilterVisibility) tFilterVisibility.addEventListener('change', loadTickets)
-    if (tFilterOwnership) tFilterOwnership.addEventListener('change', loadTickets)
+    if (tFilterAras) tFilterAras.addEventListener('click', () => {
+        const isActive = tFilterAras.dataset.active === 'true'
+        tFilterAras.dataset.active = isActive ? 'false' : 'true'
+        if (!isActive) {
+            tFilterAras.style.background = 'rgba(251,191,36,0.25)'
+            tFilterAras.style.borderColor = 'rgba(251,191,36,0.6)'
+            // Reset status dropdown when aras is active
+            if (tFilterStatus) tFilterStatus.value = 'all'
+        } else {
+            tFilterAras.style.background = 'rgba(251,191,36,0.08)'
+            tFilterAras.style.borderColor = 'rgba(251,191,36,0.3)'
+        }
+        loadTickets()
+    })
+    if (tFilterOwnership) tFilterOwnership.addEventListener('click', () => {
+        const isAll = tFilterOwnership.dataset.val === 'all'
+        tFilterOwnership.dataset.val = isAll ? 'mine' : 'all'
+        tFilterOwnership.textContent = isAll ? getPersonnelName() : 'Tümü'
+        loadTickets()
+    })
 
     let searchTimeout: NodeJS.Timeout
     tSearchInput.addEventListener('input', () => {

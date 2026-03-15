@@ -617,23 +617,35 @@
           <span class="search-icon">🔍</span>
           <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
         </div>
-        <div class="filter-dropdowns" id="filter-dropdowns" style="display: flex; gap: 12px; margin-bottom: 20px;">
-          <select id="filter-status" class="ticket-filter-select">
-            <option value="all">Durum: Tümü</option>
-            <option value="pending">Durum: Bekleyen</option>
-            <option value="in_progress">Durum: İşleniyor</option>
-            <option value="completed">Durum: Tamamlanan</option>
-            <option value="aras">Durum: ARAS Kargo</option>
-          </select>
-          <select id="filter-visibility" class="ticket-filter-select">
-            <option value="all">Gizlilik: Tümü</option>
-            <option value="visible" selected>Gizlilik: Görünür</option>
-            <option value="hidden">Gizlilik: Gizlenenler</option>
-          </select>
-          <select id="filter-ownership" class="ticket-filter-select">
-            <option value="mine" selected>Sahiplik: Bana Ait</option>
-            <option value="all">Sahiplik: Tümü</option>
-          </select>
+        <div class="filter-dropdowns" id="filter-dropdowns" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="filter-status" style="font-size: 0.85rem; color: #94a3b8;">Durum:</label>
+            <select id="filter-status" class="ticket-filter-select">
+              <option value="all">Tümü</option>
+              <option value="pending">Bekleyen</option>
+              <option value="in_progress">İşleniyor</option>
+              <option value="completed">Tamamlanan</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="filter-visibility" style="font-size: 0.85rem; color: #94a3b8;">Görünüm:</label>
+            <select id="filter-visibility" class="ticket-filter-select">
+              <option value="all">Tümü</option>
+              <option value="visible" selected>Görünür</option>
+              <option value="hidden">Gizlenenler</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="filter-aras-toggle" data-active="false" style="border:1px solid rgba(251,191,36,0.3); background:rgba(251,191,36,0.08); color:#fbbf24; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Aras Kargo kodu olan ama telefon numarası eksik biletler">
+              📦 Aras Kargo
+            </button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 0.85rem; color: #94a3b8;">Sahiplik:</label>
+            <button id="filter-ownership-toggle" data-val="all" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Sahiplik değiştirmek için tıklayın">
+              Tümü
+            </button>
+          </div>
         </div>
         <div class="ticket-list" id="ticket-list">
           <div class="empty-state" id="empty-state">
@@ -1193,7 +1205,7 @@
     .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; }
     .ticket-note { font-size: 0.85rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
     .ticket-note strong { color: var(--text-main); }
-    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; max-height: 120px; overflow-y: auto; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
+    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
     .ticket-response strong { color: var(--completed); }
     .ticket-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
     .response-input { width: 100%; padding: 8px 14px; margin-top: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); font-size: 0.85rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
