@@ -1417,7 +1417,9 @@ electron$1.app.whenReady().then(() => {
       electronUpdater.autoUpdater.downloadUpdate();
     });
     electron$1.ipcMain.on("install-update", () => {
-      electronUpdater.autoUpdater.quitAndInstall();
+      electronUpdater.autoUpdater.autoInstallOnAppQuit = false;
+      electronUpdater.autoUpdater.quitAndInstall(false, true);
+      setTimeout(() => electron$1.app.exit(0), 500);
     });
     setTimeout(() => {
       electronUpdater.autoUpdater.checkForUpdates().catch((err) => {

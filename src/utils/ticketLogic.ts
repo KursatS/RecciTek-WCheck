@@ -384,10 +384,11 @@ export function initTicketLogic(
 
             let collabHTML = ''
             
-            if (ticket.customer_name || ticket.aras_code) {
+            if (ticket.customer_name || ticket.aras_code || ticket.phone_number) {
                 collabHTML = `<div class="collab-container">
                     ${ticket.customer_name ? `<div class="collab-group"><span class="collab-label">Müşteri</span><span>${ticket.customer_name}</span></div>` : ''}
                     ${ticket.aras_code ? `<div class="collab-group"><span class="collab-label">Aras Kodu</span><span>${ticket.aras_code}</span></div>` : ''}
+                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>📞 ${ticket.phone_number}</span></div>` : ''}
                 </div>`
             }
 

@@ -1266,8 +1266,8 @@
     .card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); position: relative; transition: transform 0.2s; }
     .card:hover { transform: translateY(-4px); }
     .status-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px; }
-    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; }
-    .card:hover .delete-btn { opacity: 1; }
+    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; transition: opacity 0.2s; font-size: 1.1rem; }
+    .card:hover .delete-btn, .ticket-card:hover .delete-btn { opacity: 1; }
 
     /* ── Settings Styles ── */
     .settings-group-title { margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
