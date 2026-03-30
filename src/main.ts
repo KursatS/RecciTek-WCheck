@@ -26,7 +26,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { autoUpdater } from 'electron-updater';
@@ -264,6 +264,14 @@ function setupIpcHandlers() {
 
   ipcMain.handle('login-success', async () => {
     windowManager.onLoginSuccess();
+    
+    // Uygulama login olduğunda arka plan işlemlerini başlat
+    clipboardMonitor.start();
+    startServerStatusMonitor();
+    startTicketListener();
+    startPriorityDevicesListener();
+    registerShortcuts();
+    
     return true;
   });
 
@@ -488,6 +496,16 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+
+  ipcMain.handle('update-priority-device', async (_, id, data) => {
+    try {
+      await updatePriorityDevice(id, data);
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating priority device:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 // Helper to create the system tray
@@ -511,14 +529,22 @@ function createTray() {
   ]));
 
   tray.on('double-click', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
+    if (currentSettings && currentSettings.isLoggedIn) {
+      mainWindow?.show();
+      mainWindow?.focus();
+    } else {
+      const loginWin = windowManager.getLoginWindow();
+      loginWin?.show();
+      loginWin?.focus();
+    }
   });
 }
 
 // Helper to register global shortcuts
 function registerShortcuts() {
   globalShortcut.unregisterAll(); // Unregister all existing shortcuts
+
+  if (!currentSettings || !currentSettings.isLoggedIn) return; // Login olmadıysa kısayolları kaydetme
 
   // Always register the double copy shortcut if enabled
   if (currentSettings.doubleCopyEnabled) {
@@ -643,9 +669,10 @@ function startTicketListener() {
 
 function initializeApp() {
   currentSettings = loadSettings();
+  currentSettings.isLoggedIn = false; // Always force start in a logged out state
   windowManager = new WindowManager(__dirname);
   clipboardMonitor = new ClipboardMonitor(handleDetection);
-  registerShortcuts();
+  registerShortcuts(); // Will exit early due to isLoggedIn = false
   monitoringEnabled = true;
 
   const splash = windowManager.createSplashWindow();
@@ -660,10 +687,8 @@ function initializeApp() {
     windowManager.createLoginWindow();
 
     createTray();
-    clipboardMonitor.start();
-    startServerStatusMonitor();
-    startTicketListener();
-    startPriorityDevicesListener();
+    
+    // Do NOT start monitors yet; wait for login success (ipcMain.handle('login-success'))
 
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,

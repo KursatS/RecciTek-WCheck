@@ -124,9 +124,9 @@ export class WindowManager {
         this.loginWindow.once('ready-to-show', () => this.loginWindow?.show());
 
         this.loginWindow.on('closed', () => {
-            // If main window is not visible (login was not completed), quit the app
+            // If main window is not visible (login was not completed), forcefully quit the app completely
             if (!this.mainWindow?.isVisible()) {
-                app.quit();
+                this.forceQuit();
             }
             this.loginWindow = null;
         });
@@ -147,6 +147,10 @@ export class WindowManager {
 
     getMainWindow(): BrowserWindow | null {
         return this.mainWindow;
+    }
+
+    getLoginWindow(): BrowserWindow | null {
+        return this.loginWindow;
     }
 
     showPopup(info: any, timeoutDuration: number, sizeLevel: number): void {

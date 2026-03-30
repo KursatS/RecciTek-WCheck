@@ -466,8 +466,8 @@
       color: var(--text-muted);
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-DKLc2F7v.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/input-3ZE6TPTh.css">
+  <script type="module" crossorigin src="./assets/index-Dm2gLA3i.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-DD98dCow.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
 
@@ -602,9 +602,12 @@
 
       <!-- View: Tickets (Embedded) -->
       <section id="view-tickets" class="view-section">
-        <header class="view-header">
-          <h1>📋 Bildirim Paneli</h1>
-          <p>Eksik bilgi talepleri — gerçek zamanlı</p>
+        <header class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h1>📋 Bildirim Paneli</h1>
+            <p>Eksik bilgi talepleri — gerçek zamanlı</p>
+          </div>
+          <button id="btn-manual-ticket" class="btn btn-primary" style="margin-top: 10px;">+ Manuel Bildirim Aç</button>
         </header>
         <div class="stats-bar" id="stats-bar">
           <div class="stat-chip"><div class="dot dot-pending"></div> Bekleyen: <span id="count-pending">0</span></div>
@@ -615,12 +618,35 @@
           <span class="search-icon">🔍</span>
           <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
         </div>
-        <div class="filter-tabs" id="filter-tabs">
-          <button class="filter-tab active" data-filter="all">Tümü</button>
-          <button class="filter-tab" data-filter="pending">Bekleyen</button>
-          <button class="filter-tab" data-filter="in_progress">İşleniyor</button>
-          <button class="filter-tab" data-filter="completed">Tamamlanan</button>
-          <button class="filter-tab" data-filter="aras">📦 ARAS</button>
+        <div class="filter-dropdowns" id="filter-dropdowns" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="filter-status" style="font-size: 0.85rem; color: #94a3b8;">Durum:</label>
+            <select id="filter-status" class="ticket-filter-select">
+              <option value="all">Tümü</option>
+              <option value="pending">Bekleyen</option>
+              <option value="in_progress">İşleniyor</option>
+              <option value="completed">Tamamlanan</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="filter-visibility" style="font-size: 0.85rem; color: #94a3b8;">Görünüm:</label>
+            <select id="filter-visibility" class="ticket-filter-select">
+              <option value="all">Tümü</option>
+              <option value="visible" selected>Görünür</option>
+              <option value="hidden">Gizlenenler</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="filter-aras-toggle" data-active="false" style="border:1px solid rgba(251,191,36,0.3); background:rgba(251,191,36,0.08); color:#fbbf24; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Aras Kargo kodu olan ama telefon numarası eksik biletler">
+              📦 Aras Kargo
+            </button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 0.85rem; color: #94a3b8;">Sahiplik:</label>
+            <button id="filter-ownership-toggle" data-val="all" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Sahiplik değiştirmek için tıklayın">
+              Tümü
+            </button>
+          </div>
         </div>
         <div class="ticket-list" id="ticket-list">
           <div class="empty-state" id="empty-state">
@@ -673,6 +699,10 @@
             <input type="text" id="p-customer" class="priority-input" placeholder="Müşteri Adı...">
             <input type="text" id="p-desc" class="priority-input full-width" placeholder="Açıklama / Not...">
             <button id="add-priority-btn" class="btn-add-priority full-width">LİSTEYE EKLE</button>
+          </div>
+          <div style="margin: 20px 0 10px 0; display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <span style="margin-right: 10px; opacity: 0.6;">🔍</span>
+            <input type="text" id="priority-search" placeholder="Listede ara (Seri No veya İsim)..." style="flex: 1; background: transparent; border: none; outline: none; color: var(--text-main); font-size: 0.95rem;">
           </div>
           <div class="priority-list" id="priority-list"></div>
         </div>
@@ -1081,9 +1111,9 @@
     .dot-pending { background: var(--pending); }
     .dot-progress { background: var(--progress); }
     .dot-completed { background: var(--completed); }
-    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-    .filter-tab { padding: 6px 14px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-muted); cursor: pointer; font-size: 0.8rem; }
-    .filter-tab.active { background: var(--accent); color: #0f172a; }
+    .ticket-filter-select { padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer; transition: all 0.2s; }
+    .ticket-filter-select:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
+    .ticket-filter-select option { background: var(--bg-color); color: var(--text-main); }
     .ticket-list { display: flex; flex-direction: column; gap: 12px; }
 
     /* ── Profile Styles (with medals) ── */
@@ -1180,7 +1210,7 @@
     .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; }
     .ticket-note { font-size: 0.85rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
     .ticket-note strong { color: var(--text-main); }
-    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; max-height: 120px; overflow-y: auto; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
+    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
     .ticket-response strong { color: var(--completed); }
     .ticket-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
     .response-input { width: 100%; padding: 8px 14px; margin-top: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); font-size: 0.85rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
@@ -1241,8 +1271,8 @@
     .card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); position: relative; transition: transform 0.2s; }
     .card:hover { transform: translateY(-4px); }
     .status-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px; }
-    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; }
-    .card:hover .delete-btn { opacity: 1; }
+    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; transition: opacity 0.2s; font-size: 1.1rem; }
+    .card:hover .delete-btn, .ticket-card:hover .delete-btn { opacity: 1; }
 
     /* ── Settings Styles ── */
     .settings-group-title { margin: 28px 0 14px; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }

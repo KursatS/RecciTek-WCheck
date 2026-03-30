@@ -240,6 +240,13 @@ export async function deletePriorityDevice(id: string): Promise<void> {
     await deleteDoc(doc(db, PRIORITY_COLLECTION, id))
 }
 
+export async function updatePriorityDevice(id: string, data: Partial<PriorityDevice>): Promise<void> {
+    if (data.serial) {
+        data.serial = data.serial.trim().toUpperCase()
+    }
+    await updateDoc(doc(db, PRIORITY_COLLECTION, id), { ...data })
+}
+
 export function subscribeToPriorityDevices(
     callback: (devices: PriorityDevice[]) => void
 ): Unsubscribe {

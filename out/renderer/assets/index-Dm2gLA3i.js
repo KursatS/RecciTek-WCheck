@@ -99,8 +99,171 @@ function stopWaitingTimers() {
     waitTimerInterval = null;
   }
 }
+function showTicketHistoryModal(ticket) {
+  document.getElementById("ticket-history-modal")?.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "ticket-history-modal";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;";
+  let historyRows = "";
+  const history = ticket.action_history || [];
+  if (history.length > 0) {
+    const sorted = [...history].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    sorted.forEach((entry, idx) => {
+      const date = entry.timestamp ? new Date(entry.timestamp) : null;
+      const dateStr = date ? `${date.toLocaleDateString("tr-TR")} ${date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}` : "—";
+      const iconMap = {
+        "Oluşturuldu": "📝",
+        "Üstlendi": "🤝",
+        "Tamamlandı": "✅",
+        "Ulaşılamadı Olarak İşaretledi": "🚫",
+        "Yeniden Açtı": "🔄"
+      };
+      const icon = iconMap[entry.action] || "📌";
+      const isLast = idx === sorted.length - 1;
+      historyRows += `
+                <div style="display:flex;gap:12px;align-items:flex-start;position:relative;">
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;border:1px solid rgba(56,189,248,0.3);">${icon}</div>
+                        ${!isLast ? '<div style="width:2px;flex:1;background:rgba(255,255,255,0.1);margin:4px 0;min-height:20px;"></div>' : ""}
+                    </div>
+                    <div style="flex:1;padding-bottom:${isLast ? "0" : "16px"};">
+                        <div style="font-weight:600;font-size:0.9rem;color:white;">${entry.action}</div>
+                        <div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">${entry.user}</div>
+                        <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${dateStr}</div>
+                    </div>
+                </div>
+            `;
+    });
+  } else {
+    historyRows = `
+            <div style="display:flex;gap:12px;align-items:center;">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(56,189,248,0.3);">📝</div>
+                <div>
+                    <div style="font-weight:600;font-size:0.9rem;color:white;">Oluşturan</div>
+                    <div style="font-size:0.8rem;color:#94a3b8;">${ticket.created_by || "Bilinmiyor"}</div>
+                </div>
+            </div>
+            ${ticket.responded_by ? `
+            <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(16,185,129,0.3);">🤝</div>
+                <div>
+                    <div style="font-weight:600;font-size:0.9rem;color:white;">Üstlenen</div>
+                    <div style="font-size:0.8rem;color:#94a3b8;">${ticket.responded_by}</div>
+                </div>
+            </div>` : ""}
+        `;
+  }
+  overlay.innerHTML = `
+        <div style="background:rgba(15,23,42,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:420px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;font-size:1.1rem;color:white;">📜 İşlem Geçmişi</h3>
+                <button id="close-history-modal" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0 4px;">✕</button>
+            </div>
+            <div style="font-size:0.8rem;color:#64748b;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                ${ticket.serial || "Seri No Yok"} ${ticket.model_name ? "— " + ticket.model_name : ""}
+            </div>
+            <div style="display:flex;flex-direction:column;">
+                ${historyRows}
+            </div>
+        </div>
+    `;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#close-history-modal").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
 function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
-  const { ticketList: ticketList2, tSearchInput: tSearchInput2, tFilterTabs: tFilterTabs2, tcPending: tcPending2, tcProgress: tcProgress2, tcCompleted: tcCompleted2 } = elements;
+  const { ticketList: ticketList2, tSearchInput: tSearchInput2, tFilterStatus: tFilterStatus2, tFilterVisibility: tFilterVisibility2, tFilterOwnership: tFilterOwnership2, tFilterAras: tFilterAras2, tcPending: tcPending2, tcProgress: tcProgress2, tcCompleted: tcCompleted2, btnManualTicket: btnManualTicket2 } = elements;
+  function promptManualTicket() {
+    const modalOverlay2 = document.getElementById("modal-overlay");
+    const modalTitle2 = document.getElementById("modal-title");
+    const modalText2 = document.getElementById("modal-text");
+    const modalConfirm2 = document.getElementById("modal-confirm");
+    const modalCancel2 = document.getElementById("modal-cancel");
+    modalTitle2.textContent = "Manuel Bildirim Aç";
+    modalText2.innerHTML = "";
+    const form = document.createElement("div");
+    form.style.cssText = "display:flex;flex-direction:column;gap:12px;margin-top:12px;";
+    const fields = [
+      { id: "chk-man-ariza", label: "Arıza Beyanı" },
+      { id: "chk-man-adres", label: "Adres Bilgisi" },
+      { id: "chk-man-tel", label: "Telefon Numarası" },
+      { id: "chk-man-fatura", label: "Fatura Tarihi" },
+      { id: "chk-man-seri", label: "Seri Numarası" },
+      { id: "chk-man-isim", label: "İsim ve Soyisim" }
+    ];
+    let checkboxesHtml = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">';
+    fields.forEach((f) => {
+      checkboxesHtml += `
+                <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;">
+                    <input type="checkbox" id="${f.id}" value="${f.label}" style="accent-color:#38bdf8;width:16px;height:16px;">
+                    ${f.label}
+                </label>
+            `;
+    });
+    checkboxesHtml += "</div>";
+    form.innerHTML = `
+        <label style="font-size:0.85rem;color:#94a3b8;margin-bottom:-8px;">Eksik Bilgiler (Birden fazla seçebilirsiniz)</label>
+        ${checkboxesHtml}
+
+        <label style="font-size:0.85rem;color:#94a3b8;">Seri Numarası (Opsiyonel)</label>
+        <input type="text" id="man-serial" placeholder="Bilinmiyorsa boş bırakın..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+        
+        <label style="font-size:0.85rem;color:#94a3b8;">Müşteri İsmi (Opsiyonel)</label>
+        <input type="text" id="man-customer" placeholder="Müşteri adı soyadı..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+        <label style="font-size:0.85rem;color:#94a3b8;">Aras Kodu (Opsiyonel)</label>
+        <input type="text" id="man-aras" placeholder="Aras kargo kodu..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+        <label style="font-size:0.85rem;color:#94a3b8;">Telefon Numarası (Opsiyonel)</label>
+        <input type="text" id="man-phone" placeholder="Müşteri iletişim numarası..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+
+        <label style="font-size:0.85rem;color:#94a3b8;">Not (Opsiyonel)</label>
+        <input type="text" id="man-note" placeholder="Ekstra detay ekleyin..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+        `;
+    modalText2.appendChild(form);
+    modalConfirm2.textContent = "Oluştur";
+    modalOverlay2.classList.add("active");
+    modalConfirm2.onclick = async () => {
+      const selectedTypes = [];
+      fields.forEach((f) => {
+        const el = document.getElementById(f.id);
+        if (el && el.checked) {
+          selectedTypes.push(el.value);
+        }
+      });
+      const missingType = selectedTypes.length > 0 ? selectedTypes.join(", ") : "Belirtilmedi";
+      const serial = document.getElementById("man-serial").value.trim();
+      const note = document.getElementById("man-note").value.trim();
+      const customerName = document.getElementById("man-customer").value.trim();
+      const arasCode = document.getElementById("man-aras").value.trim();
+      const phoneNumber = document.getElementById("man-phone").value.trim();
+      try {
+        await api2.createTicket({
+          serial: serial || "Seri No Yok",
+          model_name: "",
+          model_color: "",
+          missing_type: missingType,
+          note,
+          customer_name: customerName,
+          aras_code: arasCode,
+          phone_number: phoneNumber,
+          created_by: getPersonnelName() || "İsimsiz Personel"
+        });
+        showToast("Manuel bildirim oluşturuldu.", "success");
+      } catch (e) {
+        showToast("Bildirim oluşturulurken hata: " + e.message, "error");
+      }
+      modalOverlay2.classList.remove("active");
+    };
+    modalCancel2.onclick = () => {
+      modalOverlay2.classList.remove("active");
+    };
+  }
+  if (btnManualTicket2) {
+    btnManualTicket2.addEventListener("click", promptManualTicket);
+  }
   async function loadTickets2() {
     const tickets = await api2.getTickets();
     if (!tickets) return;
@@ -109,24 +272,38 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
   function renderTicketsList2(tickets) {
     ticketList2.innerHTML = "";
     const searchQuery = tSearchInput2?.value?.toLowerCase().trim() || "";
-    const activeFilter = tFilterTabs2?.querySelector(".active")?.dataset.filter || "all";
+    const currentRole2 = getCurrentRole();
+    const personnelName2 = getPersonnelName();
+    const statusFilter = tFilterStatus2?.value || "all";
+    const visibilityFilter = tFilterVisibility2?.value || "visible";
+    const ownershipFilter = tFilterOwnership2?.dataset?.val || "mine";
+    const arasActive = tFilterAras2?.dataset?.active === "true";
     tcPending2.textContent = String(tickets.filter((t) => t.status === "pending").length);
     tcProgress2.textContent = String(tickets.filter((t) => t.status === "in_progress").length);
     tcCompleted2.textContent = String(tickets.filter((t) => t.status === "completed").length);
     let filtered = tickets;
-    if (activeFilter !== "all") {
-      if (activeFilter === "aras") filtered = filtered.filter((t) => t.aras_code);
-      else filtered = filtered.filter((t) => t.status === activeFilter);
+    if (arasActive) {
+      filtered = filtered.filter((t) => t.aras_code && !t.phone_number);
+    } else {
+      if (statusFilter !== "all") {
+        filtered = filtered.filter((t) => t.status === statusFilter);
+      }
+    }
+    if (visibilityFilter === "visible") {
+      filtered = filtered.filter((t) => !t.is_hidden);
+    } else if (visibilityFilter === "hidden") {
+      filtered = filtered.filter((t) => t.is_hidden);
+    }
+    if (ownershipFilter === "mine") {
+      filtered = filtered.filter((t) => t.created_by === personnelName2 || t.responded_by === personnelName2);
     }
     if (searchQuery) {
       filtered = filtered.filter((t) => (t.serial || "").toLowerCase().includes(searchQuery) || (t.customer_name || "").toLowerCase().includes(searchQuery));
     }
     if (filtered.length === 0) {
-      ticketList2.innerHTML = '<div class="priority-empty">Henüz talep yok.</div>';
+      ticketList2.innerHTML = '<div class="priority-empty">Talep bulunamadı.</div>';
       return;
     }
-    const currentRole2 = getCurrentRole();
-    const personnelName2 = getPersonnelName();
     const fragment = document.createDocumentFragment();
     filtered.forEach((ticket) => {
       const card = document.createElement("div");
@@ -142,42 +319,134 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
         const waitMs = ticket.created_at ? Date.now() - ticket.created_at : 0;
         waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ""}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">⏳ ${formatWaitTime(waitMs)}</div>`;
       }
+      let detailedResponseInputsHTML = "";
+      if (ticket.status === "in_progress" && currentRole2 === "mh") {
+        const requestedTypes = ticket.missing_type.split(",").map((t) => t.trim()).filter((t) => t !== "Belirtilmedi" && t !== "");
+        let parsedResponses = {};
+        if (ticket.response) {
+          ticket.response.split(" | ").forEach((part) => {
+            const idx = part.indexOf(": ");
+            if (idx !== -1) {
+              const key = part.substring(0, idx).trim();
+              const val = part.substring(idx + 2).trim();
+              parsedResponses[key] = val;
+            } else {
+              parsedResponses["Genel"] = part.trim();
+            }
+          });
+        }
+        if (requestedTypes.length === 0) {
+          detailedResponseInputsHTML = `
+                        <div class="detailed-response-field" style="margin-bottom:8px;">
+                            <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">Yanıtınız</label>
+                            <input class="response-input dyn-resp-${ticket.id}" data-reqtype="Genel" value="${parsedResponses["Genel"] || ""}" placeholder="Yanıtınızı yazın..." style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.85rem;outline:none;transition:all 0.3s;">
+                        </div>
+                     `;
+        } else {
+          detailedResponseInputsHTML = requestedTypes.map((reqType) => `
+                        <div class="detailed-response-field" style="margin-bottom:8px;">
+                            <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">${reqType}</label>
+                            <input class="response-input dyn-resp-${ticket.id}" data-reqtype="${reqType}" value="${parsedResponses[reqType] || ""}" placeholder="${reqType} değerini girin..." style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:white;font-size:0.85rem;outline:none;transition:all 0.3s;">
+                        </div>
+                     `).join("");
+        }
+      }
       if (ticket.status === "pending" && currentRole2 === "mh") {
         actionsHTML = `<button class="btn-sm btn-claim" data-action="claim" data-id="${ticket.id}">Üstlen</button>`;
       } else if (ticket.status === "in_progress" && currentRole2 === "mh") {
+        card.style.paddingBottom = "32px";
         actionsHTML = `
-                    <input class="response-input" id="resp-${ticket.id}" placeholder="Yanıtınızı yazın...">
-                    <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}">Tamamla</button>
+                    <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+                        ${detailedResponseInputsHTML}
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                            <button class="btn-sm" data-action="unreachable" data-id="${ticket.id}" style="background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);" title="Ulaşılamıyor">🚫 Ulaşılamadı</button>
+                            <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}" style="flex:1;">Tamamla</button>
+                        </div>
+                    </div>
                 `;
       } else if (ticket.status === "completed" && currentRole2 === "mh") {
         actionsHTML = `<button class="btn-sm btn-reopen" data-action="reopen" data-id="${ticket.id}">Yeniden Aç</button>`;
       }
       let responseHTML = "";
       if (ticket.response) {
-        responseHTML = `<div class="ticket-response"><strong>${ticket.responded_by || "MH"}:</strong> ${ticket.response}</div>`;
+        const responseBlocksHTML = ticket.response.split(" | ").map((part) => {
+          const idx = part.indexOf(": ");
+          if (idx !== -1) {
+            const key = part.substring(0, idx).trim();
+            const val = part.substring(idx + 2).trim();
+            return `
+                            <div style="background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);margin-bottom:8px;">
+                                <span style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">${key}</span>
+                                <span style="color:white;font-size:0.85rem;">${val}</span>
+                            </div>
+                        `;
+          } else {
+            return `
+                            <div style="background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);margin-bottom:8px;">
+                                <span style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:2px;">Yanıt</span>
+                                <span style="color:white;font-size:0.85rem;">${part.trim()}</span>
+                            </div>
+                        `;
+          }
+        }).join("");
+        responseHTML = `
+                    <div class="ticket-response" style="background:transparent;padding:0;border:none;">
+                        <div style="font-size:0.8rem;color:var(--accent);margin-bottom:8px;"><strong>${ticket.responded_by || "MH"}</strong> yanıtladı:</div>
+                        ${responseBlocksHTML}
+                    </div>
+                `;
       }
       let collabHTML = "";
       if (ticket.customer_name || ticket.aras_code || ticket.phone_number) {
         collabHTML = `<div class="collab-container">
                     ${ticket.customer_name ? `<div class="collab-group"><span class="collab-label">Müşteri</span><span>${ticket.customer_name}</span></div>` : ""}
                     ${ticket.aras_code ? `<div class="collab-group"><span class="collab-label">Aras Kodu</span><span>${ticket.aras_code}</span></div>` : ""}
-                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>${ticket.phone_number}</span></div>` : ""}
+                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>📞 ${ticket.phone_number}</span></div>` : ""}
                 </div>`;
       }
+      let deleteHTML = "";
+      if (currentRole2 === "kargo_kabul") {
+        deleteHTML = `<button class="delete-btn" title="Sil" data-action="delete" data-id="${ticket.id}">🗑️</button>`;
+      }
+      let noteHTML = "";
+      if (ticket.note || ticket.unreachable_count && ticket.unreachable_count > 0) {
+        let noteContent = ticket.note ? `<span><strong>Not:</strong> ${ticket.note}</span>` : "";
+        let unreachableBadge = ticket.unreachable_count && ticket.unreachable_count > 0 ? `<span style="font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);">🚫 Ulaşılamadı: ${ticket.unreachable_count}</span>` : "";
+        const hasNote = !!ticket.note;
+        noteHTML = `<div ${hasNote ? 'class="ticket-note"' : ""} style="display:inline-flex; align-items:center; gap:8px; ${hasNote ? "" : "margin-top:4px;"}">
+                    ${unreachableBadge}
+                    ${noteContent}
+                </div>`;
+      }
+      let hideHTML = "";
+      if (ticket.status === "completed") {
+        if (ticket.is_hidden) {
+          hideHTML = `<button class="btn-sm btn-reopen" data-action="unhide" data-id="${ticket.id}" style="margin-left:8px;">Gözetleme</button>`;
+        } else {
+          hideHTML = `<button class="btn-sm btn-update" data-action="hide" data-id="${ticket.id}" style="margin-top:0; margin-left:8px;">Gizle</button>`;
+        }
+      }
       card.innerHTML = `
+                ${deleteHTML}
                 <div class="ticket-body">
                     <div class="ticket-serial">${ticket.serial || "Seri No Yok"}</div>
                     <div class="ticket-model">${ticket.model_name || ""} ${ticket.model_color ? "- " + ticket.model_color : ""}</div>
                     <span class="ticket-missing-type">${missingLabel}</span>
-                    ${ticket.note ? `<div class="ticket-note"><strong>Not:</strong> ${ticket.note}</div>` : ""}
+                    ${noteHTML}
                     ${responseHTML}
                     ${waitTimerHTML}
                     ${collabHTML}
-                    <div class="ticket-time">${createdDate}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="ticket-time">${createdDate}</div>
+                        <button class="btn-sm" data-action="info" data-id="${ticket.id}" style="background:transparent;border:none;font-size:1.1rem;cursor:pointer;padding:0 4px;opacity:0.6;transition:opacity 0.2s;" title="İşlem Geçmişi">ℹ️</button>
+                    </div>
                 </div>
-                <div class="ticket-actions">
-                    <span class="${badgeClass}">${statusLabel}</span>
-                    ${actionsHTML}
+                <div class="ticket-actions" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+                    ${ticket.status === "in_progress" && currentRole2 === "mh" ? "" : `<span class="${badgeClass}">${statusLabel}</span>`}
+                    <div style="display: flex; gap: 8px; flex:1; justify-content: flex-end; ${ticket.status === "in_progress" && currentRole2 === "mh" ? "width:100%;" : ""}">
+                      ${actionsHTML}
+                      ${ticket.status === "in_progress" && currentRole2 === "mh" ? "" : hideHTML}
+                    </div>
                 </div>
             `;
       fragment.appendChild(card);
@@ -188,32 +457,72 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
       btn.addEventListener("click", async (e) => {
         const el = e.target;
         const action = el.dataset.action;
+        el.closest(".ticket-card");
         const id = el.dataset.id;
         if (action === "claim") {
           await api2.claimTicket(id, personnelName2);
           showToast("Talep üstlenildi.", "success");
         } else if (action === "complete") {
-          const input = document.getElementById(`resp-${id}`);
-          const response = input?.value?.trim();
-          if (!response) {
-            showToast("Lütfen bir yanıt yazın.", "error");
+          const inputs = document.querySelectorAll(`.dyn-resp-${id}`);
+          let responseParts = [];
+          inputs.forEach((input) => {
+            const val = input.value.trim();
+            if (val) {
+              responseParts.push(`${input.dataset.reqtype}: ${val}`);
+            }
+          });
+          const finalResponse = responseParts.join(" | ");
+          if (!finalResponse) {
+            showToast("Lütfen en az bir alanı doldurun.", "error");
             return;
           }
-          await api2.completeTicket(id, response);
+          await api2.completeTicket(id, finalResponse);
           showToast("Talep tamamlandı.", "success");
+        } else if (action === "unreachable") {
+          await api2.markTicketUnreachable(id, personnelName2);
+          showToast("Bilet durumu ulaşılamıyor olarak güncellendi.", "info");
         } else if (action === "reopen") {
-          await api2.reopenTicket(id);
+          await api2.reopenTicket(id, personnelName2);
           showToast("Talep yeniden açıldı.", "info");
+        } else if (action === "delete") {
+          if (confirm("Bu bileti silmek istediğinize emin misiniz?")) {
+            await api2.deleteTicket(id);
+            showToast("Bilet silindi", "success");
+          }
+        } else if (action === "hide") {
+          await api2.hideTicket(id, personnelName2);
+          showToast("Bilet gizlendi", "info");
+        } else if (action === "unhide") {
+          await api2.unhideTicket(id);
+          showToast("Bilet görünür yapıldı", "info");
+        } else if (action === "info") {
+          const t = filtered.find((x) => x.id === id);
+          if (t) showTicketHistoryModal(t);
+          return;
         }
         loadTickets2();
       });
     });
   }
-  tFilterTabs2.addEventListener("click", (e) => {
-    const tab = e.target.closest(".filter-tab");
-    if (!tab) return;
-    tFilterTabs2.querySelectorAll(".filter-tab").forEach((t) => t.classList.remove("active"));
-    tab.classList.add("active");
+  if (tFilterStatus2) tFilterStatus2.addEventListener("change", loadTickets2);
+  if (tFilterVisibility2) tFilterVisibility2.addEventListener("change", loadTickets2);
+  if (tFilterAras2) tFilterAras2.addEventListener("click", () => {
+    const isActive = tFilterAras2.dataset.active === "true";
+    tFilterAras2.dataset.active = isActive ? "false" : "true";
+    if (!isActive) {
+      tFilterAras2.style.background = "rgba(251,191,36,0.25)";
+      tFilterAras2.style.borderColor = "rgba(251,191,36,0.6)";
+      if (tFilterStatus2) tFilterStatus2.value = "all";
+    } else {
+      tFilterAras2.style.background = "rgba(251,191,36,0.08)";
+      tFilterAras2.style.borderColor = "rgba(251,191,36,0.3)";
+    }
+    loadTickets2();
+  });
+  if (tFilterOwnership2) tFilterOwnership2.addEventListener("click", () => {
+    const isAll = tFilterOwnership2.dataset.val === "all";
+    tFilterOwnership2.dataset.val = isAll ? "mine" : "all";
+    tFilterOwnership2.textContent = isAll ? getPersonnelName() : "Tümü";
     loadTickets2();
   });
   let searchTimeout;
@@ -292,34 +601,111 @@ function initProfileLogic(api2, elements, personnelName2, calculateLevel2, refre
 }
 function initPriorityLogic(api2, elements) {
   const { prioList: prioList2, addPrioBtn: addPrioBtn2, pSerial: pSerial2, pCustomer: pCustomer2, pDesc: pDesc2 } = elements;
+  if (!document.getElementById("prio-highlight-style")) {
+    const style = document.createElement("style");
+    style.id = "prio-highlight-style";
+    style.textContent = `
+            @keyframes highlightPulse {
+                0% { box-shadow: 0 0 0px rgba(59, 130, 246, 0); background: rgba(255,255,255,0.02); }
+                20% { box-shadow: 0 0 25px rgba(59, 130, 246, 1); background: rgba(59, 130, 246, 0.3); }
+                100% { box-shadow: 0 0 0px rgba(59, 130, 246, 0); background: rgba(255,255,255,0.02); }
+            }
+            .highlight-pulse {
+                animation: highlightPulse 2s ease-out !important;
+                border: 1px solid rgba(59, 130, 246, 0.6) !important;
+            }
+        `;
+    document.head.appendChild(style);
+  }
+  window._editingPriorityId = null;
+  let cachedDevices = [];
   async function loadPriorityDevices2() {
-    const devices = await api2.getPriorityDevices();
+    cachedDevices = await api2.getPriorityDevices();
+    renderPriorityDevices();
+  }
+  function renderPriorityDevices() {
+    const query = document.getElementById("priority-search")?.value.toLowerCase() || "";
     prioList2.innerHTML = "";
-    if (!devices || devices.length === 0) {
+    const filtered = cachedDevices.filter(
+      (d) => d.serial && d.serial.toLowerCase().includes(query) || d.customer_name && d.customer_name.toLowerCase().includes(query)
+    );
+    if (!filtered || filtered.length === 0) {
       prioList2.innerHTML = '<div class="priority-empty">Kayıtlı öncelikli cihaz yok.</div>';
       return;
     }
-    devices.forEach((d) => {
+    filtered.forEach((d) => {
       const item = document.createElement("div");
       item.className = "priority-item";
-      item.innerHTML = `
-                <div class="priority-item-body">
-                    <div class="priority-item-name">${d.customer_name}</div>
-                    <div class="priority-item-serial">${d.serial}</div>
-                    <div class="priority-item-desc">${d.description}</div>
-                </div>
-                <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
-            `;
+      item.id = `prio-item-${d.id}`;
+      const isEditing = window._editingPriorityId === d.id;
+      if (isEditing) {
+        item.innerHTML = `
+                    <div class="priority-item-body" style="display:flex; flex-direction:column; gap:6px; width: 100%;">
+                        <input type="text" id="edit-prio-customer-${d.id}" value="${d.customer_name}" class="priority-input" placeholder="Müşteri Adı">
+                        <input type="text" id="edit-prio-serial-${d.id}" value="${d.serial}" class="priority-input" placeholder="Seri No">
+                        <input type="text" id="edit-prio-desc-${d.id}" value="${d.description}" class="priority-input" placeholder="Açıklama">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top:4px;">
+                            Ekleyen: ${d.created_by || "Bilinmiyor"}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
+                        <button class="btn-add-priority" style="padding: 6px 10px; font-size: 0.8rem;" onclick="saveEditPriority('${d.id}')">Kaydet</button>
+                        <button class="btn-del-priority" style="background: rgba(255,255,255,0.1);" onclick="cancelEditPriority()">✕</button>
+                    </div>
+                `;
+      } else {
+        item.innerHTML = `
+                    <div class="priority-item-body">
+                        <div class="priority-item-name">${d.customer_name}</div>
+                        <div class="priority-item-serial">${d.serial}</div>
+                        <div class="priority-item-desc">${d.description}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+                            Ekleyen: ${d.created_by || "Bilinmiyor"}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
+                        <button class="btn-del-priority" style="background: rgba(59, 130, 246, 0.4);" onclick="startEditPriority('${d.id}')">✏️</button>
+                        <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
+                    </div>
+                `;
+      }
       prioList2.appendChild(item);
     });
   }
+  document.getElementById("priority-search")?.addEventListener("input", renderPriorityDevices);
   addPrioBtn2.onclick = async () => {
+    const serialVal = pSerial2.value.trim().toUpperCase();
+    if (!serialVal) return;
+    const existing = cachedDevices.find((d) => d.serial.toUpperCase() === serialVal);
+    if (existing) {
+      const confirmed = await window.showConfirm(
+        "Cihaz Zaten Kayıtlı",
+        "Aynı seri numarasında farklı bir kayıt var. Bu cihazı düzenlemek ister misiniz?",
+        "Evet"
+      );
+      if (confirmed) {
+        window.startEditPriority(existing.id);
+        setTimeout(() => {
+          const itemEl = document.getElementById(`prio-item-${existing.id}`);
+          if (itemEl) {
+            itemEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            itemEl.classList.add("highlight-pulse");
+            setTimeout(() => itemEl.classList.remove("highlight-pulse"), 2e3);
+          }
+        }, 100);
+        pSerial2.value = "";
+        pCustomer2.value = "";
+        pDesc2.value = "";
+      }
+      return;
+    }
+    const settings = await api2.getSettings();
     const data = {
-      serial: pSerial2.value.trim().toUpperCase(),
+      serial: serialVal,
       customer_name: pCustomer2.value.trim() || "Belirtilmedi",
-      description: pDesc2.value.trim()
+      description: pDesc2.value.trim(),
+      created_by: settings.personnelName || settings.username || "Bilinmiyor"
     };
-    if (!data.serial) return;
     await api2.addPriorityDevice(data);
     pSerial2.value = "";
     pCustomer2.value = "";
@@ -328,6 +714,27 @@ function initPriorityLogic(api2, elements) {
   };
   window.deletePriority = async (id) => {
     await api2.deletePriorityDevice(id);
+    loadPriorityDevices2();
+  };
+  window.startEditPriority = (id) => {
+    window._editingPriorityId = id;
+    renderPriorityDevices();
+  };
+  window.cancelEditPriority = () => {
+    window._editingPriorityId = null;
+    renderPriorityDevices();
+  };
+  window.saveEditPriority = async (id) => {
+    const c_input = document.getElementById(`edit-prio-customer-${id}`);
+    const s_input = document.getElementById(`edit-prio-serial-${id}`);
+    const d_input = document.getElementById(`edit-prio-desc-${id}`);
+    if (!s_input.value.trim()) return;
+    await api2.updatePriorityDevice(id, {
+      customer_name: c_input.value.trim() || "Belirtilmedi",
+      serial: s_input.value.trim().toUpperCase(),
+      description: d_input.value.trim()
+    });
+    window._editingPriorityId = null;
     loadPriorityDevices2();
   };
   return { loadPriorityDevices: loadPriorityDevices2 };
@@ -727,7 +1134,11 @@ const tcPending = document.getElementById("count-pending");
 const tcProgress = document.getElementById("count-progress");
 const tcCompleted = document.getElementById("count-completed");
 const tSearchInput = document.getElementById("ticket-search");
-const tFilterTabs = document.getElementById("filter-tabs");
+const tFilterStatus = document.getElementById("filter-status");
+const tFilterVisibility = document.getElementById("filter-visibility");
+const tFilterOwnership = document.getElementById("filter-ownership-toggle");
+const tFilterAras = document.getElementById("filter-aras-toggle");
+const btnManualTicket = document.getElementById("btn-manual-ticket");
 const pMyLevel = document.getElementById("my-level");
 const pMyName = document.getElementById("my-name");
 const pMyRole = document.getElementById("my-role");
@@ -778,6 +1189,7 @@ let currentRole = "kargo_kabul";
 let personnelName = "";
 let activeTickets = [];
 function showConfirm(title, message, confirmText = "Evet, Sil") {
+  window.showConfirm = showConfirm;
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalText.textContent = message;
@@ -1155,6 +1567,9 @@ api.onPriorityDeviceMatch((device) => {
         </div>
         <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
         <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+        <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+            <button id="delete-priority-bound" style="background: rgba(239, 68, 68, 0.5); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;">Sistemden Sil</button>
+        </div>
     `;
   if (!document.getElementById("priority-animations")) {
     const style = document.createElement("style");
@@ -1164,19 +1579,30 @@ api.onPriorityDeviceMatch((device) => {
                 from { opacity: 0; transform: translate(-50%, -40px); }
                 to { opacity: 1; transform: translate(-50%, 0); }
             }
+            #delete-priority-bound:hover { background: #dc2626 !important; transform: scale(1.05); }
         `;
     document.head.appendChild(style);
   }
   document.body.appendChild(alertDiv);
   const closeBtn = alertDiv.querySelector("#close-priority-alert");
   closeBtn.onclick = () => alertDiv.remove();
-  setTimeout(() => {
-    if (alertDiv.parentNode) alertDiv.remove();
-  }, 15e3);
+  const deleteBtn = alertDiv.querySelector("#delete-priority-bound");
+  deleteBtn.onclick = async () => {
+    const confirmed = await showConfirm(
+      "Sistemden Kalıcı Olarak Sil",
+      `${device.customer_name} cihazı işleme alındı olarak işaretlenecek ve listeden kalkacaktır. Emin misiniz?`,
+      "Evet, Sil"
+    );
+    if (confirmed) {
+      await api.deletePriorityDevice(device.id);
+      if (alertDiv.parentNode) alertDiv.remove();
+      showToast("Cihaz sistemden kalıcı olarak silindi.", "success");
+    }
+  };
 });
 const { loadTickets, renderTicketsList } = initTicketLogic(
   api,
-  { ticketList, tSearchInput, tFilterTabs, tcPending, tcProgress, tcCompleted },
+  { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tFilterAras, tcPending, tcProgress, tcCompleted, btnManualTicket },
   () => currentRole,
   () => personnelName
 );
@@ -1239,6 +1665,7 @@ Promise.all([
   const sideAdmin = document.getElementById("side-admin-btn");
   const sideProfile = document.getElementById("side-profile-btn");
   if (sideBonus) sideBonus.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+  if (btnManualTicket) btnManualTicket.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
   if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
   if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
   if (tickets) {
@@ -1260,6 +1687,7 @@ api.onRefreshCards(() => {
     const sideAdmin = document.getElementById("side-admin-btn");
     const sideProfile = document.getElementById("side-profile-btn");
     if (sideBonus) sideBonus.style.display = s.role === "kargo_kabul" ? "flex" : "none";
+    if (btnManualTicket) btnManualTicket.style.display = s.role === "kargo_kabul" ? "flex" : "none";
     if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
     if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
     refreshSidebarProfile();
@@ -1331,7 +1759,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
     updateState = "ready";
     progressWrap.style.display = "none";
     updateMsg.textContent = "✅ Güncelleme hazır!";
-    actionBtn.textContent = "Yeniden Başlat";
+    actionBtn.textContent = "Güncelle";
   });
   actionBtn.onclick = () => {
     if (updateState === "available") {

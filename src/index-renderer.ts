@@ -125,6 +125,7 @@ export function showConfirm(title: string, message: string, confirmText = 'Evet,
         }
     })
 }
+;(window as any).showConfirm = showConfirm
 
 // ── Ask MH Modal ────────────────────────────────────────────────────
 function showAskMHModal(serial: string, modelName: string, modelColor: string): void {
@@ -572,6 +573,9 @@ api.onPriorityDeviceMatch((device: any) => {
         </div>
         <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
         <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+        <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+            <button id="delete-priority-bound" style="background: rgba(239, 68, 68, 0.5); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;">Sistemden Sil</button>
+        </div>
     `
 
     if (!document.getElementById('priority-animations')) {
@@ -582,6 +586,7 @@ api.onPriorityDeviceMatch((device: any) => {
                 from { opacity: 0; transform: translate(-50%, -40px); }
                 to { opacity: 1; transform: translate(-50%, 0); }
             }
+            #delete-priority-bound:hover { background: #dc2626 !important; transform: scale(1.05); }
         `
         document.head.appendChild(style)
     }
@@ -591,7 +596,19 @@ api.onPriorityDeviceMatch((device: any) => {
     const closeBtn = alertDiv.querySelector('#close-priority-alert') as HTMLElement
     closeBtn.onclick = () => alertDiv.remove()
 
-    setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove() }, 15000)
+    const deleteBtn = alertDiv.querySelector('#delete-priority-bound') as HTMLElement
+    deleteBtn.onclick = async () => {
+        const confirmed = await showConfirm(
+            'Sistemden Kalıcı Olarak Sil',
+            `${device.customer_name} cihazı işleme alındı olarak işaretlenecek ve listeden kalkacaktır. Emin misiniz?`,
+            'Evet, Sil'
+        )
+        if (confirmed) {
+            await api.deletePriorityDevice(device.id)
+            if (alertDiv.parentNode) alertDiv.remove()
+            showToast('Cihaz sistemden kalıcı olarak silindi.', 'success')
+        }
+    }
 })
 
 // ── Sub-view Initialization Logic ──────────────────────────────────

@@ -280,12 +280,12 @@ function loadSettings() {
     const p = getSettingsPath();
     if (fs__namespace.existsSync(p)) {
       const savedSettings = JSON.parse(fs__namespace.readFileSync(p, "utf8"));
-      return { ...defaultSettings, ...savedSettings };
+      return { ...defaultSettings, ...savedSettings, isLoggedIn: false };
     }
   } catch (error) {
     console.error("Error loading settings:", error);
   }
-  return defaultSettings;
+  return { ...defaultSettings, isLoggedIn: false };
 }
 function saveSettings(settings) {
   try {
@@ -396,7 +396,7 @@ class WindowManager {
     this.loginWindow.once("ready-to-show", () => this.loginWindow?.show());
     this.loginWindow.on("closed", () => {
       if (!this.mainWindow?.isVisible()) {
-        electron$1.app.quit();
+        this.forceQuit();
       }
       this.loginWindow = null;
     });
@@ -414,6 +414,9 @@ class WindowManager {
   }
   getMainWindow() {
     return this.mainWindow;
+  }
+  getLoginWindow() {
+    return this.loginWindow;
   }
   showPopup(info, timeoutDuration, sizeLevel) {
     this.closePopup();
@@ -802,6 +805,12 @@ async function addPriorityDevice(data) {
 async function deletePriorityDevice(id) {
   await firestore.deleteDoc(firestore.doc(db, PRIORITY_COLLECTION, id));
 }
+async function updatePriorityDevice(id, data) {
+  if (data.serial) {
+    data.serial = data.serial.trim().toUpperCase();
+  }
+  await firestore.updateDoc(firestore.doc(db, PRIORITY_COLLECTION, id), { ...data });
+}
 function subscribeToPriorityDevices(callback) {
   const q = firestore.query(firestore.collection(db, PRIORITY_COLLECTION), firestore.orderBy("created_at", "desc"));
   return firestore.onSnapshot(q, (snapshot) => {
@@ -1042,6 +1051,11 @@ function setupIpcHandlers() {
   });
   electron$1.ipcMain.handle("login-success", async () => {
     windowManager.onLoginSuccess();
+    clipboardMonitor.start();
+    startServerStatusMonitor();
+    startTicketListener();
+    startPriorityDevicesListener();
+    registerShortcuts();
     return true;
   });
   electron$1.ipcMain.on("minimize-window", (e) => {
@@ -1238,6 +1252,15 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+  electron$1.ipcMain.handle("update-priority-device", async (_, id, data) => {
+    try {
+      await updatePriorityDevice(id, data);
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating priority device:", error);
+      return { success: false, error: String(error) };
+    }
+  });
 }
 function createTray() {
   const mainWindow = windowManager.getMainWindow();
@@ -1252,12 +1275,19 @@ function createTray() {
     { label: "Çıkış", click: () => windowManager.forceQuit() }
   ]));
   tray.on("double-click", () => {
-    mainWindow?.show();
-    mainWindow?.focus();
+    if (currentSettings && currentSettings.isLoggedIn) {
+      mainWindow?.show();
+      mainWindow?.focus();
+    } else {
+      const loginWin = windowManager.getLoginWindow();
+      loginWin?.show();
+      loginWin?.focus();
+    }
   });
 }
 function registerShortcuts() {
   electron$1.globalShortcut.unregisterAll();
+  if (!currentSettings || !currentSettings.isLoggedIn) return;
   if (currentSettings.doubleCopyEnabled) {
     try {
       electron$1.globalShortcut.register("CommandOrControl+Shift+C", () => {
@@ -1362,6 +1392,7 @@ function startTicketListener() {
 }
 function initializeApp() {
   currentSettings = loadSettings();
+  currentSettings.isLoggedIn = false;
   windowManager = new WindowManager(__dirname);
   clipboardMonitor = new ClipboardMonitor(handleDetection);
   registerShortcuts();
@@ -1375,10 +1406,6 @@ function initializeApp() {
     windowManager.createMainWindow();
     windowManager.createLoginWindow();
     createTray();
-    clipboardMonitor.start();
-    startServerStatusMonitor();
-    startTicketListener();
-    startPriorityDevicesListener();
     electron$1.app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: electron$1.app.getPath("exe")

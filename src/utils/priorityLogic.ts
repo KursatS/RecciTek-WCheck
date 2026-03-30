@@ -1,43 +1,157 @@
 export function initPriorityLogic(api: any, elements: any) {
     const { prioList, addPrioBtn, pSerial, pCustomer, pDesc } = elements
 
+    if (!document.getElementById('prio-highlight-style')) {
+        const style = document.createElement('style')
+        style.id = 'prio-highlight-style'
+        style.textContent = `
+            @keyframes highlightPulse {
+                0% { box-shadow: 0 0 0px rgba(59, 130, 246, 0); background: rgba(255,255,255,0.02); }
+                20% { box-shadow: 0 0 25px rgba(59, 130, 246, 1); background: rgba(59, 130, 246, 0.3); }
+                100% { box-shadow: 0 0 0px rgba(59, 130, 246, 0); background: rgba(255,255,255,0.02); }
+            }
+            .highlight-pulse {
+                animation: highlightPulse 2s ease-out !important;
+                border: 1px solid rgba(59, 130, 246, 0.6) !important;
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    ;(window as any)._editingPriorityId = null
+
+
+    let cachedDevices: any[] = []
+
     async function loadPriorityDevices() {
-        const devices = await api.getPriorityDevices()
+        cachedDevices = await api.getPriorityDevices()
+        renderPriorityDevices()
+    }
+
+    function renderPriorityDevices() {
+        const query = (document.getElementById('priority-search') as HTMLInputElement)?.value.toLowerCase() || ''
         prioList.innerHTML = ''
-        if (!devices || devices.length === 0) {
+        
+        const filtered = cachedDevices.filter(d => 
+            (d.serial && d.serial.toLowerCase().includes(query)) || 
+            (d.customer_name && d.customer_name.toLowerCase().includes(query))
+        )
+
+        if (!filtered || filtered.length === 0) {
             prioList.innerHTML = '<div class="priority-empty">Kayıtlı öncelikli cihaz yok.</div>'
             return
         }
-        devices.forEach((d: any) => {
+        filtered.forEach((d: any) => {
             const item = document.createElement('div')
             item.className = 'priority-item'
-            item.innerHTML = `
-                <div class="priority-item-body">
-                    <div class="priority-item-name">${d.customer_name}</div>
-                    <div class="priority-item-serial">${d.serial}</div>
-                    <div class="priority-item-desc">${d.description}</div>
-                </div>
-                <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
-            `
+            item.id = `prio-item-${d.id}`
+
+            const isEditing = (window as any)._editingPriorityId === d.id
+
+            if (isEditing) {
+                item.innerHTML = `
+                    <div class="priority-item-body" style="display:flex; flex-direction:column; gap:6px; width: 100%;">
+                        <input type="text" id="edit-prio-customer-${d.id}" value="${d.customer_name}" class="priority-input" placeholder="Müşteri Adı">
+                        <input type="text" id="edit-prio-serial-${d.id}" value="${d.serial}" class="priority-input" placeholder="Seri No">
+                        <input type="text" id="edit-prio-desc-${d.id}" value="${d.description}" class="priority-input" placeholder="Açıklama">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top:4px;">
+                            Ekleyen: ${d.created_by || 'Bilinmiyor'}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
+                        <button class="btn-add-priority" style="padding: 6px 10px; font-size: 0.8rem;" onclick="saveEditPriority('${d.id}')">Kaydet</button>
+                        <button class="btn-del-priority" style="background: rgba(255,255,255,0.1);" onclick="cancelEditPriority()">✕</button>
+                    </div>
+                `
+            } else {
+                item.innerHTML = `
+                    <div class="priority-item-body">
+                        <div class="priority-item-name">${d.customer_name}</div>
+                        <div class="priority-item-serial">${d.serial}</div>
+                        <div class="priority-item-desc">${d.description}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+                            Ekleyen: ${d.created_by || 'Bilinmiyor'}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
+                        <button class="btn-del-priority" style="background: rgba(59, 130, 246, 0.4);" onclick="startEditPriority('${d.id}')">✏️</button>
+                        <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
+                    </div>
+                `
+            }
             prioList.appendChild(item)
         })
     }
 
+    document.getElementById('priority-search')?.addEventListener('input', renderPriorityDevices)
+
     addPrioBtn.onclick = async () => {
-        const data = {
-            serial: pSerial.value.trim().toUpperCase(),
-            customer_name: pCustomer.value.trim() || 'Belirtilmedi',
-            description: pDesc.value.trim()
+        const serialVal = pSerial.value.trim().toUpperCase()
+        if (!serialVal) return
+
+        const existing = cachedDevices.find(d => d.serial.toUpperCase() === serialVal)
+        if (existing) {
+            const confirmed = await (window as any).showConfirm(
+                'Cihaz Zaten Kayıtlı', 
+                'Aynı seri numarasında farklı bir kayıt var. Bu cihazı düzenlemek ister misiniz?', 
+                'Evet'
+            )
+            if (confirmed) {
+                ;(window as any).startEditPriority(existing.id);
+                setTimeout(() => {
+                    const itemEl = document.getElementById(`prio-item-${existing.id}`);
+                    if (itemEl) {
+                        itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        itemEl.classList.add('highlight-pulse');
+                        setTimeout(() => itemEl.classList.remove('highlight-pulse'), 2000);
+                    }
+                }, 100);
+                pSerial.value = ''; pCustomer.value = ''; pDesc.value = ''
+            }
+            return
         }
-        if (!data.serial) return
+
+        const settings = await api.getSettings()
+        const data = {
+            serial: serialVal,
+            customer_name: pCustomer.value.trim() || 'Belirtilmedi',
+            description: pDesc.value.trim(),
+            created_by: settings.personnelName || settings.username || 'Bilinmiyor'
+        }
         await api.addPriorityDevice(data)
         pSerial.value = ''; pCustomer.value = ''; pDesc.value = ''
         loadPriorityDevices()
     }
 
-    // Global window function for deletion
+    // Global window functions for priority actions
     ;(window as any).deletePriority = async (id: string) => {
         await api.deletePriorityDevice(id)
+        loadPriorityDevices()
+    }
+
+    ;(window as any).startEditPriority = (id: string) => {
+        ;(window as any)._editingPriorityId = id
+        renderPriorityDevices()
+    }
+
+    ;(window as any).cancelEditPriority = () => {
+        ;(window as any)._editingPriorityId = null
+        renderPriorityDevices()
+    }
+
+    ;(window as any).saveEditPriority = async (id: string) => {
+        const c_input = document.getElementById(`edit-prio-customer-${id}`) as HTMLInputElement
+        const s_input = document.getElementById(`edit-prio-serial-${id}`) as HTMLInputElement
+        const d_input = document.getElementById(`edit-prio-desc-${id}`) as HTMLInputElement
+        if (!s_input.value.trim()) return
+
+        await api.updatePriorityDevice(id, {
+            customer_name: c_input.value.trim() || 'Belirtilmedi',
+            serial: s_input.value.trim().toUpperCase(),
+            description: d_input.value.trim()
+        })
+        
+        ;(window as any)._editingPriorityId = null
         loadPriorityDevices()
     }
 

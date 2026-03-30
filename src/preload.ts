@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Priority Devices
     getPriorityDevices: () => safeInvoke('get-priority-devices'),
     addPriorityDevice: (data: any) => safeInvoke('add-priority-device', data),
+    updatePriorityDevice: (id: string, data: any) => safeInvoke('update-priority-device', id, data),
     deletePriorityDevice: (id: string) => safeInvoke('delete-priority-device', id),
     onPriorityDeviceMatch: (callback: any) =>
         ipcRenderer.on('priority-device-match', (_event, device) => callback(device)),

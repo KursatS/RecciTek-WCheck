@@ -63,6 +63,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // Priority Devices
   getPriorityDevices: () => safeInvoke("get-priority-devices"),
   addPriorityDevice: (data) => safeInvoke("add-priority-device", data),
+  updatePriorityDevice: (id, data) => safeInvoke("update-priority-device", id, data),
   deletePriorityDevice: (id) => safeInvoke("delete-priority-device", id),
   onPriorityDeviceMatch: (callback) => electron.ipcRenderer.on("priority-device-match", (_event, device) => callback(device)),
   onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices)),

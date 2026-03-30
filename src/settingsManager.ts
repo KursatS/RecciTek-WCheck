@@ -62,12 +62,13 @@ export function loadSettings(): AppSettings {
     if (fs.existsSync(p)) {
       const savedSettings = JSON.parse(fs.readFileSync(p, 'utf8'));
 
-      return { ...defaultSettings, ...savedSettings };
+      // Her başlangıçta isLoggedIn durumunu sıfırla
+      return { ...defaultSettings, ...savedSettings, isLoggedIn: false };
     }
   } catch (error) {
     console.error('Error loading settings:', error);
   }
-  return defaultSettings;
+  return { ...defaultSettings, isLoggedIn: false };
 }
 
 export function saveSettings(settings: AppSettings): void {
