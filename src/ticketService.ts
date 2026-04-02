@@ -1,4 +1,4 @@
-import {
+﻿import {
     collection,
     addDoc,
     updateDoc,
@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebaseConfig'
 
-// ── Types ───────────────────────────────────────────────────────────
+//
 export interface Ticket {
     id?: string
     serial: string
@@ -37,6 +37,7 @@ export interface Ticket {
     responded_at: Timestamp | null
     is_hidden?: boolean
     hidden_by?: string
+    last_contact_attempt_at?: Timestamp | null
 }
 
 export interface PriorityDevice {
@@ -51,7 +52,7 @@ export interface PriorityDevice {
 const TICKETS_COLLECTION = 'tickets'
 const PRIORITY_COLLECTION = 'priority_devices'
 
-// ── Create Ticket ───────────────────────────────────────────────────
+//
 export async function createTicket(data: {
     serial: string
     model_name: string
@@ -63,8 +64,14 @@ export async function createTicket(data: {
     phone_number: string
     created_by: string
 }): Promise<string> {
+    const missingTypeTokens = data.missing_type
+        .split(',')
+        .map(token => token.trim())
+        .filter(Boolean)
+
     const docRef = await addDoc(collection(db, TICKETS_COLLECTION), {
         ...data,
+        missing_type_tokens: missingTypeTokens,
         created_at: serverTimestamp(),
         status: 'pending',
         response: '',
@@ -88,7 +95,7 @@ export async function createTicket(data: {
     return docRef.id
 }
 
-// ── Claim ───────────────────────────────────────────────────────────
+//
 export async function claimTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'in_progress',
@@ -101,7 +108,7 @@ export async function claimTicket(ticketId: string, personnelName: string): Prom
     })
 }
 
-// ── Complete ────────────────────────────────────────────────────────
+//
 export async function completeTicket(ticketId: string, response: string): Promise<void> {
     const ticketDoc = await getDocs(query(collection(db, TICKETS_COLLECTION), where('__name__', '==', ticketId)))
     let respondedBy = ''
@@ -135,7 +142,7 @@ export async function completeTicket(ticketId: string, response: string): Promis
     }
 }
 
-// ── Reopen ──────────────────────────────────────────────────────────
+//
 export async function reopenTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         status: 'in_progress',
@@ -148,7 +155,7 @@ export async function reopenTicket(ticketId: string, personnelName: string): Pro
     })
 }
 
-// ── Hide / Unhide ───────────────────────────────────────────────────
+//
 export async function hideTicket(ticketId: string, personnelName: string): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
         is_hidden: true,
@@ -163,12 +170,12 @@ export async function unhideTicket(ticketId: string): Promise<void> {
     })
 }
 
-// ── Delete ──────────────────────────────────────────────────────────
+//
 export async function deleteTicket(ticketId: string): Promise<void> {
     await deleteDoc(doc(db, TICKETS_COLLECTION, ticketId))
 }
 
-// ── Update Details ──────────────────────────────────────────────────
+//
 export async function updateTicketDetails(ticketId: string, details: Partial<Ticket>): Promise<void> {
     await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), { ...details })
 }
@@ -176,12 +183,10 @@ export async function updateTicketDetails(ticketId: string, details: Partial<Tic
 export async function markTicketUnreachable(ticketId: string, personnelName: string): Promise<void> {
     const ticketDoc = await getDocs(query(collection(db, TICKETS_COLLECTION), where('__name__', '==', ticketId)))
     if (!ticketDoc.empty) {
-        const data = ticketDoc.docs[0].data()
         await updateDoc(doc(db, TICKETS_COLLECTION, ticketId), {
             status: 'pending',
             responded_by: '',
-            unreachable_count: increment(1),
-            created_at: serverTimestamp(),
+            last_contact_attempt_at: serverTimestamp(),
             action_history: arrayUnion({
                 action: 'Ulaşılamadı Olarak İşaretledi',
                 user: personnelName,
@@ -191,7 +196,7 @@ export async function markTicketUnreachable(ticketId: string, personnelName: str
     }
 }
 
-// ── Realtime Listeners ──────────────────────────────────────────────
+//
 export function subscribeAsKargoKabul(
     personnelName: string,
     callback: (tickets: Ticket[]) => void
@@ -221,7 +226,7 @@ export function subscribeAsMH(
     }, (error) => console.error('Firestore listener error (MH):', error))
 }
 
-// ── Priority Devices ────────────────────────────────────────────────
+//
 export async function addPriorityDevice(data: {
     customer_name: string
     serial: string
@@ -259,11 +264,15 @@ export function subscribeToPriorityDevices(
         callback(devices as any)
     }, (error) => console.error('Firestore listener error (PriorityDevices):', error))
 }
-// ── Users ───────────────────────────────────────────────────────────
+//
 export async function getUsers(): Promise<any[]> {
     const q = query(collection(db, 'users'))
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+    return snapshot.docs.map(d => {
+        const data = d.data()
+        const { password, ...safeUser } = data
+        return { id: d.id, ...safeUser }
+    })
 }
 
 export async function createUser(data: { username: string, password: string, fullName: string, role: string }): Promise<string> {
@@ -287,3 +296,4 @@ export async function deleteUser(id: string): Promise<void> {
 export async function resetUserXp(id: string): Promise<void> {
     await updateDoc(doc(db, 'users', id), { xp: 0, level: 1 })
 }
+

@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSettings: () => safeInvoke('get-settings'),
     saveSettings: (settings: any) => safeInvoke('save-settings', settings),
     restartApp: (settings?: any) => safeInvoke('restart-app', settings),
+    logout: () => safeInvoke('logout'),
+    showLoginWindow: () => ipcRenderer.send('show-login-window'),
 
     // Bonus Calculation
     calculateBonus: (fileData: ArrayBuffer | string, customHours?: any) => safeInvoke('calculate-bonus', fileData, customHours),
@@ -40,6 +42,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('popup-data', (_event, info, duration) => callback(info, duration)),
     popupHoverEnter: () => ipcRenderer.send('popup-hover-enter'),
     popupHoverLeave: () => ipcRenderer.send('popup-hover-leave'),
+    openMainView: (view: string) => ipcRenderer.send('open-main-view', view),
+    openPriorityDevice: (device: any) => ipcRenderer.send('open-priority-device', device),
     closeWindow: () => ipcRenderer.send('close-window'),
     minimizeWindow: () => ipcRenderer.send('minimize-window'),
 
@@ -48,8 +52,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Event Listeners
     onServerStatusUpdate: (callback: any) =>
-        ipcRenderer.on('server-status-update', (_event, value) => callback(value)),
-    onServerStatus: (callback: any) =>
         ipcRenderer.on('server-status-update', (_event, value) => callback(value)),
     onRefreshCards: (callback: any) =>
         ipcRenderer.on('refresh-cards', () => callback()),
@@ -85,6 +87,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deletePriorityDevice: (id: string) => safeInvoke('delete-priority-device', id),
     onPriorityDeviceMatch: (callback: any) =>
         ipcRenderer.on('priority-device-match', (_event, device) => callback(device)),
+    onFocusPriorityDevice: (callback: any) =>
+        ipcRenderer.on('focus-priority-device', (_event, device) => callback(device)),
     onPriorityDevicesUpdate: (callback: any) =>
         ipcRenderer.on('priority-devices-update', (_event, devices) => callback(devices)),
 

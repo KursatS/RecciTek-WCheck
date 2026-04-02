@@ -18,6 +18,7 @@ export interface AppSettings {
   isAdmin?: boolean;
   isLoggedIn?: boolean;
   rememberMe?: boolean;
+  autoLogin?: boolean;
   savedUsername?: string;
   savedPassword?: string;
   theme?: 'dark' | 'midnight' | 'ocean' | 'sunset';
@@ -51,6 +52,10 @@ export function loadSettings(): AppSettings {
     role: 'kargo_kabul',
     personnelName: '',
     theme: 'dark',
+    rememberMe: false,
+    autoLogin: false,
+    savedUsername: '',
+    savedPassword: '',
     workingHours: {
       start: '09:30',
       end: '18:30'
@@ -61,13 +66,12 @@ export function loadSettings(): AppSettings {
     const p = getSettingsPath();
     if (fs.existsSync(p)) {
       const savedSettings = JSON.parse(fs.readFileSync(p, 'utf8'));
-
-      // Her başlangıçta isLoggedIn durumunu sıfırla
       return { ...defaultSettings, ...savedSettings, isLoggedIn: false };
     }
   } catch (error) {
     console.error('Error loading settings:', error);
   }
+
   return { ...defaultSettings, isLoggedIn: false };
 }
 

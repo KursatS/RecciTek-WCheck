@@ -71,6 +71,28 @@
       border-color: #38bdf8;
     }
 
+    .check-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    .check-group:last-of-type {
+      margin-bottom: 20px;
+    }
+
+    .check-group input {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .check-group label {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+
     .btn-login {
       width: 100%;
       padding: 12px;
@@ -137,15 +159,15 @@
       background: #ef4444;
     }
   </style>
-  <script type="module" crossorigin src="./assets/login-hJxvN7p_.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/input-DD98dCow.css">
+  <script type="module" crossorigin src="./assets/login-Artja3dJ.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-D3DAzxkw.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
 
 <body>
   <header>
     <div class="window-controls">
-      <button class="ctrl-btn" id="btn-min">─</button>
+      <button class="ctrl-btn" id="btn-min">—</button>
       <button class="ctrl-btn close" id="btn-close">✕</button>
     </div>
   </header>
@@ -164,9 +186,14 @@
         <input type="password" id="password" placeholder="Şifrenizi girin">
       </div>
 
-      <div class="remember-group" style="display: flex; align-items: center; margin-bottom: 20px; text-align: left;">
-        <input type="checkbox" id="remember-me" style="margin-right: 8px; cursor: pointer;">
-        <label for="remember-me" style="font-size: 0.85rem; color: #94a3b8; cursor: pointer;">Beni Hatırla</label>
+      <div class="check-group">
+        <input type="checkbox" id="remember-me">
+        <label for="remember-me">Beni Hatırla</label>
+      </div>
+
+      <div class="check-group">
+        <input type="checkbox" id="auto-login">
+        <label for="auto-login">Otomatik Giriş Yap</label>
       </div>
 
       <button class="btn-login" id="login-btn">Giriş Yap</button>
@@ -175,5 +202,4 @@
   </div>
 
 </body>
-  
 </html>

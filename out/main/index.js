@@ -271,6 +271,10 @@ function loadSettings() {
     role: "kargo_kabul",
     personnelName: "",
     theme: "dark",
+    rememberMe: false,
+    autoLogin: false,
+    savedUsername: "",
+    savedPassword: "",
     workingHours: {
       start: "09:30",
       end: "18:30"
@@ -307,10 +311,11 @@ class WindowManager {
     this.mainWindow = null;
     this.loginWindow = null;
     this.currentPopup = null;
+    this.priorityPopup = null;
     this.popupTimeout = null;
+    this.priorityPopupTimeout = null;
     this.popupVisible = false;
     this.popupStartTime = 0;
-    this.popupDuration = 0;
     this.popupRemaining = 0;
     this.preloadPath = "";
     this.preloadPath = path__namespace.join(__dirname, "../preload/index.js");
@@ -321,6 +326,36 @@ class WindowManager {
     } else {
       win.loadFile(path__namespace.join(__dirname, `../renderer/${fileName}`));
     }
+  }
+  getPopupBounds(sizeLevel, kind) {
+    const size = POPUP_SIZE_LEVELS.find((l) => l.level === sizeLevel) || POPUP_SIZE_LEVELS[2];
+    const { width, height } = electron$1.screen.getPrimaryDisplay().workAreaSize;
+    const baseX = width - size.width - 20;
+    const baseY = height - size.height - 60;
+    return {
+      size,
+      x: baseX,
+      y: kind === "priority" ? Math.max(20, baseY - size.height - 18) : baseY
+    };
+  }
+  createPopupWindow(sizeLevel, kind) {
+    const { size, x, y } = this.getPopupBounds(sizeLevel, kind);
+    return new electron$1.BrowserWindow({
+      width: size.width,
+      height: size.height,
+      show: false,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      resizable: false,
+      x,
+      y,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      }
+    });
   }
   createSplashWindow() {
     const splash = new electron$1.BrowserWindow({
@@ -378,7 +413,7 @@ class WindowManager {
     });
     return this.mainWindow;
   }
-  createLoginWindow() {
+  createLoginWindow(showOnReady = true) {
     this.loginWindow = new electron$1.BrowserWindow({
       width: 500,
       height: 500,
@@ -393,7 +428,9 @@ class WindowManager {
       icon: path__namespace.join(__dirname, "../../assets/logo.png")
     });
     this.loadFile(this.loginWindow, "login.html");
-    this.loginWindow.once("ready-to-show", () => this.loginWindow?.show());
+    if (showOnReady) {
+      this.loginWindow.once("ready-to-show", () => this.loginWindow?.show());
+    }
     this.loginWindow.on("closed", () => {
       if (!this.mainWindow?.isVisible()) {
         this.forceQuit();
@@ -419,46 +456,58 @@ class WindowManager {
     return this.loginWindow;
   }
   showPopup(info, timeoutDuration, sizeLevel) {
+    const kind = info?.variant === "priority" ? "priority" : "warranty";
+    if (kind === "priority") {
+      this.showPriorityPopup(info, timeoutDuration, sizeLevel);
+      return;
+    }
+    this.showWarrantyPopup(info, timeoutDuration, sizeLevel);
+  }
+  showWarrantyPopup(info, timeoutDuration, sizeLevel) {
     this.closePopup();
-    const size = POPUP_SIZE_LEVELS.find((l) => l.level === sizeLevel) || POPUP_SIZE_LEVELS[2];
-    const { width, height } = electron$1.screen.getPrimaryDisplay().workAreaSize;
-    this.currentPopup = new electron$1.BrowserWindow({
-      width: size.width,
-      height: size.height,
-      show: false,
-      frame: false,
-      transparent: true,
-      alwaysOnTop: true,
-      resizable: false,
-      x: width - size.width - 20,
-      y: height - size.height - 40,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        preload: this.preloadPath
-      }
-    });
-    this.loadFile(this.currentPopup, size.file);
+    this.currentPopup = this.createPopupWindow(sizeLevel, "warranty");
+    this.loadFile(this.currentPopup, "popup.html");
     this.currentPopup.once("ready-to-show", () => {
-      if (this.currentPopup) {
-        this.currentPopup.show();
-        this.popupVisible = true;
-        const settings = loadSettings();
-        const infoWithSize = { ...info, sizeLevel, theme: settings.theme || "dark" };
-        this.currentPopup.webContents.send("popup-data", infoWithSize, timeoutDuration);
-        this.popupDuration = timeoutDuration;
-        this.popupStartTime = Date.now();
-        this.popupRemaining = timeoutDuration;
-        this.popupTimeout = setTimeout(() => {
-          this.closePopup();
-        }, timeoutDuration);
-      }
+      if (!this.currentPopup) return;
+      this.currentPopup.show();
+      this.popupVisible = true;
+      const settings = loadSettings();
+      const payload = { ...info, sizeLevel, theme: settings.theme || "dark", variant: "warranty" };
+      this.currentPopup.webContents.send("popup-data", payload, timeoutDuration);
+      this.popupStartTime = Date.now();
+      this.popupRemaining = timeoutDuration;
+      this.popupTimeout = setTimeout(() => this.closePopup(), timeoutDuration);
     });
     const popup = this.currentPopup;
     popup.on("closed", () => {
       if (this.currentPopup === popup) {
         this.currentPopup = null;
         this.popupVisible = false;
+      }
+    });
+  }
+  showPriorityPopup(info, timeoutDuration, sizeLevel) {
+    this.closePriorityPopup();
+    this.priorityPopup = this.createPopupWindow(sizeLevel, "priority");
+    this.loadFile(this.priorityPopup, "popup.html");
+    this.priorityPopup.once("ready-to-show", () => {
+      if (!this.priorityPopup) return;
+      this.priorityPopup.show();
+      const settings = loadSettings();
+      const payload = { ...info, sizeLevel, theme: settings.theme || "dark", variant: "priority" };
+      this.priorityPopup.webContents.send("popup-data", payload, timeoutDuration);
+      this.priorityPopupTimeout = setTimeout(() => this.closePriorityPopup(), timeoutDuration);
+      const anchorDelay = typeof info?.anchorDelay === "number" ? info.anchorDelay : settings.popupTimeout;
+      setTimeout(() => {
+        if (!this.priorityPopup || this.priorityPopup.isDestroyed()) return;
+        const targetBounds = this.getPopupBounds(sizeLevel, "warranty");
+        this.animatePriorityPopupTo(targetBounds.x, targetBounds.y);
+      }, Math.max(300, anchorDelay));
+    });
+    const popup = this.priorityPopup;
+    popup.on("closed", () => {
+      if (this.priorityPopup === popup) {
+        this.priorityPopup = null;
       }
     });
   }
@@ -472,6 +521,41 @@ class WindowManager {
       this.currentPopup = null;
     }
     this.popupVisible = false;
+  }
+  closePriorityPopup() {
+    if (this.priorityPopupTimeout) {
+      clearTimeout(this.priorityPopupTimeout);
+      this.priorityPopupTimeout = null;
+    }
+    if (this.priorityPopup && !this.priorityPopup.isDestroyed()) {
+      this.priorityPopup.close();
+      this.priorityPopup = null;
+    }
+  }
+  animatePriorityPopupTo(targetX, targetY) {
+    if (!this.priorityPopup || this.priorityPopup.isDestroyed()) return;
+    const startBounds = this.priorityPopup.getBounds();
+    const steps = 12;
+    const duration = 240;
+    const deltaX = (targetX - startBounds.x) / steps;
+    const deltaY = (targetY - startBounds.y) / steps;
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      if (!this.priorityPopup || this.priorityPopup.isDestroyed()) {
+        clearInterval(interval);
+        return;
+      }
+      currentStep++;
+      const nextX = Math.round(startBounds.x + deltaX * currentStep);
+      const nextY = Math.round(startBounds.y + deltaY * currentStep);
+      this.priorityPopup.setPosition(nextX, nextY);
+      if (currentStep >= steps) {
+        clearInterval(interval);
+        if (this.priorityPopup && !this.priorityPopup.isDestroyed()) {
+          this.priorityPopup.setPosition(targetX, targetY);
+        }
+      }
+    }, duration / steps);
   }
   isPopupVisible() {
     return this.popupVisible;
@@ -487,13 +571,11 @@ class WindowManager {
   resumePopupTimeout() {
     if (!this.popupTimeout && this.popupVisible && this.popupRemaining > 0) {
       this.popupStartTime = Date.now();
-      this.popupTimeout = setTimeout(() => {
-        this.closePopup();
-      }, this.popupRemaining);
+      this.popupTimeout = setTimeout(() => this.closePopup(), this.popupRemaining);
     }
   }
   forceQuit() {
-    [this.mainWindow, this.loginWindow, this.currentPopup].forEach((win) => {
+    [this.mainWindow, this.loginWindow, this.currentPopup, this.priorityPopup].forEach((win) => {
       if (win && !win.isDestroyed()) {
         win.destroy();
       }
@@ -659,8 +741,10 @@ const db = firestore.getFirestore(app);
 const TICKETS_COLLECTION = "tickets";
 const PRIORITY_COLLECTION = "priority_devices";
 async function createTicket(data) {
+  const missingTypeTokens = data.missing_type.split(",").map((token) => token.trim()).filter(Boolean);
   const docRef = await firestore.addDoc(firestore.collection(db, TICKETS_COLLECTION), {
     ...data,
+    missing_type_tokens: missingTypeTokens,
     created_at: firestore.serverTimestamp(),
     status: "pending",
     response: "",
@@ -758,12 +842,10 @@ async function updateTicketDetails(ticketId, details) {
 async function markTicketUnreachable(ticketId, personnelName) {
   const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
   if (!ticketDoc.empty) {
-    ticketDoc.docs[0].data();
     await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
       status: "pending",
       responded_by: "",
-      unreachable_count: firestore.increment(1),
-      created_at: firestore.serverTimestamp(),
+      last_contact_attempt_at: firestore.serverTimestamp(),
       action_history: firestore.arrayUnion({
         action: "Ulaşılamadı Olarak İşaretledi",
         user: personnelName,
@@ -824,7 +906,11 @@ function subscribeToPriorityDevices(callback) {
 async function getUsers() {
   const q = firestore.query(firestore.collection(db, "users"));
   const snapshot = await firestore.getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    const { password, ...safeUser } = data;
+    return { id: d.id, ...safeUser };
+  });
 }
 async function createUser(data) {
   const docRef = await firestore.addDoc(firestore.collection(db, "users"), {
@@ -972,12 +1058,16 @@ function checkPriorityMatch(serial) {
     (d) => d.serial && d.serial.toUpperCase() === serial.toUpperCase()
   );
   if (match) {
-    new electron$1.Notification({
-      title: "⚠️ Öncelikli Cihaz!",
-      body: `${match.customer_name}: ${match.description}`,
-      silent: false
-    }).show();
     windowManager.getMainWindow()?.webContents.send("priority-device-match", match);
+    windowManager.showPopup({
+      variant: "priority",
+      id: match.id,
+      serial,
+      customer_name: match.customer_name,
+      description: match.description,
+      created_by: match.created_by,
+      anchorDelay: currentSettings.popupTimeout
+    }, 15e3, currentSettings.popupSizeLevel);
   }
 }
 function setupIpcHandlers() {
@@ -998,6 +1088,7 @@ function setupIpcHandlers() {
     theme: currentSettings.theme,
     workingHours: currentSettings.workingHours,
     rememberMe: currentSettings.rememberMe,
+    autoLogin: currentSettings.autoLogin,
     savedUsername: currentSettings.savedUsername,
     savedPassword: currentSettings.savedPassword
   }));
@@ -1019,6 +1110,40 @@ function setupIpcHandlers() {
     }
     electron$1.app.relaunch();
     electron$1.app.exit(0);
+  });
+  electron$1.ipcMain.handle("logout", async () => {
+    currentSettings = {
+      ...currentSettings,
+      isLoggedIn: false,
+      personnelName: "",
+      role: "kargo_kabul",
+      username: "",
+      isAdmin: false,
+      autoLogin: false
+    };
+    saveSettings(currentSettings);
+    clipboardMonitor.stop();
+    monitoringEnabled = true;
+    if (statusInterval) {
+      clearTimeout(statusInterval);
+      statusInterval = null;
+    }
+    if (ticketUnsubscribe) {
+      ticketUnsubscribe();
+      ticketUnsubscribe = null;
+    }
+    if (priorityUnsubscribe) {
+      priorityUnsubscribe();
+      priorityUnsubscribe = null;
+    }
+    electron$1.globalShortcut.unregisterAll();
+    windowManager.closePopup();
+    windowManager.closePriorityPopup();
+    windowManager.getMainWindow()?.hide();
+    const loginWindow = windowManager.getLoginWindow() || windowManager.createLoginWindow();
+    loginWindow.show();
+    loginWindow.focus();
+    return true;
   });
   electron$1.ipcMain.on("toggle-monitoring", (_, enabled) => {
     monitoringEnabled = enabled;
@@ -1065,6 +1190,32 @@ function setupIpcHandlers() {
   electron$1.ipcMain.on("close-window", (e) => {
     const win = electron$1.BrowserWindow.fromWebContents(e.sender);
     win?.close();
+  });
+  electron$1.ipcMain.on("show-login-window", () => {
+    const loginWindow = windowManager.getLoginWindow() || windowManager.createLoginWindow();
+    loginWindow.show();
+    loginWindow.focus();
+  });
+  electron$1.ipcMain.on("open-main-view", (_, view) => {
+    const mainWindow = windowManager.getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("switch-view", view);
+  });
+  electron$1.ipcMain.on("open-priority-device", (_, device) => {
+    const mainWindow = windowManager.getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("switch-view", "priority");
+    setTimeout(() => {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("focus-priority-device", device);
+      }
+    }, 180);
   });
   electron$1.ipcMain.handle("calculate-bonus", async (_, fileData, customHours) => {
     try {
@@ -1334,8 +1485,7 @@ function startPriorityDevicesListener() {
   }
   priorityUnsubscribe = subscribeToPriorityDevices((devices) => {
     cachedPriorityDevices = devices;
-    const { BrowserWindow: BrowserWindow2 } = require("electron");
-    BrowserWindow2.getAllWindows().forEach((win) => {
+    electron$1.BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) {
         win.webContents.send("priority-devices-update", devices);
       }
@@ -1372,12 +1522,7 @@ function startTicketListener() {
       });
     }
     cachedTickets = tickets;
-    const mainWin = windowManager.getMainWindow();
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send("ticket-update", tickets);
-    }
-    const { BrowserWindow: BrowserWindow2 } = require("electron");
-    BrowserWindow2.getAllWindows().forEach((win) => {
+    electron$1.BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) {
         win.webContents.send("ticket-update", tickets);
       }
@@ -1397,20 +1542,23 @@ function initializeApp() {
   clipboardMonitor = new ClipboardMonitor(handleDetection);
   registerShortcuts();
   monitoringEnabled = true;
-  const splash = windowManager.createSplashWindow();
+  const wasOpenedAtLogin = electron$1.app.getLoginItemSettings().wasOpenedAtLogin === true;
+  const splash = wasOpenedAtLogin ? null : windowManager.createSplashWindow();
+  const startupDelay = wasOpenedAtLogin ? 0 : 1800;
   setTimeout(() => {
     try {
-      splash.close();
+      splash?.close();
     } catch {
     }
+    const shouldAutoLogin = !!(currentSettings.autoLogin && currentSettings.rememberMe && currentSettings.savedUsername && currentSettings.savedPassword);
     windowManager.createMainWindow();
-    windowManager.createLoginWindow();
+    windowManager.createLoginWindow(!shouldAutoLogin);
     createTray();
     electron$1.app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: electron$1.app.getPath("exe")
     });
-  }, 2500);
+  }, startupDelay);
   setupIpcHandlers();
 }
 electron$1.app.whenReady().then(() => {

@@ -1,5 +1,6 @@
 import { showToast } from './toastUtils'
-import { showConfirm } from '../index-renderer' // To be exported later
+import { showConfirm } from '../index-renderer'
+import { escapeHtml } from './html'
 
 export function initAdminLogic(
     api: any,
@@ -28,14 +29,19 @@ export function initAdminLogic(
 
             let badgeClass = 'badge-kargo'
             let roleDisplay = 'Kargo Kabul'
-            if (user.role === 'admin' || user.username === 'KursatS') { badgeClass = 'badge-admin'; roleDisplay = 'Yönetici' }
-            else if (user.role === 'mh') { badgeClass = 'badge-mh'; roleDisplay = 'Müşteri Hizmetleri' }
+            if (user.role === 'admin' || user.username === 'KursatS') {
+                badgeClass = 'badge-admin'
+                roleDisplay = 'Yönetici'
+            } else if (user.role === 'mh') {
+                badgeClass = 'badge-mh'
+                roleDisplay = 'Müşteri Hizmetleri'
+            }
 
             card.innerHTML = `
                 <span class="${badgeClass}">${roleDisplay}</span>
-                <h3>${user.fullName || 'İsimsiz'}</h3>
-                <p><strong>K. Adı:</strong> ${user.username}</p>
-                <p><strong>Şifre:</strong> <span style="cursor:pointer;opacity:0.5;" title="Göstermek için tıklayın" data-pw="${user.password}">••••••</span></p>
+                <h3>${escapeHtml(user.fullName || 'İsimsiz')}</h3>
+                <p><strong>K. Adı:</strong> ${escapeHtml(user.username)}</p>
+                <p><strong>Şifre:</strong> <span style="opacity:0.7;">Güvenlik nedeniyle gizli</span></p>
                 <p><strong>Level:</strong> ${user.level || 1} (${user.xp || 0} XP)</p>
                 <div class="actions">
                     <button class="btn-edit" data-id="${user.id}">Düzenle</button>
@@ -46,15 +52,6 @@ export function initAdminLogic(
             adminUserList.appendChild(card)
         })
 
-        // Password reveal
-        adminUserList.querySelectorAll('[data-pw]').forEach((el: any) => {
-            el.addEventListener('click', function(this: HTMLElement) {
-                this.textContent = this.dataset.pw || ''
-                this.style.opacity = '1'
-            })
-        })
-
-        // Edit buttons
         adminUserList.querySelectorAll('.btn-edit').forEach((btn: any) => {
             btn.addEventListener('click', (e: any) => {
                 const id = (e.target as HTMLElement).dataset.id!
@@ -63,7 +60,6 @@ export function initAdminLogic(
             })
         })
 
-        // Delete buttons
         adminUserList.querySelectorAll('.btn-delete').forEach((btn: any) => {
             btn.addEventListener('click', async (e: any) => {
                 const id = (e.target as HTMLElement).dataset.id!
@@ -77,7 +73,6 @@ export function initAdminLogic(
             })
         })
 
-        // XP Reset buttons
         adminUserList.querySelectorAll('.btn-reset-xp').forEach((btn: any) => {
             btn.addEventListener('click', async (e: any) => {
                 const id = (e.target as HTMLElement).dataset.id!
@@ -97,7 +92,8 @@ export function initAdminLogic(
             adminModalTitle.textContent = 'Kullanıcıyı Düzenle'
             adminUserId.value = user.id
             adminUsername.value = user.username || ''
-            adminPassword.value = user.password || ''
+            adminPassword.value = ''
+            adminPassword.placeholder = 'Değiştirmek için yeni şifre girin'
             adminFullname.value = user.fullName || ''
             adminRole.value = user.role || 'kargo_kabul'
         } else {
@@ -105,6 +101,7 @@ export function initAdminLogic(
             adminUserId.value = ''
             adminUsername.value = ''
             adminPassword.value = ''
+            adminPassword.placeholder = 'Giriş şifresi...'
             adminFullname.value = ''
             adminRole.value = 'kargo_kabul'
         }
@@ -121,7 +118,7 @@ export function initAdminLogic(
         const role = adminRole.value
         const id = adminUserId.value
 
-        if (!username || !password || !fullName || !role) {
+        if (!username || !fullName || !role || (!id && !password)) {
             showToast('Lütfen tüm alanları doldurun.', 'error')
             return
         }
@@ -131,7 +128,9 @@ export function initAdminLogic(
             ;(btnSaveAdminUser as HTMLButtonElement).disabled = true
 
             if (id) {
-                await api.updateUser(id, { username, password, fullName, role })
+                const updateData: Record<string, string> = { username, fullName, role }
+                if (password) updateData.password = password
+                await api.updateUser(id, updateData)
             } else {
                 await api.createUser({ username, password, fullName, role })
             }

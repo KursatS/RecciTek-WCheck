@@ -1,4 +1,4 @@
-export { }
+﻿export { }
 import { showToast } from './utils/toastUtils'
 import { SVG_EMPTY_FOLDER } from './utils/svgUtils'
 import { initTicketLogic } from './utils/ticketLogic'
@@ -7,8 +7,9 @@ import { initPriorityLogic } from './utils/priorityLogic'
 import { initSettingsLogic } from './utils/settingsLogic'
 import { initBonusLogic } from './utils/bonusLogic'
 import { initAdminLogic } from './utils/adminLogic'
+import { escapeHtml } from './utils/html'
 
-// ── Element References ──────────────────────────────────────────────
+//
 const cardsDiv = document.getElementById('cards')!
 const searchInput = document.getElementById('search') as HTMLInputElement
 const toggleBtn = document.getElementById('toggle')!
@@ -33,11 +34,14 @@ const ticketList = document.getElementById('ticket-list')!
 const tcPending = document.getElementById('count-pending')!
 const tcProgress = document.getElementById('count-progress')!
 const tcCompleted = document.getElementById('count-completed')!
+const tQueueBar = document.getElementById('ticket-queue-bar') as HTMLDivElement
 const tSearchInput = document.getElementById('ticket-search') as HTMLInputElement
 const tFilterStatus = document.getElementById('filter-status')!
 const tFilterVisibility = document.getElementById('filter-visibility')!
 const tFilterOwnership = document.getElementById('filter-ownership-toggle')!
-const tFilterAras = document.getElementById('filter-aras-toggle')!
+const tQueueAll = document.getElementById('ticket-queue-main') as HTMLButtonElement
+const tQueuePhone = document.getElementById('ticket-queue-phone') as HTMLButtonElement
+const tQueueDetail = document.getElementById('ticket-queue-detail') as HTMLButtonElement
 const btnManualTicket = document.getElementById('btn-manual-ticket')
 
 // Profile View Elements
@@ -67,6 +71,7 @@ const sPopupTimeout = document.getElementById('popup-timeout') as HTMLInputEleme
 const sAutoStart = document.getElementById('auto-start') as HTMLInputElement
 const sPreventDuplicate = document.getElementById('prevent-duplicate') as HTMLInputElement
 const sSaveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement
+const sLogoutBtn = document.getElementById('logout-btn') as HTMLButtonElement
 
 // Bonus View Elements
 const bonusDropZone = document.getElementById('bonus-drop-zone')!
@@ -104,7 +109,7 @@ let currentRole = 'kargo_kabul'
 let personnelName = ''
 let activeTickets: any[] = []
 
-// ── Custom Confirm Modal ────────────────────────────────────────────
+//
 export function showConfirm(title: string, message: string, confirmText = 'Evet, Sil'): Promise<boolean> {
     return new Promise((resolve) => {
         modalTitle.textContent = title
@@ -127,7 +132,7 @@ export function showConfirm(title: string, message: string, confirmText = 'Evet,
 }
 ;(window as any).showConfirm = showConfirm
 
-// ── Ask MH Modal ────────────────────────────────────────────────────
+//
 function showAskMHModal(serial: string, modelName: string, modelColor: string): void {
     modalTitle.textContent = 'MH\'ye Sor'
     modalText.innerHTML = ''
@@ -137,12 +142,12 @@ function showAskMHModal(serial: string, modelName: string, modelColor: string): 
 
     // Checkbox elements
     const fields = [
-        { id: 'chk-ariza', label: 'Arıza Beyanı' },
+        { id: 'chk-ariza', label: 'Ar\u0131za Beyan\u0131' },
         { id: 'chk-adres', label: 'Adres Bilgisi' },
-        { id: 'chk-tel', label: 'Telefon Numarası' },
+        { id: 'chk-tel', label: 'Telefon Numaras\u0131' },
         { id: 'chk-fatura', label: 'Fatura Tarihi' },
-        { id: 'chk-seri', label: 'Seri Numarası' },
-        { id: 'chk-isim', label: 'İsim ve Soyisim' }
+        { id: 'chk-seri', label: 'Seri Numaras\u0131' },
+        { id: 'chk-isim', label: '\u0130sim ve Soyisim' }
     ]
 
     let checkboxesHtml = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">'
@@ -157,23 +162,23 @@ function showAskMHModal(serial: string, modelName: string, modelColor: string): 
     checkboxesHtml += '</div>'
 
     form.innerHTML = `
-    <label style="font-size:0.85rem;color:#94a3b8;margin-bottom:-8px;">Eksik Bilgiler (Birden fazla seçebilirsiniz)</label>
+    <label style="font-size:0.85rem;color:#94a3b8;margin-bottom:-8px;">Eksik Bilgiler (Birden fazla se\u00e7ebilirsiniz)</label>
     ${checkboxesHtml}
     
-    <label style="font-size:0.85rem;color:#94a3b8;">Müşteri İsmi (Opsiyonel)</label>
-    <input type="text" id="mh-customer" placeholder="Müşteri adı soyadı..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+    <label style="font-size:0.85rem;color:#94a3b8;">M\u00fc\u015fteri \u0130smi (Opsiyonel)</label>
+    <input type="text" id="mh-customer" placeholder="M\u00fc\u015fteri ad\u0131 soyad\u0131..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
 
     <label style="font-size:0.85rem;color:#94a3b8;">Aras Kodu (Opsiyonel)</label>
     <input type="text" id="mh-aras" placeholder="Aras kargo kodu..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
 
-    <label style="font-size:0.85rem;color:#94a3b8;">Telefon Numarası (Opsiyonel)</label>
-    <input type="text" id="mh-phone" placeholder="Müşteri iletişim numarası..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
+    <label style="font-size:0.85rem;color:#94a3b8;">Telefon Numaras\u0131 (Opsiyonel)</label>
+    <input type="text" id="mh-phone" placeholder="M\u00fc\u015fteri ileti\u015fim numaras\u0131..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
 
     <label style="font-size:0.85rem;color:#94a3b8;">Not (Opsiyonel)</label>
     <input type="text" id="mh-note" placeholder="Ekstra detay ekleyin..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
     `
     modalText.appendChild(form)
-    modalConfirm.textContent = 'Gönder'
+    modalConfirm.textContent = 'G\u00f6nder'
 
     modalOverlay.classList.add('active')
 
@@ -203,11 +208,11 @@ function showAskMHModal(serial: string, modelName: string, modelColor: string): 
                 customer_name: customerName,
                 aras_code: arasCode,
                 phone_number: phoneNumber,
-                created_by: personnelName || 'İsimsiz Personel'
+                created_by: personnelName || '\u0130simsiz Personel'
             })
-            showToast('Eksik bilgi talebiniz MH departmanına iletildi.', 'success')
+            showToast('Eksik bilgi talebiniz MH departman\u0131na iletildi.', 'success')
         } catch (e: any) {
-            showToast('Talep oluşturulurken hata: ' + e.message, 'error')
+            showToast('Talep olu\u015fturulurken hata: ' + e.message, 'error')
         }
 
         modalOverlay.classList.remove('active')
@@ -222,13 +227,13 @@ function showAskMHModal(serial: string, modelName: string, modelColor: string): 
     }
 }
 
-// ── Date Formatter ──────────────────────────────────────────────────
+//
 function formatDate(dateString: string): string {
     const date = new Date(dateString)
     return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
 }
 
-// ── Card Renderer ───────────────────────────────────────────────────
+//
 function loadCards() {
     cardsDiv.innerHTML = `
         <div class="card" style="display:flex; flex-direction:column; gap:12px; pointer-events:none; opacity:0.7;">
@@ -286,19 +291,19 @@ function loadCards() {
 
                 // MH'ye Sor button (STRICTLY only for kargo_kabul role and if no completed response exists)
                 const askMHBtn = (currentRole === 'kargo_kabul' && !completedTicket?.response)
-                    ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>`
+                    ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">&#128233; MH'ye Sor</button>`
                     : ''
 
                 card.className = cardClass
                 card.style.position = 'relative'
                 card.innerHTML = `
-          <button class="delete-btn" onclick="deleteEntry('${item.serial}')">✕</button>
+          <button class="delete-btn" onclick="deleteEntry('${item.serial}')">&#10005;</button>
           ${askMHBtn}
           <div class="status-tag">${statusLabel}</div>
           <p><strong>Seri:</strong> ${item.serial}</p>
           <p><strong>Model:</strong> ${item.model_name || 'Bilinmiyor'} ${item.model_color || ''}</p>
           <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
-          ${item.warranty_end ? `<p><strong>Bitiş:</strong> ${item.warranty_end}</p>` : ''}
+          ${item.warranty_end ? `<p><strong>Biti\u015f:</strong> ${item.warranty_end}</p>` : ''}
           ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ''}
         `
                 fragment.appendChild(card)
@@ -318,27 +323,32 @@ function loadCards() {
     })
 }
 
-// ── Monitoring Toggle ───────────────────────────────────────────────
+//
 toggleBtn.onclick = () => {
     monitoringEnabled = !monitoringEnabled
     const span = toggleBtn.querySelector('span')
     if (span) {
-        span.textContent = monitoringEnabled ? '👁️ Clipboard İzleme: Aktif' : '👁️ Clipboard İzleme: Devre Dışı'
+        span.textContent = monitoringEnabled ? '\u{1F4CB} Clipboard \u0130zleme: Aktif' : '\u{1F4CB} Clipboard \u0130zleme: Devre D\u0131\u015f\u0131'
     }
     toggleBtn.style.opacity = monitoringEnabled ? '1' : '0.6'
     api.toggleMonitoring(monitoringEnabled)
 }
 
-// ── Theme Management ────────────────────────────────────────────────
+//
 const ALL_THEMES = ['dark', 'midnight', 'ocean', 'sunset'] as const
-const THEME_ICONS: Record<string, string> = { dark: '🌙', midnight: '🔮', ocean: '🌊', sunset: '🌅' }
+const THEME_ICONS: Record<string, string> = {
+    dark: '\u{1F319}',
+    midnight: '\u{1F52E}',
+    ocean: '\u{1F30A}',
+    sunset: '\u{1F305}'
+}
 let currentTheme = 'dark'
 
 function applyTheme(theme: string) {
     currentTheme = theme
     document.body.classList.remove(...ALL_THEMES)
     document.body.classList.add(theme)
-    themeBtn.textContent = THEME_ICONS[theme] || '🌙'
+    themeBtn.textContent = THEME_ICONS[theme] || '\u{1F319}'
     document.querySelectorAll('.theme-card').forEach((c: any) => {
         c.classList.toggle('selected', c.dataset.theme === theme)
     })
@@ -372,7 +382,7 @@ api.getSettings().then((s: any) => {
 })
 
 
-// ── Search ──────────────────────────────────────────────────────────
+//
 let mainSearchTimeout: NodeJS.Timeout
 searchInput.oninput = () => {
     clearTimeout(mainSearchTimeout)
@@ -381,7 +391,7 @@ searchInput.oninput = () => {
     }, 300)
 }
 
-// ── Sidebar Navigation ──────────────────────────────────────────────
+//
 function switchView(viewName: string) {
     viewSections.forEach(sec => sec.classList.remove('active'))
     navItems.forEach(item => item.classList.remove('active'))
@@ -410,7 +420,7 @@ navItems.forEach(item => {
     })
 })
 
-// ── Shared Profile Logic ────────────────────────────────────────────
+//
 function calculateLevel(xp: number): { level: number, nextXp: number } {
     let level = 1
     let threshold = 100
@@ -423,7 +433,7 @@ function calculateLevel(xp: number): { level: number, nextXp: number } {
 
 async function refreshSidebarProfile() {
     const settings = await api.getSettings()
-    personnelName = settings.personnelName || 'İsimsiz'
+    personnelName = settings.personnelName || '\u0130simsiz'
     sideName.textContent = personnelName.toUpperCase()
 
     // Fetch user from DB for XP
@@ -440,7 +450,7 @@ async function refreshSidebarProfile() {
         if (pMyLevel) {
             pMyLevel.textContent = String(level)
             pMyName.textContent = me.fullName || me.username
-            pMyRole.textContent = me.role === 'mh' ? 'Müşteri Hizmetleri' : 'Kargo Kabul'
+            pMyRole.textContent = me.role === 'mh' ? 'M\u00fc\u015fteri Hizmetleri' : 'Kargo Kabul'
             pMyXp.textContent = String(me.xp || 0)
             pNextLevelXp.textContent = String(nextXp)
             pXpFill.style.width = `${Math.min(100, progress)}%`
@@ -449,42 +459,42 @@ async function refreshSidebarProfile() {
 }
 
 
-// ── Clear Cache ─────────────────────────────────────────────────────
+//
 clearCacheBtn.onclick = async () => {
     const confirmed = await showConfirm(
-        'Tüm Geçmişi Temizle',
-        'Tüm sorgu geçmişiniz kalıcı olarak silinecektir. Emin misiniz?',
-        'Tümünü Sil'
+        'T\u00fcm Ge\u00e7mi\u015fi Temizle',
+        'T\u00fcm sorgu ge\u00e7mi\u015finiz kal\u0131c\u0131 olarak silinecektir. Emin misiniz?',
+        'T\u00fcm\u00fcn\u00fc Sil'
     )
     if (confirmed) {
         try {
             await api.clearCache()
             loadCards()
-            showToast('Tüm önbellek başarıyla temizlendi.', 'success')
+            showToast('T\u00fcm \u00f6nbellek ba\u015far\u0131yla temizlendi.', 'success')
         } catch (e: any) {
-            showToast('Temizleme hatası: ' + e.message, 'error')
+            showToast('Temizleme hatas\u0131: ' + e.message, 'error')
         }
     }
 }
 
-    // ── Delete Entry (global) ───────────────────────────────────────────
+//
     ; (window as any).deleteEntry = async (serial: string) => {
         const confirmed = await showConfirm(
-            'Kaydı Sil',
-            `${serial} seri numaralı cihazı listeden silmek istediğinizden emin misiniz?`
+            'Kayd\u0131 Sil',
+            `${serial} seri numaral\u0131 cihaz\u0131 listeden silmek istedi\u011finizden emin misiniz?`
         )
         if (confirmed) {
             try {
                 await api.deleteEntry(serial)
                 loadCards()
-                showToast(`${serial} kaydı silindi.`, 'success')
+                showToast(`${serial} kayd\u0131 silindi.`, 'success')
             } catch (e: any) {
                 showToast('Silinemedi: ' + e.message, 'error')
             }
         }
     }
 
-// ── Double Copy Toggle ──────────────────────────────────────────────
+//
 function updateDCUI(enabled: boolean) {
     dcBtn.textContent = enabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı'
     dcBtn.classList.toggle('btn-warning', !enabled)
@@ -498,16 +508,16 @@ dcBtn.onclick = async () => {
     try {
         await api.toggleDoubleCopy(!current)
         updateDCUI(!current)
-        showToast(`Double Copy modu ${!current ? 'açıldı' : 'kapatıldı'}.`, 'info')
+        showToast(`Double Copy modu ${!current ? 'a\u00e7\u0131ld\u0131' : 'kapat\u0131ld\u0131'}.`, 'info')
     } catch (e: any) {
         showToast('Double Copy değişemedi: ' + e.message, 'error')
     }
 }
 
-// ── Server Status Listener ──────────────────────────────────────────
+//
 api.onServerStatusUpdate((status: { online: boolean; latency: number }) => {
     statusDot.className = 'status-dot ' + (status.online ? (status.latency > 1000 ? 'slow' : 'online') : 'offline')
-    statusInfo.textContent = status.online ? `Sunucu: ${status.latency}ms` : 'Sunucu: Erişilemiyor'
+    statusInfo.textContent = status.online ? `Sunucu: ${status.latency}ms` : 'Sunucu: Eri\u015filemiyor'
     statusRefreshBtn.classList.remove('rotating')
 })
 
@@ -522,29 +532,14 @@ api.onMonitoringToggled((enabled: boolean) => {
     monitoringEnabled = enabled
     const span = toggleBtn.querySelector('span')
     if (span) {
-        span.textContent = monitoringEnabled ? '👁️ Clipboard İzleme: Aktif' : '👁️ Clipboard İzleme: Devre Dışı'
+        span.textContent = monitoringEnabled ? '\u{1F4CB} Clipboard \u0130zleme: Aktif' : '\u{1F4CB} Clipboard \u0130zleme: Devre D\u0131\u015f\u0131'
     }
     toggleBtn.style.opacity = monitoringEnabled ? '1' : '0.6'
 })
 
-// ── Ticket Updates ──────────────────────────────────────────────────
-api.onTicketUpdate((tickets: any[]) => {
-    activeTickets = tickets
+//
 
-    // Update badge
-    const pendingCount = tickets.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').length
-    if (pendingCount > 0) {
-        ticketBadge.style.display = 'block'
-        ticketBadge.textContent = String(pendingCount)
-    } else {
-        ticketBadge.style.display = 'none'
-    }
-
-    // Re-render cards to show ticket status
-    loadCards()
-})
-
-// ── Priority Device Match ───────────────────────────────────────────
+//
 api.onPriorityDeviceMatch((device: any) => {
     const alertDiv = document.createElement('div')
     alertDiv.style.cssText = `
@@ -568,11 +563,11 @@ api.onPriorityDeviceMatch((device: any) => {
 
     alertDiv.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong style="font-size:1.1rem;">⚠️ ÖNCELİKLİ CİHAZ!</strong>
-            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
+            <strong style="font-size:1.1rem;">&#9888;&#65039; ÖNCELİKLİ CİHAZ!</strong>
+            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">&#10005;</button>
         </div>
-        <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
-        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+        <div style="font-size:0.95rem; font-weight:600;">${escapeHtml(device.customer_name)}</div>
+        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${escapeHtml(device.description)}</div>
         <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
             <button id="delete-priority-bound" style="background: rgba(239, 68, 68, 0.5); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;">Sistemden Sil</button>
         </div>
@@ -606,15 +601,15 @@ api.onPriorityDeviceMatch((device: any) => {
         if (confirmed) {
             await api.deletePriorityDevice(device.id)
             if (alertDiv.parentNode) alertDiv.remove()
-            showToast('Cihaz sistemden kalıcı olarak silindi.', 'success')
+            showToast('Cihaz sistemden kal\u0131c\u0131 olarak silindi.', 'success')
         }
     }
 })
 
-// ── Sub-view Initialization Logic ──────────────────────────────────
+//
 const { loadTickets, renderTicketsList } = initTicketLogic(
     api,
-    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tFilterAras, tcPending, tcProgress, tcCompleted, btnManualTicket },
+    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tQueueAll, tQueuePhone, tQueueDetail, tcPending, tcProgress, tcCompleted, btnManualTicket },
     () => currentRole,
     () => personnelName
 )
@@ -636,13 +631,13 @@ const { loadProfileScoreboard } = initProfileLogic(
     refreshSidebarProfile
 )
 
-const { loadPriorityDevices } = initPriorityLogic(api, {
+const { loadPriorityDevices, focusPriorityDevice } = initPriorityLogic(api, {
     prioList, addPrioBtn, pSerial, pCustomer, pDesc
 })
 
 const { loadSettingsToUI } = initSettingsLogic(api, {
     sPersonnelName, sUserRole, sShortcutClear, sShortcutCopy,
-    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sSaveBtn
+    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sSaveBtn, sLogoutBtn
 }, refreshSidebarProfile)
 
 // Global window function for deletion
@@ -655,11 +650,11 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
     if (confirmed) {
         await api.deletePriorityDevice(id)
         loadPriorityDevices()
-        showToast('Cihaz başarıyla silindi.', 'success')
+        showToast('Cihaz ba\u015far\u0131yla silindi.', 'success')
     }
 }
 
-// ── Initial Load ────────────────────────────────────────────────────
+//
 Promise.all([
     api.getSettings(),
     api.getTickets(),
@@ -678,6 +673,7 @@ Promise.all([
 
     if (sideBonus) sideBonus.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
     if (btnManualTicket) btnManualTicket.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
+    if (tQueueBar) tQueueBar.style.display = 'flex'
     if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
     if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 
@@ -706,6 +702,7 @@ api.onRefreshCards(() => {
 
         if (sideBonus) sideBonus.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
         if (btnManualTicket) btnManualTicket.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
+        if (tQueueBar) tQueueBar.style.display = 'flex'
         if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
         if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 
@@ -725,6 +722,13 @@ api.onTicketUpdate((tickets: any[]) => {
     loadCards()
 })
 
+api.onFocusPriorityDevice((device: any) => {
+    switchView('priority')
+    loadPriorityDevices().then(() => {
+        focusPriorityDevice(device)
+    })
+})
+
 initBonusLogic(api, {
     bonusDropZone,
     bonusFileInput,
@@ -740,18 +744,18 @@ const { loadAdminUsers } = initAdminLogic(api, {
     adminRole, btnCancelAdminModal, btnSaveAdminUser
 }, undefined as any)
 
-// ── Auto-Updater UI ─────────────────────────────────────────────────
+//
 ;(function setupAutoUpdater() {
     const bar = document.createElement('div')
     bar.id = 'update-bar'
     bar.style.cssText = 'display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid var(--accent);padding:10px 20px;align-items:center;gap:12px;font-size:0.85rem;color:var(--text-main);'
     bar.innerHTML = `
-        <span id="update-msg">🚀 Yeni sürüm mevcut!</span>
+        <span id="update-msg">&#128276; Yeni sürüm mevcut!</span>
         <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
             <div id="update-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s;"></div>
         </div>
         <button id="update-action-btn" style="padding:6px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">İndir</button>
-        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">✕</button>
+        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">&#10005;</button>
     `
     document.body.appendChild(bar)
 
@@ -764,7 +768,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
     let updateState: 'available' | 'downloading' | 'ready' = 'available'
 
     api.onUpdateAvailable((version: string) => {
-        updateMsg.textContent = `🚀 Yeni sürüm mevcut: v${version}`
+        updateMsg.textContent = `📢 Yeni sürüm mevcut: v${version}`
         bar.style.display = 'flex'
         updateState = 'available'
         actionBtn.textContent = 'İndir'
@@ -779,7 +783,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
     api.onUpdateDownloaded(() => {
         updateState = 'ready'
         progressWrap.style.display = 'none'
-        updateMsg.textContent = '✅ Güncelleme hazır!'
+        updateMsg.textContent = '✓ Güncelleme hazır!'
         actionBtn.textContent = 'Güncelle'
     })
 

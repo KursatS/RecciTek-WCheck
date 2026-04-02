@@ -50,7 +50,11 @@ function showToast(message, type = "info") {
     toast.style.borderColor = "rgba(59, 130, 246, 0.3)";
     icon = "ℹ️";
   }
-  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  const iconSpan = document.createElement("span");
+  iconSpan.textContent = icon;
+  const messageSpan = document.createElement("span");
+  messageSpan.textContent = message;
+  toast.append(iconSpan, messageSpan);
   container.appendChild(toast);
   requestAnimationFrame(() => {
     toast.style.transform = "translateX(0)";
@@ -99,6 +103,40 @@ function stopWaitingTimers() {
     waitTimerInterval = null;
   }
 }
+function getMissingTypes(ticket) {
+  return String(ticket.missing_type || "").split(",").map((t) => t.trim()).filter((t) => t && t !== "Belirtilmedi");
+}
+function isPhoneMissingQueue(ticket) {
+  const missingTypes = getMissingTypes(ticket);
+  const needsPhone = missingTypes.some((t) => t.toLowerCase().includes("telefon"));
+  return !!ticket.aras_code && !ticket.phone_number && needsPhone;
+}
+function isInfoMissingQueue(ticket) {
+  const missingTypes = getMissingTypes(ticket);
+  const remainingTypes = missingTypes.filter((t) => !t.toLowerCase().includes("telefon"));
+  return !!ticket.phone_number && remainingTypes.length > 0;
+}
+function normalizeHistoryAction(action) {
+  const trimmed = String(action || "").trim();
+  const actionMap = {
+    "Oluşturuldu": "Oluşturuldu",
+    "OluÅŸturuldu": "Oluşturuldu",
+    "OluÃ…Å¸turuldu": "Oluşturuldu",
+    "Üstlendi": "Üstlendi",
+    "Ãœstlendi": "Üstlendi",
+    "ÃƒÅ“stlendi": "Üstlendi",
+    "Tamamlandı": "Tamamlandı",
+    "TamamlandÄ±": "Tamamlandı",
+    "TamamlandÃ„Â±": "Tamamlandı",
+    "Yeniden Açtı": "Yeniden Açtı",
+    "Yeniden AÃ§tı": "Yeniden Açtı",
+    "Yeniden AÃƒÂ§tÃ„Â±": "Yeniden Açtı",
+    "Ulaşılamadı Olarak İşaretledi": "Ulaşılamadı Olarak İşaretledi",
+    "UlaÅŸÄ±lamadÄ± Olarak Ä°ÅŸaretledi": "Ulaşılamadı Olarak İşaretledi",
+    "UlaÃ…Å¸Ã„Â±lamadÃ„Â± Olarak Ã„Â°Ã…Å¸aretledi": "Ulaşılamadı Olarak İşaretledi"
+  };
+  return actionMap[trimmed] || trimmed;
+}
 function showTicketHistoryModal(ticket) {
   document.getElementById("ticket-history-modal")?.remove();
   const overlay = document.createElement("div");
@@ -110,6 +148,7 @@ function showTicketHistoryModal(ticket) {
     const sorted = [...history].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
     sorted.forEach((entry, idx) => {
       const date = entry.timestamp ? new Date(entry.timestamp) : null;
+      const normalizedAction = normalizeHistoryAction(entry.action);
       const dateStr = date ? `${date.toLocaleDateString("tr-TR")} ${date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}` : "—";
       const iconMap = {
         "Oluşturuldu": "📝",
@@ -118,7 +157,7 @@ function showTicketHistoryModal(ticket) {
         "Ulaşılamadı Olarak İşaretledi": "🚫",
         "Yeniden Açtı": "🔄"
       };
-      const icon = iconMap[entry.action] || "📌";
+      const icon = iconMap[normalizedAction] || "📌";
       const isLast = idx === sorted.length - 1;
       historyRows += `
                 <div style="display:flex;gap:12px;align-items:flex-start;position:relative;">
@@ -127,7 +166,7 @@ function showTicketHistoryModal(ticket) {
                         ${!isLast ? '<div style="width:2px;flex:1;background:rgba(255,255,255,0.1);margin:4px 0;min-height:20px;"></div>' : ""}
                     </div>
                     <div style="flex:1;padding-bottom:${isLast ? "0" : "16px"};">
-                        <div style="font-weight:600;font-size:0.9rem;color:white;">${entry.action}</div>
+                        <div style="font-weight:600;font-size:0.9rem;color:white;">${normalizedAction}</div>
                         <div style="font-size:0.8rem;color:#94a3b8;margin-top:2px;">${entry.user}</div>
                         <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${dateStr}</div>
                     </div>
@@ -137,7 +176,7 @@ function showTicketHistoryModal(ticket) {
   } else {
     historyRows = `
             <div style="display:flex;gap:12px;align-items:center;">
-                <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(56,189,248,0.3);">📝</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(56,189,248,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(56,189,248,0.3);">&#128221;</div>
                 <div>
                     <div style="font-weight:600;font-size:0.9rem;color:white;">Oluşturan</div>
                     <div style="font-size:0.8rem;color:#94a3b8;">${ticket.created_by || "Bilinmiyor"}</div>
@@ -145,7 +184,7 @@ function showTicketHistoryModal(ticket) {
             </div>
             ${ticket.responded_by ? `
             <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
-                <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(16,185,129,0.3);">🤝</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid rgba(16,185,129,0.3);">&#129309;</div>
                 <div>
                     <div style="font-weight:600;font-size:0.9rem;color:white;">Üstlenen</div>
                     <div style="font-size:0.8rem;color:#94a3b8;">${ticket.responded_by}</div>
@@ -156,8 +195,8 @@ function showTicketHistoryModal(ticket) {
   overlay.innerHTML = `
         <div style="background:rgba(15,23,42,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:420px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                <h3 style="margin:0;font-size:1.1rem;color:white;">📜 İşlem Geçmişi</h3>
-                <button id="close-history-modal" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0 4px;">✕</button>
+                <h3 style="margin:0;font-size:1.1rem;color:white;">&#128220; İşlem Geçmişi</h3>
+                <button id="close-history-modal" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;padding:0 4px;">&#10005;</button>
             </div>
             <div style="font-size:0.8rem;color:#64748b;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">
                 ${ticket.serial || "Seri No Yok"} ${ticket.model_name ? "— " + ticket.model_name : ""}
@@ -174,7 +213,24 @@ function showTicketHistoryModal(ticket) {
   });
 }
 function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
-  const { ticketList: ticketList2, tSearchInput: tSearchInput2, tFilterStatus: tFilterStatus2, tFilterVisibility: tFilterVisibility2, tFilterOwnership: tFilterOwnership2, tFilterAras: tFilterAras2, tcPending: tcPending2, tcProgress: tcProgress2, tcCompleted: tcCompleted2, btnManualTicket: btnManualTicket2 } = elements;
+  const {
+    ticketList: ticketList2,
+    tSearchInput: tSearchInput2,
+    tFilterStatus: tFilterStatus2,
+    tQueueAll: tQueueAll2,
+    tQueuePhone: tQueuePhone2,
+    tQueueDetail: tQueueDetail2,
+    tcPending: tcPending2,
+    tcProgress: tcProgress2,
+    tcCompleted: tcCompleted2,
+    btnManualTicket: btnManualTicket2
+  } = elements;
+  const ensureActionSucceeded = (result, fallbackMessage) => {
+    if (result && typeof result === "object" && "success" in result && result.success === false) {
+      throw new Error(result.error || fallbackMessage);
+    }
+    return result;
+  };
   function promptManualTicket() {
     const modalOverlay2 = document.getElementById("modal-overlay");
     const modalTitle2 = document.getElementById("modal-title");
@@ -273,29 +329,21 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
     ticketList2.innerHTML = "";
     const searchQuery = tSearchInput2?.value?.toLowerCase().trim() || "";
     const currentRole2 = getCurrentRole();
-    const personnelName2 = getPersonnelName();
     const statusFilter = tFilterStatus2?.value || "all";
-    const visibilityFilter = tFilterVisibility2?.value || "visible";
-    const ownershipFilter = tFilterOwnership2?.dataset?.val || "mine";
-    const arasActive = tFilterAras2?.dataset?.active === "true";
+    const queueMode = tQueueAll2?.dataset?.mode || "main";
     tcPending2.textContent = String(tickets.filter((t) => t.status === "pending").length);
     tcProgress2.textContent = String(tickets.filter((t) => t.status === "in_progress").length);
     tcCompleted2.textContent = String(tickets.filter((t) => t.status === "completed").length);
     let filtered = tickets;
-    if (arasActive) {
-      filtered = filtered.filter((t) => t.aras_code && !t.phone_number);
+    if (queueMode === "phone") {
+      filtered = filtered.filter((t) => isPhoneMissingQueue(t));
+    } else if (queueMode === "detail") {
+      filtered = filtered.filter((t) => isInfoMissingQueue(t) && !isPhoneMissingQueue(t));
     } else {
-      if (statusFilter !== "all") {
-        filtered = filtered.filter((t) => t.status === statusFilter);
-      }
+      filtered = filtered.filter((t) => !isPhoneMissingQueue(t));
     }
-    if (visibilityFilter === "visible") {
-      filtered = filtered.filter((t) => !t.is_hidden);
-    } else if (visibilityFilter === "hidden") {
-      filtered = filtered.filter((t) => t.is_hidden);
-    }
-    if (ownershipFilter === "mine") {
-      filtered = filtered.filter((t) => t.created_by === personnelName2 || t.responded_by === personnelName2);
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((t) => t.status === statusFilter);
     }
     if (searchQuery) {
       filtered = filtered.filter((t) => (t.serial || "").toLowerCase().includes(searchQuery) || (t.customer_name || "").toLowerCase().includes(searchQuery));
@@ -317,7 +365,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
       let waitTimerHTML = "";
       if (ticket.status === "pending") {
         const waitMs = ticket.created_at ? Date.now() - ticket.created_at : 0;
-        waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ""}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">⏳ ${formatWaitTime(waitMs)}</div>`;
+        waitTimerHTML = `<div class="wait-timer" data-created-at="${ticket.created_at || ""}" style="font-size:0.75rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:4px;">&#9203; ${formatWaitTime(waitMs)}</div>`;
       }
       let detailedResponseInputsHTML = "";
       if (ticket.status === "in_progress" && currentRole2 === "mh") {
@@ -359,7 +407,7 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
                     <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
                         ${detailedResponseInputsHTML}
                         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-                            <button class="btn-sm" data-action="unreachable" data-id="${ticket.id}" style="background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);" title="Ulaşılamıyor">🚫 Ulaşılamadı</button>
+                            <button class="btn-sm" data-action="unreachable" data-id="${ticket.id}" style="background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);" title="Ulaşılamıyor">&#128683; Ulaşılamadı</button>
                             <button class="btn-sm btn-complete" data-action="complete" data-id="${ticket.id}" style="flex:1;">Tamamla</button>
                         </div>
                     </div>
@@ -401,30 +449,18 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
         collabHTML = `<div class="collab-container">
                     ${ticket.customer_name ? `<div class="collab-group"><span class="collab-label">Müşteri</span><span>${ticket.customer_name}</span></div>` : ""}
                     ${ticket.aras_code ? `<div class="collab-group"><span class="collab-label">Aras Kodu</span><span>${ticket.aras_code}</span></div>` : ""}
-                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span>📞 ${ticket.phone_number}</span></div>` : ""}
+                    ${ticket.phone_number ? `<div class="collab-group"><span class="collab-label">Telefon</span><span><span aria-hidden="true">&#128222;</span> ${ticket.phone_number}</span></div>` : ""}
                 </div>`;
       }
       let deleteHTML = "";
       if (currentRole2 === "kargo_kabul") {
-        deleteHTML = `<button class="delete-btn" title="Sil" data-action="delete" data-id="${ticket.id}">🗑️</button>`;
+        deleteHTML = `<button class="delete-btn" title="Sil" data-action="delete" data-id="${ticket.id}">&#128465;&#65039;</button>`;
       }
       let noteHTML = "";
-      if (ticket.note || ticket.unreachable_count && ticket.unreachable_count > 0) {
-        let noteContent = ticket.note ? `<span><strong>Not:</strong> ${ticket.note}</span>` : "";
-        let unreachableBadge = ticket.unreachable_count && ticket.unreachable_count > 0 ? `<span style="font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(239, 68, 68, 0.2);color:#ef4444;border:1px solid rgba(239, 68, 68, 0.3);">🚫 Ulaşılamadı: ${ticket.unreachable_count}</span>` : "";
-        const hasNote = !!ticket.note;
-        noteHTML = `<div ${hasNote ? 'class="ticket-note"' : ""} style="display:inline-flex; align-items:center; gap:8px; ${hasNote ? "" : "margin-top:4px;"}">
-                    ${unreachableBadge}
-                    ${noteContent}
+      if (ticket.note) {
+        noteHTML = `<div class="ticket-note">
+                    <span><strong>Not:</strong> ${ticket.note}</span>
                 </div>`;
-      }
-      let hideHTML = "";
-      if (ticket.status === "completed") {
-        if (ticket.is_hidden) {
-          hideHTML = `<button class="btn-sm btn-reopen" data-action="unhide" data-id="${ticket.id}" style="margin-left:8px;">Gözetleme</button>`;
-        } else {
-          hideHTML = `<button class="btn-sm btn-update" data-action="hide" data-id="${ticket.id}" style="margin-top:0; margin-left:8px;">Gizle</button>`;
-        }
       }
       card.innerHTML = `
                 ${deleteHTML}
@@ -438,14 +474,13 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
                     ${collabHTML}
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div class="ticket-time">${createdDate}</div>
-                        <button class="btn-sm" data-action="info" data-id="${ticket.id}" style="background:transparent;border:none;font-size:1.1rem;cursor:pointer;padding:0 4px;opacity:0.6;transition:opacity 0.2s;" title="İşlem Geçmişi">ℹ️</button>
                     </div>
                 </div>
                 <div class="ticket-actions" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
                     ${ticket.status === "in_progress" && currentRole2 === "mh" ? "" : `<span class="${badgeClass}">${statusLabel}</span>`}
-                    <div style="display: flex; gap: 8px; flex:1; justify-content: flex-end; ${ticket.status === "in_progress" && currentRole2 === "mh" ? "width:100%;" : ""}">
+                    <div style="display: flex; gap: 8px; flex:1; justify-content: flex-end; align-items:flex-end; ${ticket.status === "in_progress" && currentRole2 === "mh" ? "width:100%;" : ""}">
                       ${actionsHTML}
-                      ${ticket.status === "in_progress" && currentRole2 === "mh" ? "" : hideHTML}
+                      <button class="btn-sm ticket-info-btn" data-action="info" data-id="${ticket.id}" title="İşlem Geçmişi">&#8505;</button>
                     </div>
                 </div>
             `;
@@ -455,76 +490,94 @@ function initTicketLogic(api2, elements, getCurrentRole, getPersonnelName) {
     startWaitingTimers();
     ticketList2.querySelectorAll("[data-action]").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const el = e.target;
-        const action = el.dataset.action;
-        el.closest(".ticket-card");
-        const id = el.dataset.id;
-        if (action === "claim") {
-          await api2.claimTicket(id, personnelName2);
-          showToast("Talep üstlenildi.", "success");
-        } else if (action === "complete") {
-          const inputs = document.querySelectorAll(`.dyn-resp-${id}`);
-          let responseParts = [];
-          inputs.forEach((input) => {
-            const val = input.value.trim();
-            if (val) {
-              responseParts.push(`${input.dataset.reqtype}: ${val}`);
+        const button = e.currentTarget;
+        const action = button.dataset.action;
+        const id = button.dataset.id;
+        if (!action || !id) return;
+        try {
+          if (action === "claim") {
+            ensureActionSucceeded(
+              await api2.claimTicket(id, getPersonnelName()),
+              "Talep üstlenilemedi."
+            );
+            showToast("Talep üstlenildi.", "success");
+          } else if (action === "complete") {
+            const inputs = document.querySelectorAll(`.dyn-resp-${id}`);
+            const responseParts = [];
+            inputs.forEach((input) => {
+              const val = input.value.trim();
+              if (val) {
+                responseParts.push(`${input.dataset.reqtype}: ${val}`);
+              }
+            });
+            const finalResponse = responseParts.join(" | ");
+            if (!finalResponse) {
+              showToast("Lütfen en az bir alanı doldurun.", "error");
+              return;
             }
-          });
-          const finalResponse = responseParts.join(" | ");
-          if (!finalResponse) {
-            showToast("Lütfen en az bir alanı doldurun.", "error");
+            ensureActionSucceeded(
+              await api2.completeTicket(id, finalResponse),
+              "Talep tamamlanamadı."
+            );
+            showToast("Talep tamamlandı.", "success");
+          } else if (action === "unreachable") {
+            ensureActionSucceeded(
+              await api2.markTicketUnreachable(id, getPersonnelName()),
+              "Bilet durumu güncellenemedi."
+            );
+            showToast("Bilet durumu ulaşılamıyor olarak güncellendi.", "info");
+          } else if (action === "reopen") {
+            ensureActionSucceeded(
+              await api2.reopenTicket(id, getPersonnelName()),
+              "Talep yeniden açılamadı."
+            );
+            showToast("Talep yeniden açıldı.", "info");
+          } else if (action === "delete") {
+            if (!confirm("Bu bileti silmek istediğinize emin misiniz?")) return;
+            ensureActionSucceeded(
+              await api2.deleteTicket(id),
+              "Bilet silinemedi."
+            );
+            showToast("Bilet silindi.", "success");
+          } else if (action === "info") {
+            const t = filtered.find((x) => x.id === id);
+            if (t) showTicketHistoryModal(t);
             return;
           }
-          await api2.completeTicket(id, finalResponse);
-          showToast("Talep tamamlandı.", "success");
-        } else if (action === "unreachable") {
-          await api2.markTicketUnreachable(id, personnelName2);
-          showToast("Bilet durumu ulaşılamıyor olarak güncellendi.", "info");
-        } else if (action === "reopen") {
-          await api2.reopenTicket(id, personnelName2);
-          showToast("Talep yeniden açıldı.", "info");
-        } else if (action === "delete") {
-          if (confirm("Bu bileti silmek istediğinize emin misiniz?")) {
-            await api2.deleteTicket(id);
-            showToast("Bilet silindi", "success");
-          }
-        } else if (action === "hide") {
-          await api2.hideTicket(id, personnelName2);
-          showToast("Bilet gizlendi", "info");
-        } else if (action === "unhide") {
-          await api2.unhideTicket(id);
-          showToast("Bilet görünür yapıldı", "info");
-        } else if (action === "info") {
-          const t = filtered.find((x) => x.id === id);
-          if (t) showTicketHistoryModal(t);
-          return;
+          loadTickets2();
+        } catch (error) {
+          showToast(error?.message || "Bilet işlemi sırasında bir hata oluştu.", "error");
         }
-        loadTickets2();
       });
     });
   }
   if (tFilterStatus2) tFilterStatus2.addEventListener("change", loadTickets2);
-  if (tFilterVisibility2) tFilterVisibility2.addEventListener("change", loadTickets2);
-  if (tFilterAras2) tFilterAras2.addEventListener("click", () => {
-    const isActive = tFilterAras2.dataset.active === "true";
-    tFilterAras2.dataset.active = isActive ? "false" : "true";
-    if (!isActive) {
-      tFilterAras2.style.background = "rgba(251,191,36,0.25)";
-      tFilterAras2.style.borderColor = "rgba(251,191,36,0.6)";
-      if (tFilterStatus2) tFilterStatus2.value = "all";
-    } else {
-      tFilterAras2.style.background = "rgba(251,191,36,0.08)";
-      tFilterAras2.style.borderColor = "rgba(251,191,36,0.3)";
-    }
-    loadTickets2();
-  });
-  if (tFilterOwnership2) tFilterOwnership2.addEventListener("click", () => {
-    const isAll = tFilterOwnership2.dataset.val === "all";
-    tFilterOwnership2.dataset.val = isAll ? "mine" : "all";
-    tFilterOwnership2.textContent = isAll ? getPersonnelName() : "Tümü";
-    loadTickets2();
-  });
+  const setQueueMode = (mode) => {
+    [tQueueAll2, tQueuePhone2, tQueueDetail2].forEach((btn) => {
+      if (!btn) return;
+      const isActive = btn.dataset.queue === mode;
+      btn.dataset.mode = mode;
+      btn.style.background = isActive ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.05)";
+      btn.style.borderColor = isActive ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.1)";
+      btn.style.color = isActive ? "#e0f2fe" : "white";
+      btn.style.boxShadow = isActive ? "0 10px 25px rgba(56,189,248,0.15)" : "none";
+    });
+  };
+  if (tQueueAll2 && tQueuePhone2 && tQueueDetail2) {
+    setQueueMode("main");
+    tQueueAll2.addEventListener("click", () => {
+      setQueueMode("main");
+      loadTickets2();
+    });
+    tQueuePhone2.addEventListener("click", () => {
+      setQueueMode("phone");
+      loadTickets2();
+    });
+    tQueueDetail2.addEventListener("click", () => {
+      setQueueMode("detail");
+      loadTickets2();
+    });
+  }
   let searchTimeout;
   tSearchInput2.addEventListener("input", () => {
     clearTimeout(searchTimeout);
@@ -599,6 +652,9 @@ function initProfileLogic(api2, elements, personnelName2, calculateLevel2, refre
   });
   return { loadProfileScoreboard: loadProfileScoreboard2 };
 }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 function initPriorityLogic(api2, elements) {
   const { prioList: prioList2, addPrioBtn: addPrioBtn2, pSerial: pSerial2, pCustomer: pCustomer2, pDesc: pDesc2 } = elements;
   if (!document.getElementById("prio-highlight-style")) {
@@ -619,6 +675,26 @@ function initPriorityLogic(api2, elements) {
   }
   window._editingPriorityId = null;
   let cachedDevices = [];
+  function focusPriorityDevice2(target) {
+    const searchInput2 = document.getElementById("priority-search");
+    if (searchInput2) {
+      searchInput2.value = "";
+    }
+    const matched = cachedDevices.find(
+      (d) => target.id && d.id === target.id || target.serial && d.serial?.toUpperCase() === target.serial.toUpperCase()
+    );
+    if (!matched) return;
+    window._editingPriorityId = null;
+    renderPriorityDevices();
+    setTimeout(() => {
+      const itemEl = document.getElementById(`prio-item-${matched.id}`);
+      if (itemEl) {
+        itemEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        itemEl.classList.add("highlight-pulse");
+        setTimeout(() => itemEl.classList.remove("highlight-pulse"), 2e3);
+      }
+    }, 120);
+  }
   async function loadPriorityDevices2() {
     cachedDevices = await api2.getPriorityDevices();
     renderPriorityDevices();
@@ -641,31 +717,31 @@ function initPriorityLogic(api2, elements) {
       if (isEditing) {
         item.innerHTML = `
                     <div class="priority-item-body" style="display:flex; flex-direction:column; gap:6px; width: 100%;">
-                        <input type="text" id="edit-prio-customer-${d.id}" value="${d.customer_name}" class="priority-input" placeholder="Müşteri Adı">
-                        <input type="text" id="edit-prio-serial-${d.id}" value="${d.serial}" class="priority-input" placeholder="Seri No">
-                        <input type="text" id="edit-prio-desc-${d.id}" value="${d.description}" class="priority-input" placeholder="Açıklama">
+                        <input type="text" id="edit-prio-customer-${d.id}" value="${escapeHtml(d.customer_name)}" class="priority-input" placeholder="Müşteri Adı">
+                        <input type="text" id="edit-prio-serial-${d.id}" value="${escapeHtml(d.serial)}" class="priority-input" placeholder="Seri No">
+                        <input type="text" id="edit-prio-desc-${d.id}" value="${escapeHtml(d.description)}" class="priority-input" placeholder="Açıklama">
                         <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top:4px;">
-                            Ekleyen: ${d.created_by || "Bilinmiyor"}
+                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
                         <button class="btn-add-priority" style="padding: 6px 10px; font-size: 0.8rem;" onclick="saveEditPriority('${d.id}')">Kaydet</button>
-                        <button class="btn-del-priority" style="background: rgba(255,255,255,0.1);" onclick="cancelEditPriority()">✕</button>
+                        <button class="btn-del-priority" style="background: rgba(255,255,255,0.1);" onclick="cancelEditPriority()">×</button>
                     </div>
                 `;
       } else {
         item.innerHTML = `
                     <div class="priority-item-body">
-                        <div class="priority-item-name">${d.customer_name}</div>
-                        <div class="priority-item-serial">${d.serial}</div>
-                        <div class="priority-item-desc">${d.description}</div>
+                        <div class="priority-item-name">${escapeHtml(d.customer_name)}</div>
+                        <div class="priority-item-serial">${escapeHtml(d.serial)}</div>
+                        <div class="priority-item-desc">${escapeHtml(d.description)}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-                            Ekleyen: ${d.created_by || "Bilinmiyor"}
+                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
                         <button class="btn-del-priority" style="background: rgba(59, 130, 246, 0.4);" onclick="startEditPriority('${d.id}')">✏️</button>
-                        <button class="btn-del-priority" onclick="deletePriority('${d.id}')">✕</button>
+                        <button class="btn-del-priority" onclick="deletePriority('${d.id}')">×</button>
                     </div>
                 `;
       }
@@ -685,14 +761,7 @@ function initPriorityLogic(api2, elements) {
       );
       if (confirmed) {
         window.startEditPriority(existing.id);
-        setTimeout(() => {
-          const itemEl = document.getElementById(`prio-item-${existing.id}`);
-          if (itemEl) {
-            itemEl.scrollIntoView({ behavior: "smooth", block: "center" });
-            itemEl.classList.add("highlight-pulse");
-            setTimeout(() => itemEl.classList.remove("highlight-pulse"), 2e3);
-          }
-        }, 100);
+        focusPriorityDevice2({ id: existing.id });
         pSerial2.value = "";
         pCustomer2.value = "";
         pDesc2.value = "";
@@ -725,19 +794,19 @@ function initPriorityLogic(api2, elements) {
     renderPriorityDevices();
   };
   window.saveEditPriority = async (id) => {
-    const c_input = document.getElementById(`edit-prio-customer-${id}`);
-    const s_input = document.getElementById(`edit-prio-serial-${id}`);
-    const d_input = document.getElementById(`edit-prio-desc-${id}`);
-    if (!s_input.value.trim()) return;
+    const cInput = document.getElementById(`edit-prio-customer-${id}`);
+    const sInput = document.getElementById(`edit-prio-serial-${id}`);
+    const dInput = document.getElementById(`edit-prio-desc-${id}`);
+    if (!sInput.value.trim()) return;
     await api2.updatePriorityDevice(id, {
-      customer_name: c_input.value.trim() || "Belirtilmedi",
-      serial: s_input.value.trim().toUpperCase(),
-      description: d_input.value.trim()
+      customer_name: cInput.value.trim() || "Belirtilmedi",
+      serial: sInput.value.trim().toUpperCase(),
+      description: dInput.value.trim()
     });
     window._editingPriorityId = null;
     loadPriorityDevices2();
   };
-  return { loadPriorityDevices: loadPriorityDevices2 };
+  return { loadPriorityDevices: loadPriorityDevices2, focusPriorityDevice: focusPriorityDevice2 };
 }
 function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
   const {
@@ -749,9 +818,11 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
     sPopupTimeout: sPopupTimeout2,
     sAutoStart: sAutoStart2,
     sPreventDuplicate: sPreventDuplicate2,
-    sSaveBtn: sSaveBtn2
+    sSaveBtn: sSaveBtn2,
+    sLogoutBtn: sLogoutBtn2
   } = elements;
   let initialRole = "";
+  const logoutLabel = "Oturumdan Çıkış Yap";
   async function loadSettingsToUI2() {
     const s = await api2.getSettings();
     sPersonnelName2.value = (s.personnelName || "").toUpperCase();
@@ -767,11 +838,14 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
     sPopupTimeout2.value = String(s.popupTimeout || 5e3);
     sAutoStart2.checked = s.autoStartEnabled || false;
     sPreventDuplicate2.checked = s.preventDuplicatePopup || false;
+    if (sLogoutBtn2) {
+      sLogoutBtn2.textContent = logoutLabel;
+    }
   }
   sPersonnelName2.addEventListener("input", () => {
     const start = sPersonnelName2.selectionStart;
     const end = sPersonnelName2.selectionEnd;
-    sPersonnelName2.value = sPersonnelName2.value.replace(/\\s/g, "").toUpperCase();
+    sPersonnelName2.value = sPersonnelName2.value.replace(/\s/g, "").toUpperCase();
     sPersonnelName2.setSelectionRange(start, end);
   });
   function setupShortcutRecorder(input) {
@@ -812,6 +886,21 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
       showToast("Ayarlar kaydedilirken hata oluştu.", "error");
     }
   };
+  if (sLogoutBtn2) {
+    sLogoutBtn2.onclick = async () => {
+      const confirmed = await window.showConfirm(
+        "Oturumu Kapat",
+        "Oturumdan çıkış yapmak istiyor musunuz?",
+        "Çıkış Yap"
+      );
+      if (!confirmed) return;
+      try {
+        await api2.logout();
+      } catch (e) {
+        showToast("Oturum kapatılırken hata oluştu.", "error");
+      }
+    };
+  }
   return { loadSettingsToUI: loadSettingsToUI2 };
 }
 function initBonusLogic(api2, elements) {
@@ -1013,9 +1102,9 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
       }
       card.innerHTML = `
                 <span class="${badgeClass}">${roleDisplay}</span>
-                <h3>${user.fullName || "İsimsiz"}</h3>
-                <p><strong>K. Adı:</strong> ${user.username}</p>
-                <p><strong>Şifre:</strong> <span style="cursor:pointer;opacity:0.5;" title="Göstermek için tıklayın" data-pw="${user.password}">••••••</span></p>
+                <h3>${escapeHtml(user.fullName || "İsimsiz")}</h3>
+                <p><strong>K. Adı:</strong> ${escapeHtml(user.username)}</p>
+                <p><strong>Şifre:</strong> <span style="opacity:0.7;">Güvenlik nedeniyle gizli</span></p>
                 <p><strong>Level:</strong> ${user.level || 1} (${user.xp || 0} XP)</p>
                 <div class="actions">
                     <button class="btn-edit" data-id="${user.id}">Düzenle</button>
@@ -1024,12 +1113,6 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
                 </div>
             `;
       adminUserList2.appendChild(card);
-    });
-    adminUserList2.querySelectorAll("[data-pw]").forEach((el) => {
-      el.addEventListener("click", function() {
-        this.textContent = this.dataset.pw || "";
-        this.style.opacity = "1";
-      });
     });
     adminUserList2.querySelectorAll(".btn-edit").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -1068,7 +1151,8 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
       adminModalTitle2.textContent = "Kullanıcıyı Düzenle";
       adminUserId2.value = user.id;
       adminUsername2.value = user.username || "";
-      adminPassword2.value = user.password || "";
+      adminPassword2.value = "";
+      adminPassword2.placeholder = "Değiştirmek için yeni şifre girin";
       adminFullname2.value = user.fullName || "";
       adminRole2.value = user.role || "kargo_kabul";
     } else {
@@ -1076,6 +1160,7 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
       adminUserId2.value = "";
       adminUsername2.value = "";
       adminPassword2.value = "";
+      adminPassword2.placeholder = "Giriş şifresi...";
       adminFullname2.value = "";
       adminRole2.value = "kargo_kabul";
     }
@@ -1089,7 +1174,7 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
     const fullName = adminFullname2.value.trim();
     const role = adminRole2.value;
     const id = adminUserId2.value;
-    if (!username || !password || !fullName || !role) {
+    if (!username || !fullName || !role || !id && !password) {
       showToast("Lütfen tüm alanları doldurun.", "error");
       return;
     }
@@ -1097,7 +1182,9 @@ function initAdminLogic(api2, elements, loadAdminUsersCallback) {
       btnSaveAdminUser2.textContent = "Kaydediliyor...";
       btnSaveAdminUser2.disabled = true;
       if (id) {
-        await api2.updateUser(id, { username, password, fullName, role });
+        const updateData = { username, fullName, role };
+        if (password) updateData.password = password;
+        await api2.updateUser(id, updateData);
       } else {
         await api2.createUser({ username, password, fullName, role });
       }
@@ -1133,11 +1220,14 @@ const ticketList = document.getElementById("ticket-list");
 const tcPending = document.getElementById("count-pending");
 const tcProgress = document.getElementById("count-progress");
 const tcCompleted = document.getElementById("count-completed");
+const tQueueBar = document.getElementById("ticket-queue-bar");
 const tSearchInput = document.getElementById("ticket-search");
 const tFilterStatus = document.getElementById("filter-status");
-const tFilterVisibility = document.getElementById("filter-visibility");
-const tFilterOwnership = document.getElementById("filter-ownership-toggle");
-const tFilterAras = document.getElementById("filter-aras-toggle");
+document.getElementById("filter-visibility");
+document.getElementById("filter-ownership-toggle");
+const tQueueAll = document.getElementById("ticket-queue-main");
+const tQueuePhone = document.getElementById("ticket-queue-phone");
+const tQueueDetail = document.getElementById("ticket-queue-detail");
 const btnManualTicket = document.getElementById("btn-manual-ticket");
 const pMyLevel = document.getElementById("my-level");
 const pMyName = document.getElementById("my-name");
@@ -1161,6 +1251,7 @@ const sPopupTimeout = document.getElementById("popup-timeout");
 const sAutoStart = document.getElementById("auto-start");
 const sPreventDuplicate = document.getElementById("prevent-duplicate");
 const sSaveBtn = document.getElementById("save-settings-btn");
+const sLogoutBtn = document.getElementById("logout-btn");
 const bonusDropZone = document.getElementById("bonus-drop-zone");
 const bonusFileInput = document.getElementById("bonus-file-input");
 const bonusResults = document.getElementById("bonus-results");
@@ -1189,7 +1280,6 @@ let currentRole = "kargo_kabul";
 let personnelName = "";
 let activeTickets = [];
 function showConfirm(title, message, confirmText = "Evet, Sil") {
-  window.showConfirm = showConfirm;
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalText.textContent = message;
@@ -1206,6 +1296,7 @@ function showConfirm(title, message, confirmText = "Evet, Sil") {
     };
   });
 }
+window.showConfirm = showConfirm;
 function showAskMHModal(serial, modelName, modelColor) {
   modalTitle.textContent = "MH'ye Sor";
   modalText.innerHTML = "";
@@ -1333,11 +1424,11 @@ function loadCards() {
         else if (statusLabel.includes("KVK")) cardClass += " kvk";
         else cardClass += " out-of-warranty";
         const completedTicket = completedTicketsMap.get(item.serial);
-        const askMHBtn = currentRole === "kargo_kabul" && !completedTicket?.response ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">📩 MH'ye Sor</button>` : "";
+        const askMHBtn = currentRole === "kargo_kabul" && !completedTicket?.response ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ""}" data-color="${item.model_color || ""}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">&#128233; MH'ye Sor</button>` : "";
         card.className = cardClass;
         card.style.position = "relative";
         card.innerHTML = `
-          <button class="delete-btn" onclick="deleteEntry('${item.serial}')">✕</button>
+          <button class="delete-btn" onclick="deleteEntry('${item.serial}')">&#10005;</button>
           ${askMHBtn}
           <div class="status-tag">${statusLabel}</div>
           <p><strong>Seri:</strong> ${item.serial}</p>
@@ -1363,13 +1454,18 @@ toggleBtn.onclick = () => {
   monitoringEnabled = !monitoringEnabled;
   const span = toggleBtn.querySelector("span");
   if (span) {
-    span.textContent = monitoringEnabled ? "👁️ Clipboard İzleme: Aktif" : "👁️ Clipboard İzleme: Devre Dışı";
+    span.textContent = monitoringEnabled ? "📋 Clipboard İzleme: Aktif" : "📋 Clipboard İzleme: Devre Dışı";
   }
   toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
   api.toggleMonitoring(monitoringEnabled);
 };
 const ALL_THEMES = ["dark", "midnight", "ocean", "sunset"];
-const THEME_ICONS = { dark: "🌙", midnight: "🔮", ocean: "🌊", sunset: "🌅" };
+const THEME_ICONS = {
+  dark: "🌙",
+  midnight: "🔮",
+  ocean: "🌊",
+  sunset: "🌅"
+};
 let currentTheme = "dark";
 function applyTheme(theme) {
   currentTheme = theme;
@@ -1525,20 +1621,9 @@ api.onMonitoringToggled((enabled) => {
   monitoringEnabled = enabled;
   const span = toggleBtn.querySelector("span");
   if (span) {
-    span.textContent = monitoringEnabled ? "👁️ Clipboard İzleme: Aktif" : "👁️ Clipboard İzleme: Devre Dışı";
+    span.textContent = monitoringEnabled ? "📋 Clipboard İzleme: Aktif" : "📋 Clipboard İzleme: Devre Dışı";
   }
   toggleBtn.style.opacity = monitoringEnabled ? "1" : "0.6";
-});
-api.onTicketUpdate((tickets) => {
-  activeTickets = tickets;
-  const pendingCount = tickets.filter((t) => t.status === "pending" || t.status === "in_progress").length;
-  if (pendingCount > 0) {
-    ticketBadge.style.display = "block";
-    ticketBadge.textContent = String(pendingCount);
-  } else {
-    ticketBadge.style.display = "none";
-  }
-  loadCards();
 });
 api.onPriorityDeviceMatch((device) => {
   const alertDiv = document.createElement("div");
@@ -1562,11 +1647,11 @@ api.onPriorityDeviceMatch((device) => {
     `;
   alertDiv.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong style="font-size:1.1rem;">⚠️ ÖNCELİKLİ CİHAZ!</strong>
-            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
+            <strong style="font-size:1.1rem;">&#9888;&#65039; ÖNCELİKLİ CİHAZ!</strong>
+            <button id="close-priority-alert" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer; padding:0 4px;">&#10005;</button>
         </div>
-        <div style="font-size:0.95rem; font-weight:600;">${device.customer_name}</div>
-        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${device.description}</div>
+        <div style="font-size:0.95rem; font-weight:600;">${escapeHtml(device.customer_name)}</div>
+        <div style="font-size:0.85rem; opacity:0.9; background:rgba(0,0,0,0.1); padding:8px; border-radius:8px;">${escapeHtml(device.description)}</div>
         <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
             <button id="delete-priority-bound" style="background: rgba(239, 68, 68, 0.5); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;">Sistemden Sil</button>
         </div>
@@ -1602,7 +1687,7 @@ api.onPriorityDeviceMatch((device) => {
 });
 const { loadTickets, renderTicketsList } = initTicketLogic(
   api,
-  { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tFilterAras, tcPending, tcProgress, tcCompleted, btnManualTicket },
+  { ticketList, tSearchInput, tFilterStatus, tQueueAll, tQueuePhone, tQueueDetail, tcPending, tcProgress, tcCompleted, btnManualTicket },
   () => currentRole,
   () => personnelName
 );
@@ -1622,7 +1707,7 @@ const { loadProfileScoreboard } = initProfileLogic(
   calculateLevel,
   refreshSidebarProfile
 );
-const { loadPriorityDevices } = initPriorityLogic(api, {
+const { loadPriorityDevices, focusPriorityDevice } = initPriorityLogic(api, {
   prioList,
   addPrioBtn,
   pSerial,
@@ -1638,7 +1723,8 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
   sPopupTimeout,
   sAutoStart,
   sPreventDuplicate,
-  sSaveBtn
+  sSaveBtn,
+  sLogoutBtn
 }, refreshSidebarProfile);
 window.deletePriority = async (id) => {
   const confirmed = await showConfirm(
@@ -1666,6 +1752,7 @@ Promise.all([
   const sideProfile = document.getElementById("side-profile-btn");
   if (sideBonus) sideBonus.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
   if (btnManualTicket) btnManualTicket.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+  if (tQueueBar) tQueueBar.style.display = "flex";
   if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
   if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
   if (tickets) {
@@ -1688,6 +1775,7 @@ api.onRefreshCards(() => {
     const sideProfile = document.getElementById("side-profile-btn");
     if (sideBonus) sideBonus.style.display = s.role === "kargo_kabul" ? "flex" : "none";
     if (btnManualTicket) btnManualTicket.style.display = s.role === "kargo_kabul" ? "flex" : "none";
+    if (tQueueBar) tQueueBar.style.display = "flex";
     if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
     if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
     refreshSidebarProfile();
@@ -1703,6 +1791,12 @@ api.onTicketUpdate((tickets) => {
     renderTicketsList(tickets);
   }
   loadCards();
+});
+api.onFocusPriorityDevice((device) => {
+  switchView("priority");
+  loadPriorityDevices().then(() => {
+    focusPriorityDevice(device);
+  });
 });
 initBonusLogic(api, {
   bonusDropZone,
@@ -1730,12 +1824,12 @@ const { loadAdminUsers } = initAdminLogic(api, {
   bar.id = "update-bar";
   bar.style.cssText = "display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid var(--accent);padding:10px 20px;align-items:center;gap:12px;font-size:0.85rem;color:var(--text-main);";
   bar.innerHTML = `
-        <span id="update-msg">🚀 Yeni sürüm mevcut!</span>
+        <span id="update-msg">&#128276; Yeni sürüm mevcut!</span>
         <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
             <div id="update-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s;"></div>
         </div>
         <button id="update-action-btn" style="padding:6px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">İndir</button>
-        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">✕</button>
+        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">&#10005;</button>
     `;
   document.body.appendChild(bar);
   const updateMsg = document.getElementById("update-msg");
@@ -1745,7 +1839,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
   const dismissBtn = document.getElementById("update-dismiss-btn");
   let updateState = "available";
   api.onUpdateAvailable((version) => {
-    updateMsg.textContent = `🚀 Yeni sürüm mevcut: v${version}`;
+    updateMsg.textContent = `📢 Yeni sürüm mevcut: v${version}`;
     bar.style.display = "flex";
     updateState = "available";
     actionBtn.textContent = "İndir";
@@ -1758,7 +1852,7 @@ const { loadAdminUsers } = initAdminLogic(api, {
   api.onUpdateDownloaded(() => {
     updateState = "ready";
     progressWrap.style.display = "none";
-    updateMsg.textContent = "✅ Güncelleme hazır!";
+    updateMsg.textContent = "✓ Güncelleme hazır!";
     actionBtn.textContent = "Güncelle";
   });
   actionBtn.onclick = () => {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 
 <head>
@@ -617,6 +617,17 @@
           <span class="search-icon">🔍</span>
           <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
         </div>
+        <div id="ticket-queue-bar" style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+          <button id="ticket-queue-main" data-queue="main" data-mode="main" style="border:1px solid rgba(56,189,248,0.55); background:rgba(56,189,248,0.2); color:#e0f2fe; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap; box-shadow:0 10px 25px rgba(56,189,248,0.15);" title="Telefonu bulunan ve normal akışta işlenecek biletler">
+            Ana Panel
+          </button>
+          <button id="ticket-queue-phone" data-queue="phone" data-mode="main" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Aras kodu var fakat telefon numarası eksik biletler">
+            Telefon Bekleyen
+          </button>
+          <button id="ticket-queue-detail" data-queue="detail" data-mode="main" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Telefonu tamamlanmış ama başka bilgi eksiği süren biletler">
+            Bilgi Bekleyen
+          </button>
+        </div>
         <div class="filter-dropdowns" id="filter-dropdowns" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 6px;">
             <label for="filter-status" style="font-size: 0.85rem; color: #94a3b8;">Durum:</label>
@@ -626,25 +637,6 @@
               <option value="in_progress">İşleniyor</option>
               <option value="completed">Tamamlanan</option>
             </select>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="filter-visibility" style="font-size: 0.85rem; color: #94a3b8;">Görünüm:</label>
-            <select id="filter-visibility" class="ticket-filter-select">
-              <option value="all">Tümü</option>
-              <option value="visible" selected>Görünür</option>
-              <option value="hidden">Gizlenenler</option>
-            </select>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button id="filter-aras-toggle" data-active="false" style="border:1px solid rgba(251,191,36,0.3); background:rgba(251,191,36,0.08); color:#fbbf24; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Aras Kargo kodu olan ama telefon numarası eksik biletler">
-              📦 Aras Kargo
-            </button>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label style="font-size: 0.85rem; color: #94a3b8;">Sahiplik:</label>
-            <button id="filter-ownership-toggle" data-val="all" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Sahiplik değiştirmek için tıklayın">
-              Tümü
-            </button>
           </div>
         </div>
         <div class="ticket-list" id="ticket-list">
@@ -835,6 +827,9 @@
 
           <button id="save-settings-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">
             Değişiklikleri Kaydet
+          </button>
+          <button id="logout-btn" class="btn btn-danger" style="width: 100%; justify-content: center; padding: 14px; margin-top: 12px;">
+            Oturumdan Çıkış Yap
           </button>
         </div>
       </section>
@@ -1206,7 +1201,7 @@
     .ticket-serial { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
     .ticket-model { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
     .ticket-missing-type { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 6px; background: rgba(245,158,11,0.1); color: var(--pending); }
-    .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; }
+    .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; padding-right: 44px; }
     .ticket-note { font-size: 0.85rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
     .ticket-note strong { color: var(--text-main); }
     .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
@@ -1225,6 +1220,8 @@
     .btn-update { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid rgba(255,255,255,0.2); margin-top: 12px; width: fit-content; align-self: flex-start; }
     .btn-update:hover { background: rgba(255,255,255,0.2); }
     .btn-reopen { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+    .ticket-info-btn { background: rgba(56,189,248,0.12); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.24); min-width: 34px; padding: 8px 10px; line-height: 1; }
+    .ticket-info-btn:hover { background: rgba(56,189,248,0.22); transform: translateY(-1px); }
     .badge-pending { background: rgba(245,158,11,0.15); color: var(--pending); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
     .badge-in_progress { background: rgba(59,130,246,0.15); color: var(--progress); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
     .badge-completed { background: rgba(16,185,129,0.15); color: var(--completed); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
@@ -1270,7 +1267,8 @@
     .card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); position: relative; transition: transform 0.2s; }
     .card:hover { transform: translateY(-4px); }
     .status-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px; }
-    .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ef4444; opacity: 0; cursor: pointer; transition: opacity 0.2s; font-size: 1.1rem; }
+    .delete-btn { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.88); border: 1px solid rgba(239,68,68,0.28); color: #ef4444; opacity: 0; cursor: pointer; transition: opacity 0.2s, transform 0.2s, background 0.2s; font-size: 1rem; border-radius: 10px; z-index: 2; }
+    .delete-btn:hover { background: rgba(127,29,29,0.9); transform: translateY(-1px); }
     .card:hover .delete-btn, .ticket-card:hover .delete-btn { opacity: 1; }
 
     /* ── Settings Styles ── */

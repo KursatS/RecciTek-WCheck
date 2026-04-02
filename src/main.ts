@@ -177,12 +177,16 @@ function checkPriorityMatch(serial: string): void {
     (d: any) => d.serial && d.serial.toUpperCase() === serial.toUpperCase()
   );
   if (match) {
-    new Notification({
-      title: '⚠️ Öncelikli Cihaz!',
-      body: `${match.customer_name}: ${match.description}`,
-      silent: false
-    }).show();
     windowManager.getMainWindow()?.webContents.send('priority-device-match', match);
+    windowManager.showPopup({
+      variant: 'priority',
+      id: match.id,
+      serial,
+      customer_name: match.customer_name,
+      description: match.description,
+      created_by: match.created_by,
+      anchorDelay: currentSettings.popupTimeout
+    }, 15000, currentSettings.popupSizeLevel);
   }
 }
 
@@ -205,6 +209,7 @@ function setupIpcHandlers() {
     theme: currentSettings.theme,
     workingHours: currentSettings.workingHours,
     rememberMe: currentSettings.rememberMe,
+    autoLogin: currentSettings.autoLogin,
     savedUsername: currentSettings.savedUsername,
     savedPassword: currentSettings.savedPassword
   }));
@@ -229,6 +234,42 @@ function setupIpcHandlers() {
     }
     app.relaunch();
     app.exit(0);
+  });
+
+  ipcMain.handle('logout', async () => {
+    currentSettings = {
+      ...currentSettings,
+      isLoggedIn: false,
+      personnelName: '',
+      role: 'kargo_kabul',
+      username: '',
+      isAdmin: false,
+      autoLogin: false
+    };
+    saveSettings(currentSettings);
+
+    clipboardMonitor.stop();
+    monitoringEnabled = true;
+    if (statusInterval) {
+      clearTimeout(statusInterval);
+      statusInterval = null;
+    }
+    if (ticketUnsubscribe) {
+      ticketUnsubscribe();
+      ticketUnsubscribe = null;
+    }
+    if (priorityUnsubscribe) {
+      priorityUnsubscribe();
+      priorityUnsubscribe = null;
+    }
+    globalShortcut.unregisterAll();
+    windowManager.closePopup();
+    windowManager.closePriorityPopup();
+    windowManager.getMainWindow()?.hide();
+    const loginWindow = windowManager.getLoginWindow() || windowManager.createLoginWindow();
+    loginWindow.show();
+    loginWindow.focus();
+    return true;
   });
 
   ipcMain.on('toggle-monitoring', (_, enabled) => {
@@ -283,6 +324,35 @@ function setupIpcHandlers() {
   ipcMain.on('close-window', (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     win?.close();
+  });
+
+  ipcMain.on('show-login-window', () => {
+    const loginWindow = windowManager.getLoginWindow() || windowManager.createLoginWindow();
+    loginWindow.show();
+    loginWindow.focus();
+  });
+
+  ipcMain.on('open-main-view', (_, view) => {
+    const mainWindow = windowManager.getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('switch-view', view);
+  });
+
+  ipcMain.on('open-priority-device', (_, device) => {
+    const mainWindow = windowManager.getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('switch-view', 'priority');
+    setTimeout(() => {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('focus-priority-device', device);
+      }
+    }, 180);
   });
 
   ipcMain.handle('calculate-bonus', async (_, fileData, customHours) => {
@@ -598,9 +668,7 @@ function startPriorityDevicesListener() {
   }
   priorityUnsubscribe = subscribeToPriorityDevices((devices: any[]) => {
     cachedPriorityDevices = devices;
-    // Broadcast update to all windows
-    const { BrowserWindow } = require('electron');
-    BrowserWindow.getAllWindows().forEach((win: any) => {
+    BrowserWindow.getAllWindows().forEach((win: BrowserWindow) => {
       if (!win.isDestroyed()) {
         win.webContents.send('priority-devices-update', devices);
       }
@@ -645,14 +713,7 @@ function startTicketListener() {
     }
 
     cachedTickets = tickets;
-    // Send to all open windows
-    const mainWin = windowManager.getMainWindow();
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('ticket-update', tickets);
-    }
-    // Also broadcast to any BrowserWindow that might be tickets panel
-    const { BrowserWindow } = require('electron');
-    BrowserWindow.getAllWindows().forEach((win: any) => {
+    BrowserWindow.getAllWindows().forEach((win: BrowserWindow) => {
       if (!win.isDestroyed()) {
         win.webContents.send('ticket-update', tickets);
       }
@@ -675,16 +736,20 @@ function initializeApp() {
   registerShortcuts(); // Will exit early due to isLoggedIn = false
   monitoringEnabled = true;
 
-  const splash = windowManager.createSplashWindow();
+  const wasOpenedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin === true;
+  const splash = wasOpenedAtLogin ? null : windowManager.createSplashWindow();
+  const startupDelay = wasOpenedAtLogin ? 0 : 1800;
 
   setTimeout(() => {
     try {
-      splash.close();
+      splash?.close();
     } catch { }
+
+    const shouldAutoLogin = !!(currentSettings.autoLogin && currentSettings.rememberMe && currentSettings.savedUsername && currentSettings.savedPassword);
 
     // Instead of showing the main window directly, create it hidden and show the login window
     windowManager.createMainWindow(); // It starts hidden
-    windowManager.createLoginWindow();
+    windowManager.createLoginWindow(!shouldAutoLogin);
 
     createTray();
     
@@ -694,7 +759,7 @@ function initializeApp() {
       openAtLogin: currentSettings.autoStartEnabled,
       path: app.getPath('exe')
     });
-  }, 2500);
+  }, startupDelay);
 
   setupIpcHandlers();
 }
@@ -767,3 +832,4 @@ app.on('will-quit', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+

@@ -28,19 +28,22 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   getSettings: () => safeInvoke("get-settings"),
   saveSettings: (settings) => safeInvoke("save-settings", settings),
   restartApp: (settings) => safeInvoke("restart-app", settings),
+  logout: () => safeInvoke("logout"),
+  showLoginWindow: () => electron.ipcRenderer.send("show-login-window"),
   // Bonus Calculation
   calculateBonus: (fileData, customHours) => safeInvoke("calculate-bonus", fileData, customHours),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),
   popupHoverLeave: () => electron.ipcRenderer.send("popup-hover-leave"),
+  openMainView: (view) => electron.ipcRenderer.send("open-main-view", view),
+  openPriorityDevice: (device) => electron.ipcRenderer.send("open-priority-device", device),
   closeWindow: () => electron.ipcRenderer.send("close-window"),
   minimizeWindow: () => electron.ipcRenderer.send("minimize-window"),
   // Server Status
   manualServerStatusRefresh: () => electron.ipcRenderer.send("manual-server-status-refresh"),
   // Event Listeners
   onServerStatusUpdate: (callback) => electron.ipcRenderer.on("server-status-update", (_event, value) => callback(value)),
-  onServerStatus: (callback) => electron.ipcRenderer.on("server-status-update", (_event, value) => callback(value)),
   onRefreshCards: (callback) => electron.ipcRenderer.on("refresh-cards", () => callback()),
   onCacheCleared: (callback) => electron.ipcRenderer.on("cache-cleared", () => callback()),
   onMonitoringToggled: (callback) => electron.ipcRenderer.on("monitoring-toggled", (_event, enabled) => callback(enabled)),
@@ -66,6 +69,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   updatePriorityDevice: (id, data) => safeInvoke("update-priority-device", id, data),
   deletePriorityDevice: (id) => safeInvoke("delete-priority-device", id),
   onPriorityDeviceMatch: (callback) => electron.ipcRenderer.on("priority-device-match", (_event, device) => callback(device)),
+  onFocusPriorityDevice: (callback) => electron.ipcRenderer.on("focus-priority-device", (_event, device) => callback(device)),
   onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices)),
   // Admin CRUD
   createUser: (data) => safeInvoke("create-user", data),

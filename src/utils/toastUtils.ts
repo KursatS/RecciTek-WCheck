@@ -54,7 +54,11 @@ export function showToast(message: string, type: 'success' | 'error' | 'info' = 
         icon = 'ℹ️';
     }
 
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = icon;
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message;
+    toast.append(iconSpan, messageSpan);
     container.appendChild(toast);
 
     // Animate in

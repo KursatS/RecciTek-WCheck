@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, app, shell, ipcMain } from 'electron';
+import { BrowserWindow, screen, app } from 'electron';
 import * as path from 'path';
 import { is } from '@electron-toolkit/utils';
 import { loadSettings, saveSettings } from './settingsManager';
@@ -17,17 +17,19 @@ export const POPUP_SIZE_LEVELS: PopupSize[] = [
     { level: 3, file: 'popup.html', width: 500, height: 350, label: 'Büyük' }
 ];
 
+type PopupKind = 'warranty' | 'priority';
+
 export class WindowManager {
     private mainWindow: BrowserWindow | null = null;
     private loginWindow: BrowserWindow | null = null;
     private currentPopup: BrowserWindow | null = null;
+    private priorityPopup: BrowserWindow | null = null;
     private popupTimeout: NodeJS.Timeout | null = null;
-    private popupVisible: boolean = false;
-    private popupStartTime: number = 0;
-    private popupDuration: number = 0;
-    private popupRemaining: number = 0;
-
-    private preloadPath: string = '';
+    private priorityPopupTimeout: NodeJS.Timeout | null = null;
+    private popupVisible = false;
+    private popupStartTime = 0;
+    private popupRemaining = 0;
+    private preloadPath = '';
 
     constructor(private appPath: string) {
         this.preloadPath = path.join(__dirname, '../preload/index.js');
@@ -39,6 +41,38 @@ export class WindowManager {
         } else {
             win.loadFile(path.join(__dirname, `../renderer/${fileName}`));
         }
+    }
+
+    private getPopupBounds(sizeLevel: number, kind: PopupKind) {
+        const size = POPUP_SIZE_LEVELS.find(l => l.level === sizeLevel) || POPUP_SIZE_LEVELS[2];
+        const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+        const baseX = width - size.width - 20;
+        const baseY = height - size.height - 60;
+        return {
+            size,
+            x: baseX,
+            y: kind === 'priority' ? Math.max(20, baseY - size.height - 18) : baseY
+        };
+    }
+
+    private createPopupWindow(sizeLevel: number, kind: PopupKind): BrowserWindow {
+        const { size, x, y } = this.getPopupBounds(sizeLevel, kind);
+        return new BrowserWindow({
+            width: size.width,
+            height: size.height,
+            show: false,
+            frame: false,
+            transparent: true,
+            alwaysOnTop: true,
+            resizable: false,
+            x,
+            y,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            }
+        });
     }
 
     createSplashWindow(): BrowserWindow {
@@ -58,8 +92,8 @@ export class WindowManager {
     }
 
     createMainWindow(): BrowserWindow {
-        const settings = loadSettings()
-        const bounds = settings.windowBounds
+        const settings = loadSettings();
+        const bounds = settings.windowBounds;
 
         this.mainWindow = new BrowserWindow({
             width: bounds?.width || 800,
@@ -80,20 +114,20 @@ export class WindowManager {
 
         this.loadFile(this.mainWindow, 'index.html');
 
-        // Save window bounds on resize/move (debounced)
-        let saveBoundsTimer: NodeJS.Timeout | null = null
+        let saveBoundsTimer: NodeJS.Timeout | null = null;
         const saveBounds = () => {
-            if (saveBoundsTimer) clearTimeout(saveBoundsTimer)
+            if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
             saveBoundsTimer = setTimeout(() => {
                 if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isMaximized()) {
-                    const b = this.mainWindow.getBounds()
-                    const s = loadSettings()
-                    saveSettings({ ...s, windowBounds: b })
+                    const b = this.mainWindow.getBounds();
+                    const s = loadSettings();
+                    saveSettings({ ...s, windowBounds: b });
                 }
-            }, 800)
-        }
-        this.mainWindow.on('resize', saveBounds)
-        this.mainWindow.on('move', saveBounds)
+            }, 800);
+        };
+
+        this.mainWindow.on('resize', saveBounds);
+        this.mainWindow.on('move', saveBounds);
 
         this.mainWindow.on('close', (e) => {
             if (this.mainWindow) {
@@ -105,7 +139,7 @@ export class WindowManager {
         return this.mainWindow;
     }
 
-    createLoginWindow(): BrowserWindow {
+    createLoginWindow(showOnReady: boolean = true): BrowserWindow {
         this.loginWindow = new BrowserWindow({
             width: 500,
             height: 500,
@@ -117,14 +151,15 @@ export class WindowManager {
                 nodeIntegration: false,
                 preload: this.preloadPath
             },
-            icon: path.join(__dirname, '../../assets/logo.png'),
+            icon: path.join(__dirname, '../../assets/logo.png')
         });
 
         this.loadFile(this.loginWindow, 'login.html');
-        this.loginWindow.once('ready-to-show', () => this.loginWindow?.show());
+        if (showOnReady) {
+            this.loginWindow.once('ready-to-show', () => this.loginWindow?.show());
+        }
 
         this.loginWindow.on('closed', () => {
-            // If main window is not visible (login was not completed), forcefully quit the app completely
             if (!this.mainWindow?.isVisible()) {
                 this.forceQuit();
             }
@@ -154,48 +189,32 @@ export class WindowManager {
     }
 
     showPopup(info: any, timeoutDuration: number, sizeLevel: number): void {
+        const kind: PopupKind = info?.variant === 'priority' ? 'priority' : 'warranty';
+        if (kind === 'priority') {
+            this.showPriorityPopup(info, timeoutDuration, sizeLevel);
+            return;
+        }
+        this.showWarrantyPopup(info, timeoutDuration, sizeLevel);
+    }
+
+    private showWarrantyPopup(info: any, timeoutDuration: number, sizeLevel: number): void {
         this.closePopup();
 
-        const size = POPUP_SIZE_LEVELS.find(l => l.level === sizeLevel) || POPUP_SIZE_LEVELS[2];
-        const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-
-        this.currentPopup = new BrowserWindow({
-            width: size.width,
-            height: size.height,
-            show: false,
-            frame: false,
-            transparent: true,
-            alwaysOnTop: true,
-            resizable: false,
-            x: width - size.width - 20,
-            y: height - size.height - 40,
-            webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                preload: this.preloadPath
-            }
-        });
-
-        this.loadFile(this.currentPopup, size.file);
+        this.currentPopup = this.createPopupWindow(sizeLevel, 'warranty');
+        this.loadFile(this.currentPopup, 'popup.html');
 
         this.currentPopup.once('ready-to-show', () => {
-            if (this.currentPopup) {
-                this.currentPopup.show();
-                this.popupVisible = true;
+            if (!this.currentPopup) return;
+            this.currentPopup.show();
+            this.popupVisible = true;
 
-                // Pass the size level and theme so the popup can adjust its styling
-                const settings = loadSettings();
-                const infoWithSize = { ...info, sizeLevel, theme: settings.theme || 'dark' };
-                this.currentPopup.webContents.send('popup-data', infoWithSize, timeoutDuration);
+            const settings = loadSettings();
+            const payload = { ...info, sizeLevel, theme: settings.theme || 'dark', variant: 'warranty' };
+            this.currentPopup.webContents.send('popup-data', payload, timeoutDuration);
 
-                this.popupDuration = timeoutDuration;
-                this.popupStartTime = Date.now();
-                this.popupRemaining = timeoutDuration;
-
-                this.popupTimeout = setTimeout(() => {
-                    this.closePopup();
-                }, timeoutDuration);
-            }
+            this.popupStartTime = Date.now();
+            this.popupRemaining = timeoutDuration;
+            this.popupTimeout = setTimeout(() => this.closePopup(), timeoutDuration);
         });
 
         const popup = this.currentPopup;
@@ -203,6 +222,37 @@ export class WindowManager {
             if (this.currentPopup === popup) {
                 this.currentPopup = null;
                 this.popupVisible = false;
+            }
+        });
+    }
+
+    private showPriorityPopup(info: any, timeoutDuration: number, sizeLevel: number): void {
+        this.closePriorityPopup();
+
+        this.priorityPopup = this.createPopupWindow(sizeLevel, 'priority');
+        this.loadFile(this.priorityPopup, 'popup.html');
+
+        this.priorityPopup.once('ready-to-show', () => {
+            if (!this.priorityPopup) return;
+            this.priorityPopup.show();
+
+            const settings = loadSettings();
+            const payload = { ...info, sizeLevel, theme: settings.theme || 'dark', variant: 'priority' };
+            this.priorityPopup.webContents.send('popup-data', payload, timeoutDuration);
+
+            this.priorityPopupTimeout = setTimeout(() => this.closePriorityPopup(), timeoutDuration);
+            const anchorDelay = typeof info?.anchorDelay === 'number' ? info.anchorDelay : settings.popupTimeout;
+            setTimeout(() => {
+                if (!this.priorityPopup || this.priorityPopup.isDestroyed()) return;
+                const targetBounds = this.getPopupBounds(sizeLevel, 'warranty');
+                this.animatePriorityPopupTo(targetBounds.x, targetBounds.y);
+            }, Math.max(300, anchorDelay));
+        });
+
+        const popup = this.priorityPopup;
+        popup.on('closed', () => {
+            if (this.priorityPopup === popup) {
+                this.priorityPopup = null;
             }
         });
     }
@@ -217,6 +267,47 @@ export class WindowManager {
             this.currentPopup = null;
         }
         this.popupVisible = false;
+    }
+
+    closePriorityPopup(): void {
+        if (this.priorityPopupTimeout) {
+            clearTimeout(this.priorityPopupTimeout);
+            this.priorityPopupTimeout = null;
+        }
+        if (this.priorityPopup && !this.priorityPopup.isDestroyed()) {
+            this.priorityPopup.close();
+            this.priorityPopup = null;
+        }
+    }
+
+    private animatePriorityPopupTo(targetX: number, targetY: number): void {
+        if (!this.priorityPopup || this.priorityPopup.isDestroyed()) return;
+
+        const startBounds = this.priorityPopup.getBounds();
+        const steps = 12;
+        const duration = 240;
+        const deltaX = (targetX - startBounds.x) / steps;
+        const deltaY = (targetY - startBounds.y) / steps;
+        let currentStep = 0;
+
+        const interval = setInterval(() => {
+            if (!this.priorityPopup || this.priorityPopup.isDestroyed()) {
+                clearInterval(interval);
+                return;
+            }
+
+            currentStep++;
+            const nextX = Math.round(startBounds.x + deltaX * currentStep);
+            const nextY = Math.round(startBounds.y + deltaY * currentStep);
+            this.priorityPopup.setPosition(nextX, nextY);
+
+            if (currentStep >= steps) {
+                clearInterval(interval);
+                if (this.priorityPopup && !this.priorityPopup.isDestroyed()) {
+                    this.priorityPopup.setPosition(targetX, targetY);
+                }
+            }
+        }, duration / steps);
     }
 
     isPopupVisible(): boolean {
@@ -235,14 +326,12 @@ export class WindowManager {
     resumePopupTimeout(): void {
         if (!this.popupTimeout && this.popupVisible && this.popupRemaining > 0) {
             this.popupStartTime = Date.now();
-            this.popupTimeout = setTimeout(() => {
-                this.closePopup();
-            }, this.popupRemaining);
+            this.popupTimeout = setTimeout(() => this.closePopup(), this.popupRemaining);
         }
     }
 
     forceQuit(): void {
-        [this.mainWindow, this.loginWindow, this.currentPopup].forEach(win => {
+        [this.mainWindow, this.loginWindow, this.currentPopup, this.priorityPopup].forEach(win => {
             if (win && !win.isDestroyed()) {
                 win.destroy();
             }

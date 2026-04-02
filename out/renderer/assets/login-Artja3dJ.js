@@ -15709,32 +15709,38 @@ const passwordInput = document.getElementById("password");
 const btnMin = document.getElementById("btn-min");
 const btnClose = document.getElementById("btn-close");
 const rememberMeCb = document.getElementById("remember-me");
+const autoLoginCb = document.getElementById("auto-login");
 btnMin.onclick = () => api.minimizeWindow();
 btnClose.onclick = () => api.closeWindow();
-api.getSettings().then((settings) => {
-  if (settings.rememberMe) {
-    usernameInput.value = settings.savedUsername || "";
-    passwordInput.value = settings.savedPassword || "";
-    rememberMeCb.checked = true;
-  }
+rememberMeCb.addEventListener("change", () => {
+  if (!rememberMeCb.checked) autoLoginCb.checked = false;
 });
-async function handleLogin() {
-  const un = usernameInput.value.trim();
-  const pw = passwordInput.value.trim();
+autoLoginCb.addEventListener("change", () => {
+  if (autoLoginCb.checked) rememberMeCb.checked = true;
+});
+async function performLogin(un, pw, isAutoAttempt = false) {
   if (!un || !pw) {
     errorMsg.textContent = "Lütfen kullanıcı adı ve şifre girin.";
     return;
   }
   btnLogin.disabled = true;
-  btnLogin.textContent = "Giriş Yapılıyor...";
+  btnLogin.textContent = isAutoAttempt ? "Otomatik giriş yapılıyor..." : "Giriş Yapılıyor...";
   errorMsg.textContent = "";
   try {
     const q = query(collection(db, "users"), where("username", "==", un), where("password", "==", pw));
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
       errorMsg.textContent = "Hatalı kullanıcı adı veya şifre!";
-      btnLogin.disabled = false;
-      btnLogin.textContent = "Giriş Yap";
+      if (isAutoAttempt) {
+        autoLoginCb.checked = false;
+        const currentSettings2 = await api.getSettings();
+        await api.saveSettings({
+          ...currentSettings2,
+          autoLogin: false,
+          isLoggedIn: false
+        });
+        api.showLoginWindow();
+      }
       return;
     }
     const userData = snapshot.docs[0].data();
@@ -15748,6 +15754,7 @@ async function handleLogin() {
       isAdmin: un === "KursatS" || userData.role === "admin",
       isLoggedIn: true,
       rememberMe: rememberMeCb.checked,
+      autoLogin: autoLoginCb.checked,
       savedUsername: rememberMeCb.checked ? un : "",
       savedPassword: rememberMeCb.checked ? pw : ""
     });
@@ -15755,10 +15762,30 @@ async function handleLogin() {
   } catch (error) {
     console.error("Login error:", error);
     errorMsg.textContent = "Bağlantı hatası: " + error.message;
+    if (isAutoAttempt) {
+      api.showLoginWindow();
+    }
+  } finally {
     btnLogin.disabled = false;
     btnLogin.textContent = "Giriş Yap";
   }
 }
+async function handleLogin() {
+  await performLogin(usernameInput.value.trim(), passwordInput.value.trim(), false);
+}
+api.getSettings().then(async (settings) => {
+  if (settings.rememberMe) {
+    usernameInput.value = settings.savedUsername || "";
+    passwordInput.value = settings.savedPassword || "";
+    rememberMeCb.checked = true;
+  }
+  if (settings.autoLogin) {
+    autoLoginCb.checked = true;
+  }
+  if (settings.autoLogin && settings.savedUsername && settings.savedPassword) {
+    await performLogin(settings.savedUsername, settings.savedPassword, true);
+  }
+});
 btnLogin.addEventListener("click", handleLogin);
 passwordInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") handleLogin();
