@@ -20,7 +20,8 @@ import {
   loadCache,
   initCache,
   clearCache,
-  deleteEntry
+  deleteEntry,
+  isCacheEntryStale
 } from './cacheManager';
 import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
@@ -145,7 +146,8 @@ function shouldSkipDetection(serial: string): boolean {
 
 async function processWarrantyRequest(serial: string) {
   const cached = await getCachedData(serial);
-  if (cached) return cached;
+  if (cached && !isCacheEntryStale(cached)) return cached;
+  if (cached) await deleteEntry(serial);
 
   const warrantyInfo = await checkWarranty(serial);
   await saveToCache(serial, warrantyInfo);

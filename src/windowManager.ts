@@ -30,6 +30,7 @@ export class WindowManager {
     private popupStartTime = 0;
     private popupRemaining = 0;
     private preloadPath = '';
+    private mainWindowReady = false;
 
     constructor(private appPath: string) {
         this.preloadPath = path.join(__dirname, '../preload/index.js');
@@ -103,6 +104,7 @@ export class WindowManager {
             minWidth: 475,
             minHeight: 400,
             show: false,
+            backgroundColor: '#0f172a',
             webPreferences: {
                 contextIsolation: true,
                 nodeIntegration: false,
@@ -112,7 +114,14 @@ export class WindowManager {
             autoHideMenuBar: true
         });
 
+        this.mainWindowReady = false;
         this.loadFile(this.mainWindow, 'index.html');
+        this.mainWindow.once('ready-to-show', () => {
+            this.mainWindowReady = true;
+        });
+        this.mainWindow.webContents.on('did-finish-load', () => {
+            this.mainWindowReady = true;
+        });
 
         let saveBoundsTimer: NodeJS.Timeout | null = null;
         const saveBounds = () => {
@@ -146,6 +155,7 @@ export class WindowManager {
             frame: false,
             resizable: false,
             show: false,
+            backgroundColor: '#0f172a',
             webPreferences: {
                 contextIsolation: true,
                 nodeIntegration: false,
@@ -174,9 +184,22 @@ export class WindowManager {
             this.loginWindow.close();
         }
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-            this.mainWindow.show();
-            this.mainWindow.focus();
-            this.mainWindow.webContents.send('refresh-cards');
+            let hasShown = false;
+            const showMainWindow = () => {
+                if (hasShown) return;
+                if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+                hasShown = true;
+                this.mainWindow.show();
+                this.mainWindow.focus();
+                this.mainWindow.webContents.send('refresh-cards');
+            };
+
+            if (this.mainWindowReady || !this.mainWindow.webContents.isLoadingMainFrame()) {
+                showMainWindow();
+            } else {
+                this.mainWindow.once('ready-to-show', showMainWindow);
+                this.mainWindow.webContents.once('did-finish-load', showMainWindow);
+            }
         }
     }
 

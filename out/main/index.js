@@ -171,6 +171,10 @@ async function checkWarranty(serial) {
 const electron = require("electron");
 const { app: app$1 } = electron;
 let db$1 = null;
+const CACHE_MAX_AGE_DAYS = 3;
+function getCacheMaxAgeMs() {
+  return CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1e3;
+}
 function initCache() {
   console.log("Initializing cache...");
   try {
@@ -208,10 +212,10 @@ function initCache() {
 function purgeOldCache() {
   if (!db$1) return;
   try {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1e3).toISOString();
-    const result = db$1.prepare("DELETE FROM cache WHERE copy_date < ?").run(twoDaysAgo);
+    const staleThreshold = new Date(Date.now() - getCacheMaxAgeMs()).toISOString();
+    const result = db$1.prepare("DELETE FROM cache WHERE copy_date < ?").run(staleThreshold);
     if (result.changes > 0) {
-      console.log(`Cache: ${result.changes} eski kayıt silindi (2 günden eski).`);
+      console.log(`Cache: ${result.changes} eski kayit silindi (3 gunden eski).`);
     }
   } catch (err) {
     console.error("Error purging old cache:", err);
@@ -224,6 +228,12 @@ function loadCache() {
 function getCachedData(serial) {
   const stmt = db$1.prepare("SELECT * FROM cache WHERE serial = ?");
   return Promise.resolve(stmt.get(serial) || null);
+}
+function isCacheEntryStale(entry) {
+  if (!entry?.copy_date) return true;
+  const copiedAt = new Date(entry.copy_date);
+  if (Number.isNaN(copiedAt.getTime())) return true;
+  return Date.now() - copiedAt.getTime() >= getCacheMaxAgeMs();
 }
 function saveToCache(serial, info) {
   if ((serial.startsWith("RCCVBY") || serial.startsWith("RCFVBY")) && info.warranty_status === "GARANTI KAPSAMI DISINDA") {
@@ -318,6 +328,7 @@ class WindowManager {
     this.popupStartTime = 0;
     this.popupRemaining = 0;
     this.preloadPath = "";
+    this.mainWindowReady = false;
     this.preloadPath = path__namespace.join(__dirname, "../preload/index.js");
   }
   loadFile(win, fileName) {
@@ -383,6 +394,7 @@ class WindowManager {
       minWidth: 475,
       minHeight: 400,
       show: false,
+      backgroundColor: "#0f172a",
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -391,7 +403,14 @@ class WindowManager {
       icon: path__namespace.join(__dirname, "../../assets/logo.png"),
       autoHideMenuBar: true
     });
+    this.mainWindowReady = false;
     this.loadFile(this.mainWindow, "index.html");
+    this.mainWindow.once("ready-to-show", () => {
+      this.mainWindowReady = true;
+    });
+    this.mainWindow.webContents.on("did-finish-load", () => {
+      this.mainWindowReady = true;
+    });
     let saveBoundsTimer = null;
     const saveBounds = () => {
       if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -420,6 +439,7 @@ class WindowManager {
       frame: false,
       resizable: false,
       show: false,
+      backgroundColor: "#0f172a",
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -444,9 +464,21 @@ class WindowManager {
       this.loginWindow.close();
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.show();
-      this.mainWindow.focus();
-      this.mainWindow.webContents.send("refresh-cards");
+      let hasShown = false;
+      const showMainWindow = () => {
+        if (hasShown) return;
+        if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+        hasShown = true;
+        this.mainWindow.show();
+        this.mainWindow.focus();
+        this.mainWindow.webContents.send("refresh-cards");
+      };
+      if (this.mainWindowReady || !this.mainWindow.webContents.isLoadingMainFrame()) {
+        showMainWindow();
+      } else {
+        this.mainWindow.once("ready-to-show", showMainWindow);
+        this.mainWindow.webContents.once("did-finish-load", showMainWindow);
+      }
     }
   }
   getMainWindow() {
@@ -615,118 +647,177 @@ class ClipboardMonitor {
     this.isEnabled = enabled;
   }
 }
+const MONTH_NAMES_TR = {
+  "01": "Ocak",
+  "02": "Şubat",
+  "03": "Mart",
+  "04": "Nisan",
+  "05": "Mayıs",
+  "06": "Haziran",
+  "07": "Temmuz",
+  "08": "Ağustos",
+  "09": "Eylül",
+  "10": "Ekim",
+  "11": "Kasım",
+  "12": "Aralık"
+};
+const DATE_FORMATS = [
+  "dd-MM-yyyy HH:mm:ss",
+  "dd-MM-yyyy HH:mm",
+  "dd.MM.yyyy HH:mm:ss",
+  "dd.MM.yyyy HH:mm",
+  "dd/MM/yyyy HH:mm:ss",
+  "dd/MM/yyyy HH:mm",
+  "yyyy-MM-dd HH:mm:ss",
+  "yyyy-MM-dd HH:mm",
+  "yyyy/MM/dd HH:mm:ss",
+  "yyyy/MM/dd HH:mm",
+  "dd-MM-yyyy",
+  "dd.MM.yyyy",
+  "dd/MM/yyyy",
+  "yyyy-MM-dd",
+  "yyyy/MM/dd"
+];
+function normalizeHeader(value) {
+  return String(value || "").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+function findColumnIndex(headers, variants, fallbackIndex) {
+  const normalizedHeaders = headers.map(normalizeHeader);
+  for (const variant of variants) {
+    const exactIndex = normalizedHeaders.findIndex((header) => header === variant);
+    if (exactIndex >= 0) return exactIndex;
+  }
+  for (const variant of variants) {
+    const tokens = variant.split(" ").filter(Boolean);
+    const partialIndex = normalizedHeaders.findIndex((header) => tokens.every((token) => header.includes(token)));
+    if (partialIndex >= 0) return partialIndex;
+  }
+  return fallbackIndex;
+}
+function extractDate(cell) {
+  if (cell === null || cell === void 0 || cell === "") return null;
+  let parsedDate = null;
+  if (cell instanceof Date) {
+    parsedDate = cell;
+  } else if (typeof cell === "number") {
+    if (cell <= 0) return null;
+    const parsed = XLSX__namespace.SSF.parse_date_code(cell);
+    if (!parsed || !parsed.y) return null;
+    parsedDate = new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+  } else if (typeof cell === "string") {
+    const clean = cell.trim();
+    if (!clean || clean.length < 8) return null;
+    for (const dateFormat of DATE_FORMATS) {
+      const candidate = dateFns.parse(clean, dateFormat, /* @__PURE__ */ new Date());
+      if (dateFns.isValid(candidate)) {
+        parsedDate = candidate;
+        break;
+      }
+    }
+    if (!parsedDate) {
+      const nativeParsed = new Date(clean);
+      if (dateFns.isValid(nativeParsed)) {
+        parsedDate = nativeParsed;
+      }
+    }
+  }
+  if (!parsedDate || !dateFns.isValid(parsedDate)) return null;
+  const currentYear = (/* @__PURE__ */ new Date()).getFullYear();
+  if (parsedDate.getFullYear() < 2020 || parsedDate.getFullYear() > currentYear + 1) {
+    return null;
+  }
+  return parsedDate;
+}
+function ensureMonthAccumulator(monthlyStats, key, date) {
+  if (!monthlyStats[key]) {
+    monthlyStats[key] = {
+      total: 0,
+      valid: 0,
+      overtime: 0,
+      date: dateFns.startOfMonth(date),
+      days: {},
+      models: {}
+    };
+  }
+  return monthlyStats[key];
+}
+function ensureDayAccumulator(stats, dayKey) {
+  if (!stats.days[dayKey]) {
+    stats.days[dayKey] = { valid: 0, overtime: 0 };
+  }
+  return stats.days[dayKey];
+}
+function ensureModelAccumulator(stats, modelName) {
+  if (!stats.models[modelName]) {
+    stats.models[modelName] = { total: 0, valid: 0, overtime: 0 };
+  }
+  return stats.models[modelName];
+}
 function parseBonusData(buffer, workingHours) {
   const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-  const monthlyStats = {};
+  if (!rows.length) return [];
   const headers = rows[0] || [];
-  let dateIndex = 14;
-  const priority1 = headers.findIndex((h) => h && h.toString().toLowerCase() === "kayıt tarihi");
-  const priority2 = headers.findIndex((h) => h && (h.toString().toLowerCase().includes("kayıt") && h.toString().toLowerCase().includes("tarih")));
-  const priority3 = headers.findIndex((h) => h && (h.toString().toLowerCase().includes("oluşturma") || h.toString().toLowerCase().includes("zaman")));
-  if (priority1 >= 0) dateIndex = priority1;
-  else if (priority2 >= 0) dateIndex = priority2;
-  else if (priority3 >= 0) dateIndex = priority3;
+  const dateIndex = findColumnIndex(headers, ["kayit tarihi", "kayit zamani", "olusturma tarihi", "olusturma zamani"], 14);
+  const modelIndex = findColumnIndex(headers, ["model", "urun modeli", "cihaz modeli"], 2);
   const [startH, startM] = workingHours.start.split(":").map(Number);
   const [endH, endM] = workingHours.end.split(":").map(Number);
+  const monthlyStats = {};
   rows.forEach((row, rowIndex) => {
     if (rowIndex === 0 || !row) return;
-    let date = null;
-    const extractDate = (cell) => {
-      if (cell === null || cell === void 0 || cell === "") return null;
-      let d;
-      if (cell instanceof Date) {
-        d = cell;
-      } else if (typeof cell === "number") {
-        if (cell <= 0) return null;
-        const parsed = XLSX__namespace.SSF.parse_date_code(cell);
-        if (!parsed || !parsed.y) return null;
-        d = new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
-      } else if (typeof cell === "string") {
-        const clean = cell.trim();
-        if (!clean || clean.length < 8) return null;
-        const parts = clean.split(" ");
-        const datePart = parts[0];
-        const timePart = parts[1] || "00:00";
-        let dateFmt = "dd.MM.yyyy";
-        if (datePart.includes("/")) dateFmt = "dd/MM/yyyy";
-        else if (datePart.includes("-")) dateFmt = "dd-MM-yyyy";
-        const timeFmt = timePart.split(":").length === 3 ? "HH:mm:ss" : "HH:mm";
-        const fullFmt = `${dateFmt} ${timeFmt}`;
-        d = dateFns.parse(`${datePart} ${timePart}`, fullFmt, /* @__PURE__ */ new Date());
-      } else {
-        return null;
-      }
-      if (!d || !dateFns.isValid(d) || d.getFullYear() < 2e3) return null;
-      return d;
-    };
-    date = extractDate(row[dateIndex]);
-    if (date) {
-      const monthKey = dateFns.format(date, "MM-yyyy");
-      const dayKey = dateFns.format(date, "yyyy-MM-dd");
-      if (!monthlyStats[monthKey]) {
-        monthlyStats[monthKey] = {
-          total: 0,
-          valid: 0,
-          overtime: 0,
-          date: dateFns.startOfMonth(date),
-          days: {}
-        };
-      }
-      if (!monthlyStats[monthKey].days[dayKey]) {
-        monthlyStats[monthKey].days[dayKey] = { valid: 0, overtime: 0 };
-      }
-      monthlyStats[monthKey].total++;
-      const checkDate = new Date(date);
-      const startLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), startH, startM, 0);
-      const endLimit = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), endH, endM, 0);
-      if (dateFns.isWithinInterval(date, { start: startLimit, end: endLimit })) {
-        monthlyStats[monthKey].valid++;
-        monthlyStats[monthKey].days[dayKey].valid++;
-      } else {
-        monthlyStats[monthKey].overtime++;
-        monthlyStats[monthKey].days[dayKey].overtime++;
-      }
+    const date = extractDate(row[dateIndex]);
+    if (!date) return;
+    const monthKey = dateFns.format(date, "MM-yyyy");
+    const dayKey = dateFns.format(date, "yyyy-MM-dd");
+    const stats = ensureMonthAccumulator(monthlyStats, monthKey, date);
+    const dayStats = ensureDayAccumulator(stats, dayKey);
+    const modelName = String(row[modelIndex] || "Model belirtilmedi").trim() || "Model belirtilmedi";
+    const modelStats = ensureModelAccumulator(stats, modelName);
+    stats.total++;
+    modelStats.total++;
+    const startLimit = new Date(date.getFullYear(), date.getMonth(), date.getDate(), startH, startM, 0);
+    const endLimit = new Date(date.getFullYear(), date.getMonth(), date.getDate(), endH, endM, 59);
+    const isWorkingHours = dateFns.isWithinInterval(date, { start: startLimit, end: endLimit });
+    if (isWorkingHours) {
+      stats.valid++;
+      dayStats.valid++;
+      modelStats.valid++;
+    } else {
+      stats.overtime++;
+      dayStats.overtime++;
+      modelStats.overtime++;
     }
   });
-  const monthNamesTr = {
-    "01": "Ocak",
-    "02": "Şubat",
-    "03": "Mart",
-    "04": "Nisan",
-    "05": "Mayıs",
-    "06": "Haziran",
-    "07": "Temmuz",
-    "08": "Ağustos",
-    "09": "Eylül",
-    "10": "Ekim",
-    "11": "Kasım",
-    "12": "Aralık"
-  };
   const sortedMonthKeys = Object.keys(monthlyStats).sort(
     (a, b) => dateFns.compareDesc(monthlyStats[a].date, monthlyStats[b].date)
   );
-  const results = sortedMonthKeys.map((key) => {
+  return sortedMonthKeys.map((key) => {
     const stats = monthlyStats[key];
-    const [m, y] = key.split("-");
-    const dailyStats = Object.keys(stats.days).sort().map((dKey) => ({
-      date: dKey,
-      validCount: stats.days[dKey].valid,
-      overtimeCount: stats.days[dKey].overtime
+    const [monthNumber, year] = key.split("-");
+    const dailyStats = Object.keys(stats.days).sort().map((dayKey) => ({
+      date: dayKey,
+      validCount: stats.days[dayKey].valid,
+      overtimeCount: stats.days[dayKey].overtime,
+      totalCount: stats.days[dayKey].valid + stats.days[dayKey].overtime
     }));
+    const modelStats = Object.entries(stats.models).map(([model, modelStats2]) => ({
+      model,
+      totalCount: modelStats2.total,
+      validCount: modelStats2.valid,
+      overtimeCount: modelStats2.overtime
+    })).sort((a, b) => b.totalCount - a.totalCount || b.validCount - a.validCount || a.model.localeCompare(b.model, "tr"));
     return {
-      month: `${monthNamesTr[m]} ${y}`,
+      month: `${MONTH_NAMES_TR[monthNumber] || monthNumber} ${year}`,
       totalCount: stats.total,
       validCount: stats.valid,
       overtimeCount: stats.overtime,
       isEligible: stats.valid >= 850,
-      dailyStats
+      dailyStats,
+      modelStats
     };
   });
-  if (results.length > 1) ;
-  return results;
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBbKdmGohakaU5woTt90BSNeH2DoVD3XNo",
@@ -1030,7 +1121,8 @@ function shouldSkipDetection(serial) {
 }
 async function processWarrantyRequest(serial) {
   const cached = await getCachedData(serial);
-  if (cached) return cached;
+  if (cached && !isCacheEntryStale(cached)) return cached;
+  if (cached) await deleteEntry(serial);
   const warrantyInfo = await checkWarranty(serial);
   await saveToCache(serial, warrantyInfo);
   return warrantyInfo;

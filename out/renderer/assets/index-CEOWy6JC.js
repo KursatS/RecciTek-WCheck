@@ -967,49 +967,58 @@ function initBonusLogic(api2, elements) {
       let statusText = "";
       let statusClass = "";
       if (res.isEligible) {
-        statusText = "🏆 Prim Tamam";
+        statusText = "Prim tamam";
         statusClass = "status-eligible";
       } else {
-        const remaining = 850 - res.validCount;
-        statusText = index === 0 ? `Eksik: ${remaining}` : "Prim tamamlanamadı";
+        const remaining = Math.max(0, 850 - res.validCount);
+        statusText = index === 0 ? `Eksik: ${remaining}` : "Prim tamamlanmadı";
         statusClass = "status-pending-badge";
-        if (index === 0) {
+        if (index === 0 && remaining > 0) {
           const monthParts = res.month.split(" ");
-          const mName = monthParts[0];
-          const y = parseInt(monthParts[1] || (/* @__PURE__ */ new Date()).getFullYear().toString());
-          const mNamesToNum = { "Ocak": 1, "Şubat": 2, "Mart": 3, "Nisan": 4, "Mayıs": 5, "Haziran": 6, "Temmuz": 7, "Ağustos": 8, "Eylül": 9, "Ekim": 10, "Kasım": 11, "Aralık": 12 };
-          const mNum = mNamesToNum[mName];
-          if (mNum) {
+          const monthName = monthParts[0];
+          const year = parseInt(monthParts[1] || (/* @__PURE__ */ new Date()).getFullYear().toString(), 10);
+          const monthMap = {
+            Ocak: 1,
+            "Şubat": 2,
+            Mart: 3,
+            Nisan: 4,
+            "Mayıs": 5,
+            Haziran: 6,
+            Temmuz: 7,
+            "Ağustos": 8,
+            "Eylül": 9,
+            Ekim: 10,
+            "Kasım": 11,
+            "Aralık": 12
+          };
+          const monthNumber = monthMap[monthName];
+          if (monthNumber) {
             const today = /* @__PURE__ */ new Date();
-            let daysRemaining = 1;
-            if (today.getMonth() + 1 === mNum && today.getFullYear() === y) {
-              const lastDay = new Date(y, mNum, 0).getDate();
-              const currentDay = today.getDate();
-              daysRemaining = 0;
-              for (let d = currentDay; d <= lastDay; d++) {
-                const dayOfWeek = new Date(y, mNum - 1, d).getDay();
-                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-                  daysRemaining += 1;
-                } else if (dayOfWeek === 6) {
-                  daysRemaining += 0.5;
-                }
+            if (today.getMonth() + 1 === monthNumber && today.getFullYear() === year) {
+              const lastDay = new Date(year, monthNumber, 0).getDate();
+              let workingDayUnits = 0;
+              for (let day = today.getDate(); day <= lastDay; day++) {
+                const weekDay = new Date(year, monthNumber - 1, day).getDay();
+                if (weekDay >= 1 && weekDay <= 5) workingDayUnits += 1;
+                else if (weekDay === 6) workingDayUnits += 0.5;
               }
-            }
-            if (daysRemaining > 0) {
-              const dailyAvg = Math.ceil(remaining / daysRemaining);
-              statusText += ` (Günde ~${dailyAvg} cihaz)`;
+              if (workingDayUnits > 0) {
+                statusText += ` (Günde ~${Math.ceil(remaining / workingDayUnits)} cihaz)`;
+              }
             }
           }
         }
       }
+      const topModels = (res.modelStats || []).slice(0, 3).map((model) => `${model.model}: ${model.totalCount}`).join(" | ");
       card.innerHTML = `
                 <div class="result-info">
                     <h3>${res.month}</h3>
                     <div class="result-stats">
-                        <div class="stat-item">Geçerli: <strong>${res.validCount}</strong></div>
+                        <div class="stat-item">Mesai İçi: <strong>${res.validCount}</strong></div>
                         <div class="stat-item">Mesai Dışı: <strong>${res.overtimeCount}</strong></div>
-                        <div class="stat-item">Toplam: ${res.totalCount}</div>
+                        <div class="stat-item">Toplam: <strong>${res.totalCount}</strong></div>
                     </div>
+                    ${topModels ? `<div style="margin-top:10px; font-size:0.78rem; color:var(--text-muted);">${topModels}</div>` : ""}
                 </div>
                 <div class="status-badge ${statusClass}">${statusText}</div>
             `;
@@ -1029,30 +1038,69 @@ function initBonusLogic(api2, elements) {
       bonusAnalytics2.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Günlük veri yok</p>';
       return;
     }
-    const maxVal = Math.max(...res.dailyStats.map((d) => d.validCount + d.overtimeCount));
-    bonusAnalytics2.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-                <div><h2>${res.month} Günlük Dağılım</h2></div>
-                <div style="text-align:right;"><div style="font-size:1.5rem; font-weight:800; color:var(--accent);">${res.totalCount}</div><div style="font-size:0.8rem; color:var(--text-muted);">TOPLAM CİHAZ</div></div>
+    const maxVal = Math.max(...res.dailyStats.map((d) => d.totalCount || d.validCount + d.overtimeCount), 1);
+    const modelCards = (res.modelStats || []).slice(0, 12).map((model) => `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:16px; padding:14px 16px;">
+                <div style="font-size:0.88rem; font-weight:700; color:var(--text-main); margin-bottom:8px; word-break:break-word;">${model.model}</div>
+                <div style="display:flex; justify-content:space-between; gap:12px; font-size:0.78rem; color:var(--text-muted);">
+                    <span>Toplam <strong style="color:var(--text-main);">${model.totalCount}</strong></span>
+                    <span>İçi <strong style="color:var(--success);">${model.validCount}</strong></span>
+                    <span>Dışı <strong style="color:var(--warning);">${model.overtimeCount}</strong></span>
+                </div>
             </div>
-            <div id="bonus-chart" style="display:flex; align-items:flex-end; gap:6px; height:240px; border-bottom:2px solid var(--glass-border); position:relative;"></div>
+        `).join("");
+    bonusAnalytics2.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; gap:16px; flex-wrap:wrap;">
+                <div>
+                    <h2 style="margin:0 0 6px 0;">${res.month} Günlük Dağılım</h2>
+                    <div style="font-size:0.85rem; color:var(--text-muted);">Mesai içi ve mesai dışı cihaz girişleri aynı grafik üzerinde.</div>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(4, minmax(110px, 1fr)); gap:12px; flex:1; min-width:320px;">
+                    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.18); border-radius:16px; padding:12px 14px;">
+                        <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Mesai İçi</div>
+                        <div style="font-size:1.4rem; font-weight:800; color:var(--success);">${res.validCount}</div>
+                    </div>
+                    <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.18); border-radius:16px; padding:12px 14px;">
+                        <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Mesai Dışı</div>
+                        <div style="font-size:1.4rem; font-weight:800; color:var(--warning);">${res.overtimeCount}</div>
+                    </div>
+                    <div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.18); border-radius:16px; padding:12px 14px;">
+                        <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Toplam</div>
+                        <div style="font-size:1.4rem; font-weight:800; color:var(--accent);">${res.totalCount}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:16px; padding:12px 14px;">
+                        <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Model Çeşidi</div>
+                        <div style="font-size:1.4rem; font-weight:800; color:var(--text-main);">${(res.modelStats || []).length}</div>
+                    </div>
+                </div>
+            </div>
+            <div id="bonus-chart" style="display:flex; align-items:flex-end; gap:6px; height:260px; border-bottom:2px solid var(--glass-border); position:relative; margin-bottom:18px;"></div>
             <div style="display:flex; gap:20px; margin-top:16px; justify-content:center; font-size:0.8rem; color:var(--text-muted);">
                 <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:var(--success);"></span> Mesai İçi</div>
-                <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:var(--warning);"></span> Fazla Mesai</div>
+                <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:var(--warning);"></span> Mesai Dışı</div>
+            </div>
+            <div style="margin-top:28px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+                    <h3 style="margin:0;">Model Bazlı Dağılım</h3>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">Toplam, mesai içi ve mesai dışı adetleri</div>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                    ${modelCards || '<div style="color:var(--text-muted);">Model verisi bulunamadı.</div>'}
+                </div>
             </div>
         `;
     const chart = document.getElementById("bonus-chart");
     res.dailyStats.forEach((day, i) => {
-      const total = day.validCount + day.overtimeCount;
-      const nH = maxVal > 0 ? day.validCount / maxVal * 220 : 0;
-      const oH = maxVal > 0 ? day.overtimeCount / maxVal * 220 : 0;
+      const total = day.totalCount || day.validCount + day.overtimeCount;
+      const normalHeight = maxVal > 0 ? day.validCount / maxVal * 220 : 0;
+      const overtimeHeight = maxVal > 0 ? day.overtimeCount / maxVal * 220 : 0;
       const dayNum = day.date.split("-")[2];
       const group = document.createElement("div");
-      group.style.cssText = "flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;";
+      group.style.cssText = "flex:1; min-width:16px; display:flex; flex-direction:column; align-items:center; gap:6px;";
       group.innerHTML = `
-                <div style="width:100%; display:flex; flex-direction:column-reverse; align-items:center; border-radius:4px 4px 0 0; cursor:pointer; position:relative; height:0; transition:height 0.6s cubic-bezier(0.175,0.885,0.32,1.275);" class="bar-stack">
-                    ${oH > 0 ? `<div style="width:100%; height:${oH}px; background:var(--warning); opacity:0.8;"></div>` : ""}
-                    <div style="width:100%; height:${nH}px; background:var(--success);"></div>
+                <div title="${day.date} | Mesai İçi: ${day.validCount} | Mesai Dışı: ${day.overtimeCount} | Toplam: ${total}" style="width:100%; display:flex; flex-direction:column-reverse; align-items:center; border-radius:8px 8px 0 0; cursor:pointer; position:relative; height:0; transition:height 0.6s cubic-bezier(0.175,0.885,0.32,1.275);" class="bar-stack">
+                    ${overtimeHeight > 0 ? `<div style="width:100%; height:${overtimeHeight}px; background:var(--warning); opacity:0.9;"></div>` : ""}
+                    <div style="width:100%; height:${normalHeight}px; background:var(--success);"></div>
                     <span style="position:absolute; top:-18px; font-size:11px; font-weight:800; color:var(--text-main);">${total}</span>
                 </div>
                 <div style="font-size:11px; font-weight:600; color:var(--text-muted);">${dayNum}</div>
@@ -1060,8 +1108,8 @@ function initBonusLogic(api2, elements) {
       chart.appendChild(group);
       setTimeout(() => {
         const stack = group.querySelector(".bar-stack");
-        stack.style.height = `${nH + oH}px`;
-      }, 30 + i * 20);
+        stack.style.height = `${normalHeight + overtimeHeight}px`;
+      }, 30 + i * 18);
     });
     bonusAnalytics2.scrollIntoView({ behavior: "smooth" });
   }

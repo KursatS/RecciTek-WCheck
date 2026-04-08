@@ -4,6 +4,11 @@ const electron = require('electron');
 const { app } = electron;
 
 let db: any = null;
+export const CACHE_MAX_AGE_DAYS = 3;
+
+function getCacheMaxAgeMs(): number {
+  return CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
 
 export function initCache() {
   console.log('Initializing cache...');
@@ -31,7 +36,7 @@ export function initCache() {
     )`);
 
     // Check if status column exists manually to avoid noisy SQLITE_ERROR
-    const tableInfo = db.prepare("PRAGMA table_info(cache)").all();
+    const tableInfo = db.prepare('PRAGMA table_info(cache)').all();
     const hasStatus = tableInfo.some((col: any) => col.name === 'status');
     if (!hasStatus) {
       try {
@@ -41,7 +46,7 @@ export function initCache() {
       }
     }
 
-    // Purge entries older than 2 days to prevent stale warranty data
+    // Purge entries older than 3 days to prevent stale warranty data
     purgeOldCache();
   } catch (err) {
     console.error('Error in initCache:', err);
@@ -51,10 +56,10 @@ export function initCache() {
 export function purgeOldCache(): void {
   if (!db) return;
   try {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    const result = db.prepare('DELETE FROM cache WHERE copy_date < ?').run(twoDaysAgo);
+    const staleThreshold = new Date(Date.now() - getCacheMaxAgeMs()).toISOString();
+    const result = db.prepare('DELETE FROM cache WHERE copy_date < ?').run(staleThreshold);
     if (result.changes > 0) {
-      console.log(`Cache: ${result.changes} eski kayıt silindi (2 günden eski).`);
+      console.log(`Cache: ${result.changes} eski kayit silindi (3 gunden eski).`);
     }
   } catch (err) {
     console.error('Error purging old cache:', err);
@@ -78,15 +83,24 @@ export function loadCache(): Promise<CacheEntry[]> {
 
 export function getCachedData(serial: string): Promise<CacheEntry | null> {
   const stmt = db.prepare('SELECT * FROM cache WHERE serial = ?');
-  return Promise.resolve(stmt.get(serial) as CacheEntry || null);
+  return Promise.resolve((stmt.get(serial) as CacheEntry) || null);
+}
+
+export function isCacheEntryStale(entry: Pick<CacheEntry, 'copy_date'> | null | undefined): boolean {
+  if (!entry?.copy_date) return true;
+
+  const copiedAt = new Date(entry.copy_date);
+  if (Number.isNaN(copiedAt.getTime())) return true;
+
+  return Date.now() - copiedAt.getTime() >= getCacheMaxAgeMs();
 }
 
 export function saveToCache(serial: string, info: any): Promise<void> {
   // Override warranty status for RCCVBY and RCFVBY prefixes if out of warranty
   if ((serial.startsWith('RCCVBY') || serial.startsWith('RCFVBY')) && info.warranty_status === 'GARANTI KAPSAMI DISINDA') {
     info.warranty_status = 'RECCI GARANTILI';
-    info.model_name = 'cihaz üzerinden öğreniniz';
-    info.model_color = 'cihaz üzerinden öğreniniz';
+    info.model_name = 'cihaz \u00fczerinden \u00f6\u011freniniz';
+    info.model_color = 'cihaz \u00fczerinden \u00f6\u011freniniz';
   }
 
   const entry: CacheEntry = {
@@ -102,8 +116,6 @@ export function saveToCache(serial: string, info: any): Promise<void> {
   stmt.run(entry.serial, entry.model_name, entry.model_color, entry.warranty_status, entry.copy_date, entry.warranty_end, entry.status);
   return Promise.resolve();
 }
-
-
 
 export function saveStatus(serial: string, status: string): Promise<void> {
   const stmt = db.prepare('UPDATE cache SET status = ? WHERE serial = ?');
