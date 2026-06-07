@@ -32,6 +32,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   showLoginWindow: () => electron.ipcRenderer.send("show-login-window"),
   // Bonus Calculation
   calculateBonus: (fileData, customHours) => safeInvoke("calculate-bonus", fileData, customHours),
+  calculateZReport: (fileData) => safeInvoke("calculate-zreport", fileData),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),
   popupHoverEnter: () => electron.ipcRenderer.send("popup-hover-enter"),

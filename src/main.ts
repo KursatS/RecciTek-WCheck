@@ -26,7 +26,7 @@ import {
 import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
-import { parseBonusData } from './bonusCalculator';
+import { parseBonusData, parseZReportData } from './bonusCalculator';
 import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
@@ -370,6 +370,21 @@ function setupIpcHandlers() {
       return parseBonusData(buffer, workingHours);
     } catch (error) {
       console.error('Bonus calculation error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('calculate-zreport', async (_, fileData) => {
+    try {
+      let buffer: Buffer;
+      if (typeof fileData === 'string') {
+        buffer = fs.readFileSync(fileData);
+      } else {
+        buffer = Buffer.from(fileData);
+      }
+      return parseZReportData(buffer);
+    } catch (error) {
+      console.error('Z-Report calculation error:', error);
       throw error;
     }
   });

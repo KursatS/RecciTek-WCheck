@@ -97,7 +97,9 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         if (model_name.includes('QREVO')) {
           model_name = model_name.replace('QREVO', 'Q REVO');
         }
-        model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
+        if (model_name.includes('S8')) {
+          model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
+        }
       }
 
 
@@ -144,6 +146,9 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
       model_name = model_name.toUpperCase();
       if (model_name.includes('QREVO')) {
         model_name = model_name.replace('QREVO', 'Q REVO');
+      }
+      if (model_name.includes('S8')) {
+        model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
       }
 
       return {

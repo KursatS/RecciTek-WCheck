@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 
 <head>
@@ -559,6 +559,10 @@
           <span class="icon">👨‍💼</span>
           <span class="label">Yönetici</span>
         </button>
+        <button class="nav-item" data-view="zreport" id="side-zreport-btn" title="Z Raporu">
+          <span class="icon">📝</span>
+          <span class="label">Z Raporu</span>
+        </button>
         <div class="nav-spacer"></div>
         <button class="nav-item" data-view="settings" id="side-settings-btn" title="Ayarlar">
           <span class="icon">⚙️</span>
@@ -741,6 +745,24 @@
           <button id="btn-add-user" class="btn btn-primary" style="margin-top: 10px;">+ Yeni Kullanıcı Ekle</button>
         </header>
         <div id="admin-user-list" class="users-grid"></div>
+      </section>
+
+      <!-- View: Z Raporu (Embedded) -->
+      <section id="view-zreport" class="view-section">
+        <header class="view-header">
+          <h1>📝 Günlük Z Raporu</h1>
+          <p>Dosyada yer alan son 5 günün servis genelindeki toplam kayıt adetleri ve model dağılımı</p>
+        </header>
+        <div style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 30px;">
+          <div id="zreport-drop-zone" class="upload-area" style="flex: 1;">
+            <span style="font-size: 3rem; margin-bottom: 20px; display: block;">📊</span>
+            <h2 style="font-size: 1.25rem;">Z Raporu Excel Dosyasını Sürükleyin</h2>
+            <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">veya tıklayarak seçin</p>
+            <input type="file" id="zreport-file-input" style="display: none;" accept=".xlsx, .xls, .csv">
+          </div>
+        </div>
+        <div id="zreport-results" class="results-container"></div>
+        <div id="zreport-analytics" class="analytics-panel" style="display:none;"></div>
       </section>
 
       <!-- View: Settings (Embedded) -->

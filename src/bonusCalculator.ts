@@ -252,3 +252,69 @@ export function parseBonusData(buffer: Buffer, workingHours: { start: string, en
         };
     });
 }
+
+export interface ZReportModelDetail {
+    model: string;
+    count: number;
+}
+
+export interface ZReportDayResult {
+    date: string;
+    totalCount: number;
+    models: ZReportModelDetail[];
+}
+
+export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+    if (!rows.length) return [];
+
+    const headers = rows[0] || [];
+    const dateIndex = findColumnIndex(headers, ['kayit tarihi', 'kayit zamani', 'olusturma tarihi', 'olusturma zamani'], 14);
+    const modelIndex = findColumnIndex(headers, ['model', 'urun modeli', 'cihaz modeli'], 2);
+
+    const dailyAccumulator: Record<string, { total: number; models: Record<string, number> }> = {};
+
+    rows.forEach((row, rowIndex) => {
+        if (rowIndex === 0 || !row) return;
+
+        const date = extractDate(row[dateIndex]);
+        if (!date) return;
+
+        const dayKey = format(date, 'yyyy-MM-dd');
+        const modelName = String(row[modelIndex] || 'Model belirtilmedi').trim() || 'Model belirtilmedi';
+
+        if (!dailyAccumulator[dayKey]) {
+            dailyAccumulator[dayKey] = {
+                total: 0,
+                models: {}
+            };
+        }
+
+        dailyAccumulator[dayKey].total++;
+        dailyAccumulator[dayKey].models[modelName] = (dailyAccumulator[dayKey].models[modelName] || 0) + 1;
+    });
+
+    const sortedDays = Object.keys(dailyAccumulator).sort((a, b) => b.localeCompare(a));
+    const last5Days = sortedDays.slice(0, 5);
+
+    return last5Days.map(dayKey => {
+        const data = dailyAccumulator[dayKey];
+        
+        const modelsArray: ZReportModelDetail[] = Object.entries(data.models)
+            .map(([model, count]) => ({ model, count }))
+            .sort((a, b) => b.count - a.count || a.model.localeCompare(b.model, 'tr'));
+
+        const parsedDate = parse(dayKey, 'yyyy-MM-dd', new Date());
+        const displayDate = isValid(parsedDate) ? format(parsedDate, 'dd.MM.yyyy') : dayKey;
+
+        return {
+            date: displayDate,
+            totalCount: data.total,
+            models: modelsArray
+        };
+    });
+}

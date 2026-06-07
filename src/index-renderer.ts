@@ -1,4 +1,4 @@
-﻿export { }
+export { }
 import { showToast } from './utils/toastUtils'
 import { SVG_EMPTY_FOLDER } from './utils/svgUtils'
 import { initTicketLogic } from './utils/ticketLogic'
@@ -7,6 +7,7 @@ import { initPriorityLogic } from './utils/priorityLogic'
 import { initSettingsLogic } from './utils/settingsLogic'
 import { initBonusLogic } from './utils/bonusLogic'
 import { initAdminLogic } from './utils/adminLogic'
+import { initZReportLogic } from './utils/zreportLogic'
 import { escapeHtml } from './utils/html'
 
 //
@@ -70,7 +71,6 @@ const sPopupSize = document.getElementById('popup-size') as HTMLSelectElement
 const sPopupTimeout = document.getElementById('popup-timeout') as HTMLInputElement
 const sAutoStart = document.getElementById('auto-start') as HTMLInputElement
 const sPreventDuplicate = document.getElementById('prevent-duplicate') as HTMLInputElement
-const sSaveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement
 const sLogoutBtn = document.getElementById('logout-btn') as HTMLButtonElement
 
 // Bonus View Elements
@@ -80,6 +80,12 @@ const bonusResults = document.getElementById('bonus-results')!
 const bonusAnalytics = document.getElementById('bonus-analytics')!
 const workStartInput = document.getElementById('work-start') as HTMLInputElement
 const workEndInput = document.getElementById('work-end') as HTMLInputElement
+
+// Z Report View Elements
+const zreportDropZone = document.getElementById('zreport-drop-zone')!
+const zreportFileInput = document.getElementById('zreport-file-input') as HTMLInputElement
+const zreportResults = document.getElementById('zreport-results')!
+const zreportAnalytics = document.getElementById('zreport-analytics')!
 
 // Admin View Elements
 const adminUserList = document.getElementById('admin-user-list')!
@@ -601,7 +607,8 @@ api.onPriorityDeviceMatch((device: any) => {
         if (confirmed) {
             await api.deletePriorityDevice(device.id)
             if (alertDiv.parentNode) alertDiv.remove()
-            showToast('Cihaz sistemden kal\u0131c\u0131 olarak silindi.', 'success')
+            loadPriorityDevices()
+            showToast('Cihaz sistemden kalıcı olarak silindi.', 'success')
         }
     }
 })
@@ -637,7 +644,7 @@ const { loadPriorityDevices, focusPriorityDevice } = initPriorityLogic(api, {
 
 const { loadSettingsToUI } = initSettingsLogic(api, {
     sPersonnelName, sUserRole, sShortcutClear, sShortcutCopy,
-    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sSaveBtn, sLogoutBtn
+    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sLogoutBtn
 }, refreshSidebarProfile)
 
 // Global window function for deletion
@@ -729,6 +736,10 @@ api.onFocusPriorityDevice((device: any) => {
     })
 })
 
+api.onPriorityDevicesUpdate(() => {
+    loadPriorityDevices()
+})
+
 initBonusLogic(api, {
     bonusDropZone,
     bonusFileInput,
@@ -736,6 +747,13 @@ initBonusLogic(api, {
     bonusAnalytics,
     workStartInput,
     workEndInput
+})
+
+initZReportLogic(api, {
+    zreportDropZone,
+    zreportFileInput,
+    zreportResults,
+    zreportAnalytics
 })
 
 const { loadAdminUsers } = initAdminLogic(api, {

@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Bonus Calculation
     calculateBonus: (fileData: ArrayBuffer | string, customHours?: any) => safeInvoke('calculate-bonus', fileData, customHours),
+    calculateZReport: (fileData: ArrayBuffer | string) => safeInvoke('calculate-zreport', fileData),
 
     // Popup Specific
     onPopupData: (callback: any) =>

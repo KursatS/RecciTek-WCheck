@@ -110,7 +110,9 @@ async function checkWarranty(serial) {
         if (model_name.includes("QREVO")) {
           model_name = model_name.replace("QREVO", "Q REVO");
         }
-        model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
+        if (model_name.includes("S8")) {
+          model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
+        }
       }
       return {
         serial,
@@ -146,6 +148,9 @@ async function checkWarranty(serial) {
       model_name = model_name.toUpperCase();
       if (model_name.includes("QREVO")) {
         model_name = model_name.replace("QREVO", "Q REVO");
+      }
+      if (model_name.includes("S8")) {
+        model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
       }
       return {
         serial,
@@ -471,6 +476,17 @@ class WindowManager {
         hasShown = true;
         this.mainWindow.show();
         this.mainWindow.focus();
+        try {
+          const size = this.mainWindow.getSize();
+          this.mainWindow.setSize(size[0] + 1, size[1]);
+          setTimeout(() => {
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+              this.mainWindow.setSize(size[0], size[1]);
+            }
+          }, 50);
+        } catch (err) {
+          console.error("Failed to trigger window force-resize:", err);
+        }
         this.mainWindow.webContents.send("refresh-cards");
       };
       if (this.mainWindowReady || !this.mainWindow.webContents.isLoadingMainFrame()) {
@@ -816,6 +832,45 @@ function parseBonusData(buffer, workingHours) {
       isEligible: stats.valid >= 850,
       dailyStats,
       modelStats
+    };
+  });
+}
+function parseZReportData(buffer) {
+  const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+  if (!rows.length) return [];
+  const headers = rows[0] || [];
+  const dateIndex = findColumnIndex(headers, ["kayit tarihi", "kayit zamani", "olusturma tarihi", "olusturma zamani"], 14);
+  const modelIndex = findColumnIndex(headers, ["model", "urun modeli", "cihaz modeli"], 2);
+  const dailyAccumulator = {};
+  rows.forEach((row, rowIndex) => {
+    if (rowIndex === 0 || !row) return;
+    const date = extractDate(row[dateIndex]);
+    if (!date) return;
+    const dayKey = dateFns.format(date, "yyyy-MM-dd");
+    const modelName = String(row[modelIndex] || "Model belirtilmedi").trim() || "Model belirtilmedi";
+    if (!dailyAccumulator[dayKey]) {
+      dailyAccumulator[dayKey] = {
+        total: 0,
+        models: {}
+      };
+    }
+    dailyAccumulator[dayKey].total++;
+    dailyAccumulator[dayKey].models[modelName] = (dailyAccumulator[dayKey].models[modelName] || 0) + 1;
+  });
+  const sortedDays = Object.keys(dailyAccumulator).sort((a, b) => b.localeCompare(a));
+  const last5Days = sortedDays.slice(0, 5);
+  return last5Days.map((dayKey) => {
+    const data = dailyAccumulator[dayKey];
+    const modelsArray = Object.entries(data.models).map(([model, count]) => ({ model, count })).sort((a, b) => b.count - a.count || a.model.localeCompare(b.model, "tr"));
+    const parsedDate = dateFns.parse(dayKey, "yyyy-MM-dd", /* @__PURE__ */ new Date());
+    const displayDate = dateFns.isValid(parsedDate) ? dateFns.format(parsedDate, "dd.MM.yyyy") : dayKey;
+    return {
+      date: displayDate,
+      totalCount: data.total,
+      models: modelsArray
     };
   });
 }
@@ -1322,6 +1377,20 @@ function setupIpcHandlers() {
       return parseBonusData(buffer, workingHours);
     } catch (error) {
       console.error("Bonus calculation error:", error);
+      throw error;
+    }
+  });
+  electron$1.ipcMain.handle("calculate-zreport", async (_, fileData) => {
+    try {
+      let buffer;
+      if (typeof fileData === "string") {
+        buffer = fs__namespace.readFileSync(fileData);
+      } else {
+        buffer = Buffer.from(fileData);
+      }
+      return parseZReportData(buffer);
+    } catch (error) {
+      console.error("Z-Report calculation error:", error);
       throw error;
     }
   });

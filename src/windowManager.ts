@@ -191,6 +191,20 @@ export class WindowManager {
                 hasShown = true;
                 this.mainWindow.show();
                 this.mainWindow.focus();
+
+                // Force layout reflow to fix content shifting to top-left bug
+                try {
+                    const size = this.mainWindow.getSize();
+                    this.mainWindow.setSize(size[0] + 1, size[1]);
+                    setTimeout(() => {
+                        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                            this.mainWindow.setSize(size[0], size[1]);
+                        }
+                    }, 50);
+                } catch (err) {
+                    console.error('Failed to trigger window force-resize:', err);
+                }
+
                 this.mainWindow.webContents.send('refresh-cards');
             };
 
