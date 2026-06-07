@@ -30,6 +30,7 @@ import { parseBonusData, parseZReportData } from './bonusCalculator';
 import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
+import { exec } from 'child_process';
 import { autoUpdater } from 'electron-updater';
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -137,6 +138,30 @@ function handleDoubleCopy(): void {
   }
 }
 
+function handleClipboardUpper(): void {
+  const text = clipboard.readText();
+  if (text) {
+    const upperText = text.toLocaleUpperCase('tr-TR');
+    clipboard.writeText(upperText);
+
+    if (process.platform === 'win32') {
+      const vbsPath = path.join(app.getPath('userData'), 'paste.vbs');
+      try {
+        if (!fs.existsSync(vbsPath)) {
+          fs.writeFileSync(vbsPath, 'WScript.Sleep 100\r\nSet w = CreateObject("WScript.Shell")\r\nw.SendKeys "^v"\r\n');
+        }
+        exec(`wscript.exe "${vbsPath}"`, (err) => {
+          if (err) {
+            console.error('VBScript paste failed:', err);
+          }
+        });
+      } catch (e) {
+        console.error('Error simulating paste:', e);
+      }
+    }
+  }
+}
+
 // Helper functions for handleDetection to reduce complexity
 function shouldSkipDetection(serial: string): boolean {
   if (!currentSettings.isLoggedIn) return true;
@@ -202,6 +227,7 @@ function setupIpcHandlers() {
     doubleCopyEnabled: currentSettings.doubleCopyEnabled,
     autoStartEnabled: currentSettings.autoStartEnabled,
     preventDuplicatePopup: currentSettings.preventDuplicatePopup,
+    clipboardUpperEnabled: currentSettings.clipboardUpperEnabled !== false,
     shortcuts: currentSettings.shortcuts,
     role: currentSettings.role,
     personnelName: currentSettings.personnelName,
@@ -641,6 +667,17 @@ function registerShortcuts() {
       });
     } catch (e) {
       console.error('Failed to register double copy shortcut:', e);
+    }
+  }
+
+  // Register the clipboard upper shortcut if enabled
+  if (currentSettings.clipboardUpperEnabled !== false) {
+    try {
+      globalShortcut.register('CommandOrControl+Shift+V', () => {
+        handleClipboardUpper();
+      });
+    } catch (e) {
+      console.error('Failed to register clipboard upper shortcut:', e);
     }
   }
 

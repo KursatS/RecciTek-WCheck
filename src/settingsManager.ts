@@ -8,6 +8,7 @@ export interface AppSettings {
   doubleCopyEnabled: boolean;
   autoStartEnabled: boolean;
   preventDuplicatePopup: boolean;
+  clipboardUpperEnabled?: boolean;
   shortcuts?: {
     clearCache: string;
     toggleMonitoring: string;
@@ -45,6 +46,7 @@ export function loadSettings(): AppSettings {
     doubleCopyEnabled: true,
     autoStartEnabled: false,
     preventDuplicatePopup: true,
+    clipboardUpperEnabled: true,
     shortcuts: {
       clearCache: 'CommandOrControl+Shift+X',
       toggleMonitoring: 'CommandOrControl+Shift+C'

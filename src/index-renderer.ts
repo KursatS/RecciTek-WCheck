@@ -17,6 +17,7 @@ const toggleBtn = document.getElementById('toggle')!
 const themeBtn = document.getElementById('theme-toggle')!
 const clearCacheBtn = document.getElementById('clear-cache')!
 const dcBtn = document.getElementById('double-copy-toggle')!
+const clipboardUpperToggleBtn = document.getElementById('clipboard-upper-toggle')!
 const statusDot = document.getElementById('status-dot')!
 const statusInfo = document.getElementById('status-info')!
 const statusRefreshBtn = document.getElementById('status-refresh-btn')!
@@ -71,6 +72,7 @@ const sPopupSize = document.getElementById('popup-size') as HTMLSelectElement
 const sPopupTimeout = document.getElementById('popup-timeout') as HTMLInputElement
 const sAutoStart = document.getElementById('auto-start') as HTMLInputElement
 const sPreventDuplicate = document.getElementById('prevent-duplicate') as HTMLInputElement
+const sClipboardUpper = document.getElementById('clipboard-upper') as HTMLInputElement
 const sLogoutBtn = document.getElementById('logout-btn') as HTMLButtonElement
 
 // Bonus View Elements
@@ -411,7 +413,12 @@ function switchView(viewName: string) {
     }
 
     // Refresh data based on view
-    if (viewName === 'history') loadCards()
+    if (viewName === 'history') {
+        loadCards()
+        api.getSettings().then((s: any) => {
+            updateClipboardUpperUI(s.clipboardUpperEnabled !== false)
+        })
+    }
     else if (viewName === 'tickets') loadTickets()
     else if (viewName === 'profile') loadProfileScoreboard()
     else if (viewName === 'priority') loadPriorityDevices()
@@ -517,6 +524,30 @@ dcBtn.onclick = async () => {
         showToast(`Double Copy modu ${!current ? 'a\u00e7\u0131ld\u0131' : 'kapat\u0131ld\u0131'}.`, 'info')
     } catch (e: any) {
         showToast('Double Copy değişemedi: ' + e.message, 'error')
+    }
+}
+
+function updateClipboardUpperUI(enabled: boolean) {
+    const span = clipboardUpperToggleBtn.querySelector('span')
+    if (span) {
+        span.textContent = enabled ? '🔠 Büyük Harf Yapıştır: Aktif' : '🔠 Büyük Harf Yapıştır: Kapalı'
+    }
+    clipboardUpperToggleBtn.classList.toggle('btn-warning', !enabled)
+    clipboardUpperToggleBtn.classList.toggle('btn-primary', enabled)
+}
+
+api.getSettings().then((s: any) => updateClipboardUpperUI(s.clipboardUpperEnabled !== false))
+
+clipboardUpperToggleBtn.onclick = async () => {
+    const s = await api.getSettings()
+    const current = s.clipboardUpperEnabled !== false
+    const next = !current
+    try {
+        await api.saveSettings({ ...s, clipboardUpperEnabled: next })
+        updateClipboardUpperUI(next)
+        showToast(`Büyük harf yapıştırma özelliği ${next ? 'etkinle\u015ftirildi' : 'devre d\u0131\u015f\u0131 b\u0131rak\u0131ld\u0131'}.`, 'info')
+    } catch (e: any) {
+        showToast('Büyük harf yapıştırma ayarı değiştirilemedi: ' + e.message, 'error')
     }
 }
 
@@ -644,7 +675,8 @@ const { loadPriorityDevices, focusPriorityDevice } = initPriorityLogic(api, {
 
 const { loadSettingsToUI } = initSettingsLogic(api, {
     sPersonnelName, sUserRole, sShortcutClear, sShortcutCopy,
-    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sLogoutBtn
+    sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sLogoutBtn,
+    sClipboardUpper
 }, refreshSidebarProfile)
 
 // Global window function for deletion

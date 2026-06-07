@@ -655,6 +655,20 @@ function initProfileLogic(api2, elements, personnelName2, calculateLevel2, refre
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+function formatTimestamp(timestampMs) {
+  if (!timestampMs) return "tarih verisi bulunamadı";
+  try {
+    const date = new Date(timestampMs);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+  } catch (e) {
+    return "tarih verisi bulunamadı";
+  }
+}
 function initPriorityLogic(api2, elements) {
   const { prioList: prioList2, addPrioBtn: addPrioBtn2, pSerial: pSerial2, pCustomer: pCustomer2, pDesc: pDesc2 } = elements;
   if (!document.getElementById("prio-highlight-style")) {
@@ -721,7 +735,7 @@ function initPriorityLogic(api2, elements) {
                         <input type="text" id="edit-prio-serial-${d.id}" value="${escapeHtml(d.serial)}" class="priority-input" placeholder="Seri No">
                         <input type="text" id="edit-prio-desc-${d.id}" value="${escapeHtml(d.description)}" class="priority-input" placeholder="Açıklama">
                         <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top:4px;">
-                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")}
+                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")} | Tarih: ${formatTimestamp(d.created_at)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
@@ -736,7 +750,7 @@ function initPriorityLogic(api2, elements) {
                         <div class="priority-item-serial">${escapeHtml(d.serial)}</div>
                         <div class="priority-item-desc">${escapeHtml(d.description)}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")}
+                            Ekleyen: ${escapeHtml(d.created_by || "Bilinmiyor")} | Tarih: ${formatTimestamp(d.created_at)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
@@ -818,7 +832,8 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
     sPopupTimeout: sPopupTimeout2,
     sAutoStart: sAutoStart2,
     sPreventDuplicate: sPreventDuplicate2,
-    sLogoutBtn: sLogoutBtn2
+    sLogoutBtn: sLogoutBtn2,
+    sClipboardUpper: sClipboardUpper2
   } = elements;
   let initialRole = "";
   const logoutLabel = "Oturumdan Çıkış Yap";
@@ -837,6 +852,7 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
     sPopupTimeout2.value = String(s.popupTimeout || 5e3);
     sAutoStart2.checked = s.autoStartEnabled || false;
     sPreventDuplicate2.checked = s.preventDuplicatePopup || false;
+    sClipboardUpper2.checked = s.clipboardUpperEnabled !== false;
     if (sLogoutBtn2) {
       sLogoutBtn2.textContent = logoutLabel;
     }
@@ -854,7 +870,8 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
       popupSizeLevel: parseInt(sPopupSize2.value),
       popupTimeout: parseInt(sPopupTimeout2.value),
       autoStartEnabled: sAutoStart2.checked,
-      preventDuplicatePopup: sPreventDuplicate2.checked
+      preventDuplicatePopup: sPreventDuplicate2.checked,
+      clipboardUpperEnabled: sClipboardUpper2.checked
     };
     try {
       await api2.saveSettings(settingsToSave);
@@ -883,6 +900,7 @@ function initSettingsLogic(api2, elements, refreshSidebarProfile2) {
   sPopupTimeout2.addEventListener("input", () => triggerAutoSave(500));
   sAutoStart2.addEventListener("change", () => triggerAutoSave(0));
   sPreventDuplicate2.addEventListener("change", () => triggerAutoSave(0));
+  sClipboardUpper2.addEventListener("change", () => triggerAutoSave(0));
   function setupShortcutRecorder(input) {
     input.onkeydown = (e) => {
       e.preventDefault();
@@ -1396,6 +1414,7 @@ const toggleBtn = document.getElementById("toggle");
 const themeBtn = document.getElementById("theme-toggle");
 const clearCacheBtn = document.getElementById("clear-cache");
 const dcBtn = document.getElementById("double-copy-toggle");
+const clipboardUpperToggleBtn = document.getElementById("clipboard-upper-toggle");
 const statusDot = document.getElementById("status-dot");
 const statusInfo = document.getElementById("status-info");
 const statusRefreshBtn = document.getElementById("status-refresh-btn");
@@ -1440,6 +1459,7 @@ const sPopupSize = document.getElementById("popup-size");
 const sPopupTimeout = document.getElementById("popup-timeout");
 const sAutoStart = document.getElementById("auto-start");
 const sPreventDuplicate = document.getElementById("prevent-duplicate");
+const sClipboardUpper = document.getElementById("clipboard-upper");
 const sLogoutBtn = document.getElementById("logout-btn");
 const bonusDropZone = document.getElementById("bonus-drop-zone");
 const bonusFileInput = document.getElementById("bonus-file-input");
@@ -1709,8 +1729,12 @@ function switchView(viewName) {
     targetSec.classList.add("active");
     targetNavItem.classList.add("active");
   }
-  if (viewName === "history") loadCards();
-  else if (viewName === "tickets") loadTickets();
+  if (viewName === "history") {
+    loadCards();
+    api.getSettings().then((s) => {
+      updateClipboardUpperUI(s.clipboardUpperEnabled !== false);
+    });
+  } else if (viewName === "tickets") loadTickets();
   else if (viewName === "profile") loadProfileScoreboard();
   else if (viewName === "priority") loadPriorityDevices();
   else if (viewName === "admin") loadAdminUsers();
@@ -1798,6 +1822,27 @@ dcBtn.onclick = async () => {
     showToast(`Double Copy modu ${!current ? "açıldı" : "kapatıldı"}.`, "info");
   } catch (e) {
     showToast("Double Copy değişemedi: " + e.message, "error");
+  }
+};
+function updateClipboardUpperUI(enabled) {
+  const span = clipboardUpperToggleBtn.querySelector("span");
+  if (span) {
+    span.textContent = enabled ? "🔠 Büyük Harf Yapıştır: Aktif" : "🔠 Büyük Harf Yapıştır: Kapalı";
+  }
+  clipboardUpperToggleBtn.classList.toggle("btn-warning", !enabled);
+  clipboardUpperToggleBtn.classList.toggle("btn-primary", enabled);
+}
+api.getSettings().then((s) => updateClipboardUpperUI(s.clipboardUpperEnabled !== false));
+clipboardUpperToggleBtn.onclick = async () => {
+  const s = await api.getSettings();
+  const current = s.clipboardUpperEnabled !== false;
+  const next = !current;
+  try {
+    await api.saveSettings({ ...s, clipboardUpperEnabled: next });
+    updateClipboardUpperUI(next);
+    showToast(`Büyük harf yapıştırma özelliği ${next ? "etkinleştirildi" : "devre dışı bırakıldı"}.`, "info");
+  } catch (e) {
+    showToast("Büyük harf yapıştırma ayarı değiştirilemedi: " + e.message, "error");
   }
 };
 api.onServerStatusUpdate((status) => {
@@ -1917,7 +1962,8 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
   sPopupTimeout,
   sAutoStart,
   sPreventDuplicate,
-  sLogoutBtn
+  sLogoutBtn,
+  sClipboardUpper
 }, refreshSidebarProfile);
 window.deletePriority = async (id) => {
   const confirmed = await showConfirm(

@@ -7,7 +7,8 @@ export function initSettingsLogic(
 ) {
     const {
         sPersonnelName, sUserRole, sShortcutClear, sShortcutCopy,
-        sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sLogoutBtn
+        sPopupSize, sPopupTimeout, sAutoStart, sPreventDuplicate, sLogoutBtn,
+        sClipboardUpper
     } = elements
 
     let initialRole = ''
@@ -31,6 +32,7 @@ export function initSettingsLogic(
         sPopupTimeout.value = String(s.popupTimeout || 5000)
         sAutoStart.checked = s.autoStartEnabled || false
         sPreventDuplicate.checked = s.preventDuplicatePopup || false
+        sClipboardUpper.checked = s.clipboardUpperEnabled !== false
 
         if (sLogoutBtn) {
             sLogoutBtn.textContent = logoutLabel
@@ -51,7 +53,8 @@ export function initSettingsLogic(
             popupSizeLevel: parseInt(sPopupSize.value),
             popupTimeout: parseInt(sPopupTimeout.value),
             autoStartEnabled: sAutoStart.checked,
-            preventDuplicatePopup: sPreventDuplicate.checked
+            preventDuplicatePopup: sPreventDuplicate.checked,
+            clipboardUpperEnabled: sClipboardUpper.checked
         }
 
         try {
@@ -84,6 +87,7 @@ export function initSettingsLogic(
     sPopupTimeout.addEventListener('input', () => triggerAutoSave(500))
     sAutoStart.addEventListener('change', () => triggerAutoSave(0))
     sPreventDuplicate.addEventListener('change', () => triggerAutoSave(0))
+    sClipboardUpper.addEventListener('change', () => triggerAutoSave(0))
 
     function setupShortcutRecorder(input: HTMLInputElement) {
         input.onkeydown = (e) => {

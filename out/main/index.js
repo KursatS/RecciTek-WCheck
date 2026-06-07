@@ -8,6 +8,7 @@ const XLSX = require("xlsx");
 const dateFns = require("date-fns");
 const firestore = require("firebase/firestore");
 const app$2 = require("firebase/app");
+const child_process = require("child_process");
 const electronUpdater = require("electron-updater");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
@@ -279,6 +280,7 @@ function loadSettings() {
     doubleCopyEnabled: true,
     autoStartEnabled: false,
     preventDuplicatePopup: true,
+    clipboardUpperEnabled: true,
     shortcuts: {
       clearCache: "CommandOrControl+Shift+X",
       toggleMonitoring: "CommandOrControl+Shift+C"
@@ -1169,6 +1171,28 @@ function handleDoubleCopy() {
     windowManager.closePopup();
   }
 }
+function handleClipboardUpper() {
+  const text = electron$1.clipboard.readText();
+  if (text) {
+    const upperText = text.toLocaleUpperCase("tr-TR");
+    electron$1.clipboard.writeText(upperText);
+    if (process.platform === "win32") {
+      const vbsPath = path__namespace.join(electron$1.app.getPath("userData"), "paste.vbs");
+      try {
+        if (!fs__namespace.existsSync(vbsPath)) {
+          fs__namespace.writeFileSync(vbsPath, 'WScript.Sleep 100\r\nSet w = CreateObject("WScript.Shell")\r\nw.SendKeys "^v"\r\n');
+        }
+        child_process.exec(`wscript.exe "${vbsPath}"`, (err) => {
+          if (err) {
+            console.error("VBScript paste failed:", err);
+          }
+        });
+      } catch (e) {
+        console.error("Error simulating paste:", e);
+      }
+    }
+  }
+}
 function shouldSkipDetection(serial) {
   if (!currentSettings.isLoggedIn) return true;
   if (currentSettings.preventDuplicatePopup && serial === lastDetectedSerial) return true;
@@ -1226,6 +1250,7 @@ function setupIpcHandlers() {
     doubleCopyEnabled: currentSettings.doubleCopyEnabled,
     autoStartEnabled: currentSettings.autoStartEnabled,
     preventDuplicatePopup: currentSettings.preventDuplicatePopup,
+    clipboardUpperEnabled: currentSettings.clipboardUpperEnabled !== false,
     shortcuts: currentSettings.shortcuts,
     role: currentSettings.role,
     personnelName: currentSettings.personnelName,
@@ -1607,6 +1632,15 @@ function registerShortcuts() {
       });
     } catch (e) {
       console.error("Failed to register double copy shortcut:", e);
+    }
+  }
+  if (currentSettings.clipboardUpperEnabled !== false) {
+    try {
+      electron$1.globalShortcut.register("CommandOrControl+Shift+V", () => {
+        handleClipboardUpper();
+      });
+    } catch (e) {
+      console.error("Failed to register clipboard upper shortcut:", e);
     }
   }
   if (currentSettings.shortcuts) {

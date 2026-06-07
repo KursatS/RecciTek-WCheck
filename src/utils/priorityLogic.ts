@@ -1,5 +1,20 @@
 import { escapeHtml } from './html'
 
+function formatTimestamp(timestampMs: number | null | undefined): string {
+    if (!timestampMs) return 'tarih verisi bulunamadı'
+    try {
+        const date = new Date(timestampMs)
+        const day = String(date.getDate()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const year = date.getFullYear()
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${day}.${month}.${year} ${hours}:${minutes}`
+    } catch (e) {
+        return 'tarih verisi bulunamadı'
+    }
+}
+
 export function initPriorityLogic(api: any, elements: any) {
     const { prioList, addPrioBtn, pSerial, pCustomer, pDesc } = elements
 
@@ -83,7 +98,7 @@ export function initPriorityLogic(api: any, elements: any) {
                         <input type="text" id="edit-prio-serial-${d.id}" value="${escapeHtml(d.serial)}" class="priority-input" placeholder="Seri No">
                         <input type="text" id="edit-prio-desc-${d.id}" value="${escapeHtml(d.description)}" class="priority-input" placeholder="Açıklama">
                         <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top:4px;">
-                            Ekleyen: ${escapeHtml(d.created_by || 'Bilinmiyor')}
+                            Ekleyen: ${escapeHtml(d.created_by || 'Bilinmiyor')} | Tarih: ${formatTimestamp(d.created_at)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">
@@ -98,7 +113,7 @@ export function initPriorityLogic(api: any, elements: any) {
                         <div class="priority-item-serial">${escapeHtml(d.serial)}</div>
                         <div class="priority-item-desc">${escapeHtml(d.description)}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-                            Ekleyen: ${escapeHtml(d.created_by || 'Bilinmiyor')}
+                            Ekleyen: ${escapeHtml(d.created_by || 'Bilinmiyor')} | Tarih: ${formatTimestamp(d.created_at)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px; padding-left: 10px; align-items:center;">

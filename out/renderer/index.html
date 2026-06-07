@@ -466,7 +466,7 @@
       color: var(--text-muted);
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-YkxHz2AG.js"></script>
+  <script type="module" crossorigin src="./assets/index-BUgXwX2O.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/input-D3DAzxkw.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
@@ -598,6 +598,9 @@
             <span>👁️ Clipboard İzleme: Aktif</span>
           </button>
           <button id="double-copy-toggle" class="btn btn-warning">🔄 Double Copy: Kapalı</button>
+          <button id="clipboard-upper-toggle" class="btn btn-primary" title="Ctrl+Shift+V kısayolu ile panodaki yazıları otomatik olarak Türkçe büyük harfe dönüştürür ve yapıştırır.">
+            <span>🔠 Büyük Harf Yapıştır: Aktif</span>
+          </button>
           <button id="clear-cache" class="btn btn-danger">🗑️ Temizle</button>
         </div>
 
@@ -822,6 +825,10 @@
               <div><div class="setting-label">Aynı Seriyi Engelle</div><div class="setting-desc">Tekrar eden popup bildirimlerini önler</div></div>
               <label class="toggle-switch"><input type="checkbox" id="prevent-duplicate"><span class="toggle-slider"></span></label>
             </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Büyük Harf Yapıştır</div><div class="setting-desc">Ctrl+Shift+V ile panoyu büyük harfe dönüştürür ve yapıştırır</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="clipboard-upper"><span class="toggle-slider"></span></label>
+            </div>
           </div>
 
           <!-- Tema Seçimi -->
@@ -847,10 +854,6 @@
               </div>
             </div>
           </div>
-
-          <button id="save-settings-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 8px;">
-            Değişiklikleri Kaydet
-          </button>
           <button id="logout-btn" class="btn btn-danger" style="width: 100%; justify-content: center; padding: 14px; margin-top: 12px;">
             Oturumdan Çıkış Yap
           </button>
