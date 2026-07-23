@@ -326,8 +326,14 @@ class WindowManager {
     this.preloadPath = path__namespace.join(__dirname, "../preload/index.js");
   }
   loadFile(win, fileName) {
-    if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
-      win.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}/${fileName}`);
+    if (is.dev) {
+      if (fileName === "deviceCallToast.html") {
+        win.loadFile(path__namespace.join(electron$1.app.getAppPath(), "src", fileName));
+      } else if (process.env["ELECTRON_RENDERER_URL"]) {
+        win.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}/${fileName}`);
+      } else {
+        win.loadFile(path__namespace.join(__dirname, `../renderer/${fileName}`));
+      }
     } else {
       win.loadFile(path__namespace.join(__dirname, `../renderer/${fileName}`));
     }

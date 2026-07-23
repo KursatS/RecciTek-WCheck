@@ -30,9 +30,11 @@ export default defineConfig({
                     index: resolve(__dirname, 'src/index.html'),
                     splash: resolve(__dirname, 'src/splash.html'),
                     popup: resolve(__dirname, 'src/popup.html'),
-                    login: resolve(__dirname, 'src/login.html')
+                    login: resolve(__dirname, 'src/login.html'),
+                    deviceCallToast: resolve(__dirname, 'src/deviceCallToast.html')
                 }
             }
         }
     }
 })
+

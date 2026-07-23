@@ -38,8 +38,16 @@ export class WindowManager {
     }
 
     private loadFile(win: BrowserWindow, fileName: string): void {
-        if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-            win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${fileName}`);
+        if (is.dev) {
+            if (fileName === 'deviceCallToast.html') {
+                // Standalone HTML — not part of Vite dev server, load from src/ directly
+                // app.getAppPath() gives the project root in dev mode
+                win.loadFile(path.join(app.getAppPath(), 'src', fileName));
+            } else if (process.env['ELECTRON_RENDERER_URL']) {
+                win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${fileName}`);
+            } else {
+                win.loadFile(path.join(__dirname, `../renderer/${fileName}`));
+            }
         } else {
             win.loadFile(path.join(__dirname, `../renderer/${fileName}`));
         }

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Cihaz Çağrısı</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',-apple-system,sans-serif; -moz-user-select:none; user-select:none; -webkit-user-select:none; }
+
+    html, body {
+      width: 440px;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 440px;
+      min-height: 100px;
+      background: linear-gradient(135deg, #1a2540 0%, #0d1420 100%);
+      border-radius: 18px;
+      padding: 20px 22px 18px;
+      position: relative;
+      animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    /* ── Search state (others) ── */
+    .card-search {
+      border: 1.5px solid rgba(245, 158, 11, 0.55);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65),
+                  0 0 0 1px rgba(245,158,11,0.15),
+                  0 0 60px rgba(245,158,11,0.08);
+    }
+
+    /* ── Waiting state (caller) ── */
+    .card-waiting {
+      border: 1.5px solid rgba(56, 189, 248, 0.55);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65),
+                  0 0 0 1px rgba(56,189,248,0.15),
+                  0 0 60px rgba(56,189,248,0.07);
+    }
+
+    /* ── Resolved state (caller only) ── */
+    .card-resolved {
+      border: 1.5px solid rgba(34, 197, 94, 0.6);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65),
+                  0 0 0 1px rgba(34,197,94,0.2),
+                  0 0 60px rgba(34,197,94,0.1);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .badge-search { color: #f59e0b; }
+    .badge-waiting { color: #38bdf8; }
+    .badge-resolved { color: #22c55e; }
+
+    .pulse {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .pulse-amber { background: #f59e0b; }
+    .pulse-blue { background: #38bdf8; }
+
+    .model-name {
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+
+    .info-line {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .caller-line {
+      font-size: 0.72rem;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn-here {
+      flex: 1;
+      padding: 10px 0;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+    }
+    .btn-here:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(22,163,74,0.45); }
+    .btn-here:active { transform: translateY(0); }
+    .btn-here:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+    .btn-nothere {
+      flex: 1;
+      padding: 10px 0;
+      background: rgba(255,255,255,0.07);
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-nothere:hover { background: rgba(255,255,255,0.12); color: #cbd5e1; }
+
+    .btn-cancel {
+      width: 100%;
+      padding: 10px 0;
+      background: rgba(248,113,113,0.1);
+      color: #f87171;
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-top: 14px;
+    }
+    .btn-cancel:hover { background: rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.5); }
+    .btn-cancel:disabled { opacity: 0.5; cursor: default; }
+
+    /* ── Resolved card ── */
+    .resolved-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .check-icon { font-size: 2rem; line-height: 1; }
+    .resolved-label {
+      font-size: 0.7rem;
+      color: #22c55e;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 5px;
+    }
+    .resolved-who {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 3px;
+    }
+    .resolved-device { font-size: 0.78rem; color: #94a3b8; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-20px) scale(0.94); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.72); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── STATE: Search (shown to OTHERS — not the caller) ── -->
+<div class="card card-search" id="view-search" style="display:none;">
+  <div class="badge badge-search">
+    <span class="pulse pulse-amber"></span>
+    Cihaz Aranıyor
+  </div>
+  <div class="model-name" id="s-model">—</div>
+  <div class="info-line">Seri: <strong id="s-serial">—</strong></div>
+  <div class="info-line" id="s-customer-wrap" style="display:none;">Müşteri: <strong id="s-customer"></strong></div>
+  <div class="caller-line">Çağrı yapan: <span id="s-caller">—</span></div>
+  <div class="btn-row">
+    <button class="btn-here" id="btn-here">📱 Cihaz Bende</button>
+    <button class="btn-nothere" id="btn-nothere">Bende Değil</button>
+  </div>
+</div>
+
+<!-- ── STATE: Waiting (shown ONLY to the caller — isMine) ── -->
+<div class="card card-waiting" id="view-waiting" style="display:none;">
+  <div class="badge badge-waiting">
+    <span class="pulse pulse-blue"></span>
+    Çağrı Gönderildi — Yanıt Bekleniyor
+  </div>
+  <div class="model-name" id="w-model">—</div>
+  <div class="info-line">Seri: <strong id="w-serial">—</strong></div>
+  <div class="info-line" id="w-customer-wrap" style="display:none;">Müşteri: <strong id="w-customer"></strong></div>
+
+  <!-- Live personnel status list -->
+  <div id="w-personnel-wrap" style="display:none;margin-top:12px;">
+    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#475569;margin-bottom:7px;">Personel Durumu</div>
+    <div id="w-personnel-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+  </div>
+
+  <button class="btn-cancel" id="btn-cancel">✕ Çağrıyı İptal Et</button>
+</div>
+
+<!-- ── STATE: Resolved (shown ONLY to the caller when someone clicks Bende) ── -->
+<div class="card card-resolved" id="view-resolved" style="display:none;">
+  <div class="resolved-wrap">
+    <div class="check-icon">✅</div>
+    <div>
+      <div class="resolved-label">Cihaz Bulundu!</div>
+      <div class="resolved-who" id="r-who">—</div>
+      <div class="resolved-device" id="r-device">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const api = window.electronAPI;
+  let callId = null;
+
+  // ── Receive initial data from main process ──────────────────────────
+  api.onDeviceCallToastData((data) => {
+    callId = data.id;
+
+    if (data.isMine) {
+      // Caller: show waiting view
+      document.getElementById('w-model').textContent = data.model_name || '—';
+      document.getElementById('w-serial').textContent = data.serial || '—';
+      if (data.customer_name) {
+        document.getElementById('w-customer').textContent = data.customer_name;
+        document.getElementById('w-customer-wrap').style.display = '';
+      }
+      show('view-waiting');
+    } else {
+      // Others: show search view
+      document.getElementById('s-model').textContent = data.model_name || '—';
+      document.getElementById('s-serial').textContent = data.serial || '—';
+      document.getElementById('s-caller').textContent = data.created_by || '—';
+      if (data.customer_name) {
+        document.getElementById('s-customer').textContent = data.customer_name;
+        document.getElementById('s-customer-wrap').style.display = '';
+      }
+      show('view-search');
+    }
+  });
+
+  // ── Resolution event: caller sees who found it ──────────────────────
+  api.onDeviceCallToastResolve((data) => {
+    document.getElementById('r-who').textContent =
+      (data.resolved_by || '?') + ' cihazın kendisinde olduğunu belirtti.';
+    document.getElementById('r-device').textContent =
+      (data.model_name || '') + ' · ' + (data.serial || '');
+    show('view-resolved');
+    // Main process closes this window after 8s
+  });
+
+  // ── Live personnel status update (caller only) ───────────────────────
+  api.onDeviceCallStatusUpdate((statusData) => {
+    updatePersonnelList(statusData.recipients || [], statusData.dismissed_by || []);
+  });
+
+  function updatePersonnelList(recipients, dismissedBy) {
+    if (!recipients || recipients.length === 0) return;
+
+    const wrap = document.getElementById('w-personnel-wrap');
+    const list = document.getElementById('w-personnel-list');
+    wrap.style.display = '';
+    list.innerHTML = '';
+
+    const dismissedSet = new Set(dismissedBy || []);
+
+    recipients.forEach(name => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.04);';
+
+      const isDismissed = dismissedSet.has(name);
+
+      const icon = document.createElement('span');
+      icon.style.cssText = 'font-size:0.85rem;line-height:1;flex-shrink:0;';
+      icon.textContent = isDismissed ? '❌' : '⏳';
+
+      const nameEl = document.createElement('span');
+      nameEl.style.cssText = `font-size:0.82rem;font-weight:600;color:${isDismissed ? '#64748b' : '#cbd5e1'};${isDismissed ? 'text-decoration:line-through;' : ''}`;
+      nameEl.textContent = name;
+
+      const statusEl = document.createElement('span');
+      statusEl.style.cssText = `font-size:0.72rem;margin-left:auto;font-weight:500;color:${isDismissed ? '#f87171' : '#94a3b8'};`;
+      statusEl.textContent = isDismissed ? 'Bende Değil' : 'Yanıt Bekleniyor';
+
+      row.appendChild(icon);
+      row.appendChild(nameEl);
+      row.appendChild(statusEl);
+      list.appendChild(row);
+    });
+  }
+
+  // ── Buttons ──────────────────────────────────────────────────────────
+  document.getElementById('btn-here').onclick = () => {
+    const btn = document.getElementById('btn-here');
+    btn.textContent = 'Gönderiliyor...';
+    btn.disabled = true;
+    document.getElementById('btn-nothere').disabled = true;
+    api.deviceCallAction({ action: 'here', callId });
+  };
+
+  document.getElementById('btn-nothere').onclick = () => {
+    // Local dismiss only — main process closes this window
+    api.deviceCallAction({ action: 'nothere', callId });
+  };
+
+  document.getElementById('btn-cancel').onclick = () => {
+    const btn = document.getElementById('btn-cancel');
+    btn.textContent = 'İptal ediliyor...';
+    btn.disabled = true;
+    // Marks call as cancelled in Firestore → all windows close via listener
+    api.deviceCallAction({ action: 'cancel', callId });
+  };
+
+  // ── Helper ───────────────────────────────────────────────────────────
+  function show(id) {
+    ['view-search', 'view-waiting', 'view-resolved'].forEach(v => {
+      document.getElementById(v).style.display = v === id ? '' : 'none';
+    });
+  }
+</script>
+
+</body>
+</html>
+
