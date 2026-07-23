@@ -1019,17 +1019,40 @@ app.whenReady().then(() => {
       }
     });
 
+    let lastUpdateCheckResult: any = null;
+
     ipcMain.handle('check-for-updates', async () => {
       try {
         const result = await autoUpdater.checkForUpdates();
+        lastUpdateCheckResult = result;
         return { success: true, updateInfo: result?.updateInfo };
       } catch (err: any) {
         return { success: false, error: err?.message || 'Güncelleme kontrolü başarısız' };
       }
     });
 
-    ipcMain.on('start-update-download', () => {
-      autoUpdater.downloadUpdate();
+    ipcMain.on('start-update-download', async () => {
+      try {
+        // If we have a cancellationToken from the check, use it; otherwise re-check first
+        if (lastUpdateCheckResult?.cancellationToken) {
+          await autoUpdater.downloadUpdate(lastUpdateCheckResult.cancellationToken);
+        } else {
+          // Fallback: re-check and download
+          const result = await autoUpdater.checkForUpdates();
+          lastUpdateCheckResult = result;
+          if (result?.cancellationToken) {
+            await autoUpdater.downloadUpdate(result.cancellationToken);
+          } else {
+            await autoUpdater.downloadUpdate();
+          }
+        }
+      } catch (err: any) {
+        console.error('Download update error:', err?.message);
+        const mainWindow = windowManager?.getMainWindow();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-error', err?.message || 'İndirme başarısız');
+        }
+      }
     });
 
     ipcMain.on('install-update', () => {
@@ -1042,7 +1065,9 @@ app.whenReady().then(() => {
 
     // Run update check 3 seconds after startup
     setTimeout(() => {
-      autoUpdater.checkForUpdates().catch((err) => {
+      autoUpdater.checkForUpdates().then(result => {
+        lastUpdateCheckResult = result;
+      }).catch((err) => {
         console.log('Startup update check failed:', err?.message);
       });
     }, 3000);

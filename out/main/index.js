@@ -2032,16 +2032,36 @@ electron$1.app.whenReady().then(() => {
         mainWindow.webContents.send("update-downloaded");
       }
     });
+    let lastUpdateCheckResult = null;
     electron$1.ipcMain.handle("check-for-updates", async () => {
       try {
         const result = await electronUpdater.autoUpdater.checkForUpdates();
+        lastUpdateCheckResult = result;
         return { success: true, updateInfo: result?.updateInfo };
       } catch (err) {
         return { success: false, error: err?.message || "Güncelleme kontrolü başarısız" };
       }
     });
-    electron$1.ipcMain.on("start-update-download", () => {
-      electronUpdater.autoUpdater.downloadUpdate();
+    electron$1.ipcMain.on("start-update-download", async () => {
+      try {
+        if (lastUpdateCheckResult?.cancellationToken) {
+          await electronUpdater.autoUpdater.downloadUpdate(lastUpdateCheckResult.cancellationToken);
+        } else {
+          const result = await electronUpdater.autoUpdater.checkForUpdates();
+          lastUpdateCheckResult = result;
+          if (result?.cancellationToken) {
+            await electronUpdater.autoUpdater.downloadUpdate(result.cancellationToken);
+          } else {
+            await electronUpdater.autoUpdater.downloadUpdate();
+          }
+        }
+      } catch (err) {
+        console.error("Download update error:", err?.message);
+        const mainWindow = windowManager?.getMainWindow();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("update-error", err?.message || "İndirme başarısız");
+        }
+      }
     });
     electron$1.ipcMain.on("install-update", () => {
       electronUpdater.autoUpdater.autoInstallOnAppQuit = false;
@@ -2049,7 +2069,9 @@ electron$1.app.whenReady().then(() => {
       setTimeout(() => electron$1.app.exit(0), 500);
     });
     setTimeout(() => {
-      electronUpdater.autoUpdater.checkForUpdates().catch((err) => {
+      electronUpdater.autoUpdater.checkForUpdates().then((result) => {
+        lastUpdateCheckResult = result;
+      }).catch((err) => {
         console.log("Startup update check failed:", err?.message);
       });
     }, 3e3);

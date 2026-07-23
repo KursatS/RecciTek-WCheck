@@ -870,6 +870,16 @@ const { loadAdminUsers } = initAdminLogic(api, {
             updateCheckStatus.style.color = '#f87171'
             updateCheckStatus.textContent = `⚠️ Kontrol hatası: ${err}`
         }
+        // If error fires during download, restore the download button
+        if (updateState === 'downloading') {
+            updateState = 'available'
+            actionBtn.textContent = '⚡ İndir'
+            actionBtn.disabled = false
+            actionBtn.style.opacity = '1'
+            actionBtn.style.background = 'linear-gradient(135deg,#38bdf8,#0284c7)'
+            actionBtn.style.boxShadow = '0 0 12px rgba(56,189,248,0.4)'
+            actionBtn.style.cursor = 'pointer'
+        }
         if (btnCheckUpdate) {
             btnCheckUpdate.textContent = '🔍 Güncellemeleri Kontrol Et'
             btnCheckUpdate.disabled = false
