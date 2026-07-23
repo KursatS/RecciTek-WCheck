@@ -2095,14 +2095,14 @@ const { loadAdminUsers } = initAdminLogic(api, {
 (function setupAutoUpdater() {
   const bar = document.createElement("div");
   bar.id = "update-bar";
-  bar.style.cssText = "display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid var(--accent);padding:10px 20px;align-items:center;gap:12px;font-size:0.85rem;color:var(--text-main);";
+  bar.style.cssText = "display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-top:1px solid #38bdf8;padding:12px 24px;align-items:center;gap:14px;font-size:0.9rem;color:#f8fafc;box-shadow:0 -4px 24px rgba(0,0,0,0.5);";
   bar.innerHTML = `
-        <span id="update-msg">&#128276; Yeni sürüm mevcut!</span>
-        <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
-            <div id="update-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s;"></div>
+        <span id="update-msg" style="font-weight:600;flex:1;">📢 Yeni sürüm mevcut!</span>
+        <div id="update-progress-wrap" style="display:none;flex:1;max-width:200px;height:8px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;">
+            <div id="update-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#0284c7);border-radius:4px;transition:width 0.3s;"></div>
         </div>
-        <button id="update-action-btn" style="padding:6px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">İndir</button>
-        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;">&#10005;</button>
+        <button id="update-action-btn" style="padding:8px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#0284c7);color:#ffffff;cursor:pointer;font-size:0.85rem;font-weight:700;box-shadow:0 0 12px rgba(56,189,248,0.4);transition:all 0.2s;">İndir</button>
+        <button id="update-dismiss-btn" style="padding:6px 10px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:1.2rem;line-height:1;">&#10005;</button>
     `;
   document.body.appendChild(bar);
   const updateMsg = document.getElementById("update-msg");
@@ -2112,11 +2112,18 @@ const { loadAdminUsers } = initAdminLogic(api, {
   const dismissBtn = document.getElementById("update-dismiss-btn");
   const btnCheckUpdate = document.getElementById("btn-check-update");
   const updateCheckStatus = document.getElementById("update-check-status");
+  let updateState = "idle";
   api.onUpdateAvailable((version) => {
+    updateState = "available";
     updateMsg.textContent = `📢 Yeni sürüm mevcut: v${version}`;
     bar.style.display = "flex";
-    updateState = "available";
-    actionBtn.textContent = "İndir";
+    actionBtn.textContent = "⚡ İndir";
+    actionBtn.disabled = false;
+    actionBtn.style.opacity = "1";
+    actionBtn.style.background = "linear-gradient(135deg,#38bdf8,#0284c7)";
+    actionBtn.style.color = "#ffffff";
+    actionBtn.style.boxShadow = "0 0 12px rgba(56,189,248,0.4)";
+    actionBtn.style.cursor = "pointer";
     if (updateCheckStatus) {
       updateCheckStatus.style.color = "#38bdf8";
       updateCheckStatus.textContent = `📢 Yeni sürüm bulundu: v${version}`;
@@ -2154,16 +2161,26 @@ const { loadAdminUsers } = initAdminLogic(api, {
   api.onUpdateDownloaded(() => {
     updateState = "ready";
     progressWrap.style.display = "none";
-    updateMsg.textContent = "✓ Güncelleme hazır!";
-    actionBtn.textContent = "Güncelle";
+    updateMsg.textContent = "✓ Güncelleme hazır! Uygulamayı yeniden başlatıp yükleyin.";
+    actionBtn.textContent = "🚀 Şimdi Güncelle";
+    actionBtn.disabled = false;
+    actionBtn.style.opacity = "1";
+    actionBtn.style.background = "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)";
+    actionBtn.style.color = "#ffffff";
+    actionBtn.style.fontWeight = "800";
+    actionBtn.style.boxShadow = "0 0 16px rgba(34, 197, 94, 0.6)";
+    actionBtn.style.cursor = "pointer";
   });
   actionBtn.onclick = () => {
-    if (updateState === "available") {
+    if (updateState === "available" || updateState === "idle") {
       updateState = "downloading";
-      actionBtn.textContent = "İndiriliyor...";
-      actionBtn.style.opacity = "0.6";
+      actionBtn.textContent = "⏳ İndiriliyor...";
+      actionBtn.style.opacity = "0.7";
+      actionBtn.disabled = true;
       api.startUpdateDownload();
     } else if (updateState === "ready") {
+      actionBtn.textContent = "Yükleniyor...";
+      actionBtn.disabled = true;
       api.installUpdate();
     }
   };
@@ -2179,13 +2196,34 @@ const { loadAdminUsers } = initAdminLogic(api, {
         updateCheckStatus.textContent = "GitHub sunucularına bağlanılıyor...";
       }
       try {
-        await api.checkForUpdates();
+        const res = await api.checkForUpdates();
+        if (res && res.updateInfo && res.updateInfo.version) {
+          updateState = "available";
+          updateMsg.textContent = `📢 Yeni sürüm mevcut: v${res.updateInfo.version}`;
+          bar.style.display = "flex";
+          actionBtn.textContent = "⚡ İndir";
+          actionBtn.disabled = false;
+          actionBtn.style.opacity = "1";
+          actionBtn.style.background = "linear-gradient(135deg,#38bdf8,#0284c7)";
+          actionBtn.style.color = "#ffffff";
+          actionBtn.style.boxShadow = "0 0 12px rgba(56,189,248,0.4)";
+          actionBtn.style.cursor = "pointer";
+          if (updateCheckStatus) {
+            updateCheckStatus.style.color = "#38bdf8";
+            updateCheckStatus.textContent = `📢 Yeni sürüm bulundu: v${res.updateInfo.version}`;
+          }
+          btnCheckUpdate.textContent = "🔄 Tekrar Denetle";
+        }
       } catch (e) {
-        btnCheckUpdate.disabled = false;
-        btnCheckUpdate.textContent = "🔍 Güncellemeleri Kontrol Et";
         if (updateCheckStatus) {
           updateCheckStatus.style.color = "#f87171";
           updateCheckStatus.textContent = "⚠️ Güncelleme kontrolü başlatılamadı.";
+        }
+        btnCheckUpdate.textContent = "🔍 Güncellemeleri Kontrol Et";
+      } finally {
+        btnCheckUpdate.disabled = false;
+        if (btnCheckUpdate.textContent === "⏳ Kontrol Ediliyor...") {
+          btnCheckUpdate.textContent = "🔍 Güncellemeleri Kontrol Et";
         }
       }
     };

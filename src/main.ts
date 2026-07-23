@@ -674,6 +674,19 @@ function setupIpcHandlers() {
   });
 }
 
+function normalizeName(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
 function startDeviceCallsListener() {
   if (deviceCallsUnsubscribe) {
     deviceCallsUnsubscribe();
@@ -693,13 +706,19 @@ function startDeviceCallsListener() {
     }
 
     const myName = currentSettings.personnelName || '';
+    const myUsername = currentSettings.username || '';
     const myRole = currentSettings.role;
 
     // Only show toasts for kargo_kabul
     if (myRole !== 'kargo_kabul') return;
 
     calls.forEach((call: any) => {
-      const isMine = call.created_by === myName;
+      const creatorClean = normalizeName(call.created_by);
+      const isMine = creatorClean !== '' && (
+        creatorClean === normalizeName(myName) ||
+        creatorClean === normalizeName(myUsername)
+      );
+
       const prevStatus = shownCalls.get(call.id);
 
       if (call.status === 'active') {

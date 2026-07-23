@@ -379,10 +379,10 @@ export class WindowManager {
         }
 
         const { width } = screen.getPrimaryDisplay().workAreaSize;
-        const toastWidth = 420;
-        const toastHeight = data.isMine ? 170 : 215;
+        const toastWidth = 440;
+        const toastHeight = data.isMine ? 240 : 270;
         const x = Math.round((width - toastWidth) / 2);
-        const y = 16;
+        const y = 20;
 
         const win = new BrowserWindow({
             width: toastWidth,

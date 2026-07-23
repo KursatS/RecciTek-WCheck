@@ -620,10 +620,10 @@ class WindowManager {
       }
     }
     const { width } = electron$1.screen.getPrimaryDisplay().workAreaSize;
-    const toastWidth = 420;
-    const toastHeight = data.isMine ? 170 : 215;
+    const toastWidth = 440;
+    const toastHeight = data.isMine ? 240 : 270;
     const x = Math.round((width - toastWidth) / 2);
-    const y = 16;
+    const y = 20;
     const win = new electron$1.BrowserWindow({
       width: toastWidth,
       height: toastHeight,
@@ -1744,6 +1744,9 @@ function setupIpcHandlers() {
     }
   });
 }
+function normalizeName(str) {
+  return (str || "").toLowerCase().replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ç/g, "c").replace(/\s+/g, "").trim();
+}
 function startDeviceCallsListener() {
   if (deviceCallsUnsubscribe) {
     deviceCallsUnsubscribe();
@@ -1756,10 +1759,12 @@ function startDeviceCallsListener() {
       mainWin.webContents.send("device-calls-update", calls);
     }
     const myName = currentSettings.personnelName || "";
+    const myUsername = currentSettings.username || "";
     const myRole = currentSettings.role;
     if (myRole !== "kargo_kabul") return;
     calls.forEach((call) => {
-      const isMine = call.created_by === myName;
+      const creatorClean = normalizeName(call.created_by);
+      const isMine = creatorClean !== "" && (creatorClean === normalizeName(myName) || creatorClean === normalizeName(myUsername));
       const prevStatus = shownCalls.get(call.id);
       if (call.status === "active") {
         if (!prevStatus) {
