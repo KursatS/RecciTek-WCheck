@@ -621,9 +621,10 @@ class WindowManager {
     }
     const { width } = electron$1.screen.getPrimaryDisplay().workAreaSize;
     const toastWidth = 440;
-    const toastHeight = data.isMine ? 240 : 270;
+    const hasCustomer = !!(data.customer_name && data.customer_name.trim());
+    const toastHeight = data.isMine ? hasCustomer ? 280 : 256 : hasCustomer ? 268 : 242;
     const x = Math.round((width - toastWidth) / 2);
-    const y = 20;
+    const y = 24;
     const win = new electron$1.BrowserWindow({
       width: toastWidth,
       height: toastHeight,
@@ -649,7 +650,11 @@ class WindowManager {
     win.once("ready-to-show", () => {
       if (!win.isDestroyed()) {
         win.showInactive();
-        win.webContents.send("device-call-toast-data", data);
+        setTimeout(() => {
+          if (!win.isDestroyed()) {
+            win.webContents.send("device-call-toast-data", data);
+          }
+        }, 80);
       }
     });
     win.on("closed", () => {
@@ -660,6 +665,12 @@ class WindowManager {
     const win = this.deviceCallToasts.get(callId);
     if (win && !win.isDestroyed()) {
       win.webContents.send("device-call-toast-resolve", data);
+    }
+  }
+  sendDeviceCallStatusUpdate(callId, statusData) {
+    const win = this.deviceCallToasts.get(callId);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("device-call-status-update", statusData);
     }
   }
   closeDeviceCallToast(callId) {
@@ -1146,7 +1157,11 @@ async function createDeviceCall(data) {
     created_at: firestore.serverTimestamp(),
     status: "active",
     resolved_by: "",
-    resolved_at: null
+    resolved_at: null,
+    recipients: [],
+    // Personnel who received the popup
+    dismissed_by: []
+    // Personnel who clicked "Bende Değil"
   });
   return docRef.id;
 }
@@ -1161,6 +1176,16 @@ async function cancelDeviceCall(id) {
   await firestore.updateDoc(firestore.doc(db, DEVICE_CALLS_COLLECTION, id), {
     status: "cancelled",
     resolved_at: firestore.serverTimestamp()
+  });
+}
+async function markDeviceCallRecipient(id, name) {
+  await firestore.updateDoc(firestore.doc(db, DEVICE_CALLS_COLLECTION, id), {
+    recipients: firestore.arrayUnion(name)
+  });
+}
+async function dismissDeviceCallBy(id, name) {
+  await firestore.updateDoc(firestore.doc(db, DEVICE_CALLS_COLLECTION, id), {
+    dismissed_by: firestore.arrayUnion(name)
   });
 }
 function subscribeToDeviceCalls(callback) {
@@ -1740,6 +1765,12 @@ function setupIpcHandlers() {
         windowManager.closeDeviceCallToast(callId);
       }
     } else if (action === "nothere") {
+      const myName = currentSettings.personnelName || "Bilinmiyor";
+      try {
+        await dismissDeviceCallBy(callId, myName);
+      } catch (err) {
+        console.error("device-call-action nothere error:", err);
+      }
       windowManager.closeDeviceCallToast(callId);
     }
   });
@@ -1773,6 +1804,16 @@ function startDeviceCallsListener() {
             isMine
           });
           shownCalls.set(call.id, "active");
+          if (!isMine && myName) {
+            markDeviceCallRecipient(call.id, myName).catch(
+              (err) => console.error("markDeviceCallRecipient error:", err)
+            );
+          }
+        } else if (prevStatus === "active" && isMine) {
+          windowManager.sendDeviceCallStatusUpdate(call.id, {
+            recipients: call.recipients || [],
+            dismissed_by: call.dismissed_by || []
+          });
         }
       } else if (call.status === "resolved" || call.status === "cancelled") {
         if (prevStatus === "active") {

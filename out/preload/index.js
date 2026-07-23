@@ -79,6 +79,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // Device Call Toast window channels
   onDeviceCallToastData: (callback) => electron.ipcRenderer.on("device-call-toast-data", (_event, data) => callback(data)),
   onDeviceCallToastResolve: (callback) => electron.ipcRenderer.on("device-call-toast-resolve", (_event, data) => callback(data)),
+  onDeviceCallStatusUpdate: (callback) => electron.ipcRenderer.on("device-call-status-update", (_event, data) => callback(data)),
   deviceCallAction: (payload) => electron.ipcRenderer.send("device-call-action", payload),
   // Admin CRUD
   createUser: (data) => safeInvoke("create-user", data),

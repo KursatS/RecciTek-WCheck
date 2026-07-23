@@ -104,6 +104,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('device-call-toast-data', (_event, data) => callback(data)),
     onDeviceCallToastResolve: (callback: any) =>
         ipcRenderer.on('device-call-toast-resolve', (_event, data) => callback(data)),
+    onDeviceCallStatusUpdate: (callback: any) =>
+        ipcRenderer.on('device-call-status-update', (_event, data) => callback(data)),
     deviceCallAction: (payload: any) => ipcRenderer.send('device-call-action', payload),
 
     // Admin CRUD

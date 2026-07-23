@@ -380,9 +380,18 @@ export class WindowManager {
 
         const { width } = screen.getPrimaryDisplay().workAreaSize;
         const toastWidth = 440;
-        const toastHeight = data.isMine ? 240 : 270;
+        // Search state (others): model + serial + customer? + caller + 2 buttons
+        // Waiting state (caller): model + serial + customer? + cancel button
+        // Add room for customer line if present
+        const hasCustomer = !!(data.customer_name && data.customer_name.trim());
+        // isMine (caller/waiting view): badge + model + serial + [customer] + personnel list header + cancel btn
+        // Others (search view): badge + model + serial + [customer] + caller + 2 action btns
+        // Personnel list grows dynamically; start with enough for ~2 entries, window clips at max anyway
+        const toastHeight = data.isMine
+            ? (hasCustomer ? 280 : 256)
+            : (hasCustomer ? 268 : 242);
         const x = Math.round((width - toastWidth) / 2);
-        const y = 20;
+        const y = 24;
 
         const win = new BrowserWindow({
             width: toastWidth,
@@ -412,8 +421,13 @@ export class WindowManager {
 
         win.once('ready-to-show', () => {
             if (!win.isDestroyed()) {
-                win.showInactive(); // show without stealing focus
-                win.webContents.send('device-call-toast-data', data);
+                win.showInactive(); // show without stealing focus from active app
+                // Small delay ensures renderer JS is ready before receiving the data
+                setTimeout(() => {
+                    if (!win.isDestroyed()) {
+                        win.webContents.send('device-call-toast-data', data);
+                    }
+                }, 80);
             }
         });
 
@@ -426,6 +440,13 @@ export class WindowManager {
         const win = this.deviceCallToasts.get(callId);
         if (win && !win.isDestroyed()) {
             win.webContents.send('device-call-toast-resolve', data);
+        }
+    }
+
+    sendDeviceCallStatusUpdate(callId: string, statusData: any): void {
+        const win = this.deviceCallToasts.get(callId);
+        if (win && !win.isDestroyed()) {
+            win.webContents.send('device-call-status-update', statusData);
         }
     }
 

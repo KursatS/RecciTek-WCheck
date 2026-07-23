@@ -27,7 +27,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData, parseZReportData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, cancelDeviceCall, subscribeToDeviceCalls } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, cancelDeviceCall, markDeviceCallRecipient, dismissDeviceCallBy, subscribeToDeviceCalls } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -668,6 +668,13 @@ function setupIpcHandlers() {
         windowManager.closeDeviceCallToast(callId);
       }
     } else if (action === 'nothere') {
+      // Write dismissal to Firestore so caller sees it in their status list
+      const myName = currentSettings.personnelName || 'Bilinmiyor';
+      try {
+        await dismissDeviceCallBy(callId, myName);
+      } catch (err) {
+        console.error('device-call-action nothere error:', err);
+      }
       // Close only this user's toast window for this call — do NOT resolve
       windowManager.closeDeviceCallToast(callId);
     }
@@ -729,6 +736,18 @@ function startDeviceCallsListener() {
             isMine
           });
           shownCalls.set(call.id, 'active');
+          // Register this user as a recipient in Firestore (only for non-callers)
+          if (!isMine && myName) {
+            markDeviceCallRecipient(call.id, myName).catch(err =>
+              console.error('markDeviceCallRecipient error:', err)
+            );
+          }
+        } else if (prevStatus === 'active' && isMine) {
+          // Relay live status update (recipients/dismissed_by) to caller's waiting window
+          windowManager.sendDeviceCallStatusUpdate(call.id, {
+            recipients: call.recipients || [],
+            dismissed_by: call.dismissed_by || []
+          });
         }
       } else if (call.status === 'resolved' || call.status === 'cancelled') {
         if (prevStatus === 'active') {

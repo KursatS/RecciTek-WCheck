@@ -313,7 +313,9 @@ export async function createDeviceCall(data: {
         created_at: serverTimestamp(),
         status: 'active',
         resolved_by: '',
-        resolved_at: null
+        resolved_at: null,
+        recipients: [],      // Personnel who received the popup
+        dismissed_by: []     // Personnel who clicked "Bende Değil"
     })
     return docRef.id
 }
@@ -330,6 +332,20 @@ export async function cancelDeviceCall(id: string): Promise<void> {
     await updateDoc(doc(db, DEVICE_CALLS_COLLECTION, id), {
         status: 'cancelled',
         resolved_at: serverTimestamp()
+    })
+}
+
+/** Called by main process when opening the popup for a recipient. */
+export async function markDeviceCallRecipient(id: string, name: string): Promise<void> {
+    await updateDoc(doc(db, DEVICE_CALLS_COLLECTION, id), {
+        recipients: arrayUnion(name)
+    })
+}
+
+/** Called when a recipient clicks "Bende Değil". */
+export async function dismissDeviceCallBy(id: string, name: string): Promise<void> {
+    await updateDoc(doc(db, DEVICE_CALLS_COLLECTION, id), {
+        dismissed_by: arrayUnion(name)
     })
 }
 
@@ -350,4 +366,3 @@ export function subscribeToDeviceCalls(
         callback(calls)
     }, (error) => console.error('Firestore listener error (DeviceCalls):', error))
 }
-
