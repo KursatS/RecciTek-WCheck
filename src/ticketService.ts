@@ -326,6 +326,13 @@ export async function resolveDeviceCall(id: string, resolved_by: string): Promis
     })
 }
 
+export async function cancelDeviceCall(id: string): Promise<void> {
+    await updateDoc(doc(db, DEVICE_CALLS_COLLECTION, id), {
+        status: 'cancelled',
+        resolved_at: serverTimestamp()
+    })
+}
+
 export function subscribeToDeviceCalls(
     callback: (calls: any[]) => void
 ): Unsubscribe {

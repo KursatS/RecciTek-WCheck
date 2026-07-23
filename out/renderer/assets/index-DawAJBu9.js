@@ -2329,24 +2329,39 @@ const { loadAdminUsers } = initAdminLogic(api, {
       }
     });
     resolvedCalls.forEach((call) => {
-      if (activeToasts.has(call.id)) {
-        const isMine = call.created_by === personnelName;
-        if (isMine && call.resolved_by) {
-          const existing = activeToasts.get(call.id);
-          existing.style.border = "1px solid rgba(34,197,94,0.5)";
-          existing.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:1.5rem;">✅</span>
-                            <div>
-                                <div style="font-size:0.72rem;color:#22c55e;font-weight:700;">Cihaz Bulundu!</div>
-                                <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.resolved_by} cihazın kendisinde olduğunu belirtti.</div>
-                                <div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">${call.model_name} • ${call.serial}</div>
-                            </div>
-                        </div>`;
-          setTimeout(() => removeToast(call.id), 6e3);
-        } else {
-          removeToast(call.id);
+      const isMine = call.created_by === personnelName;
+      if (isMine && call.resolved_by) {
+        let existing = activeToasts.get(call.id);
+        if (!existing) {
+          existing = document.createElement("div");
+          existing.style.cssText = [
+            "pointer-events: all",
+            "background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+            "border: 1px solid rgba(34,197,94,0.5)",
+            "border-radius: 16px",
+            "padding: 16px 20px",
+            "min-width: 320px",
+            "max-width: 460px",
+            "box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(34,197,94,0.2)",
+            "animation: slideDownFade 0.35s cubic-bezier(0.175,0.885,0.32,1.275)",
+            "backdrop-filter: blur(12px)"
+          ].join(";");
+          deviceCallToastContainer.appendChild(existing);
+          activeToasts.set(call.id, existing);
         }
+        existing.style.border = "1px solid rgba(34,197,94,0.6)";
+        existing.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:1.5rem;">✅</span>
+                        <div>
+                            <div style="font-size:0.72rem;color:#22c55e;font-weight:700;">Cihaz Bulundu!</div>
+                            <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.resolved_by} cihazın kendisinde olduğunu belirtti.</div>
+                            <div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">${call.model_name} • ${call.serial}</div>
+                        </div>
+                    </div>`;
+        setTimeout(() => removeToast(call.id), 8e3);
+      } else {
+        removeToast(call.id);
       }
     });
     const allCallIds = new Set(calls.map((c) => c.id));

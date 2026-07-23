@@ -99,6 +99,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDeviceCallsUpdate: (callback: any) =>
         ipcRenderer.on('device-calls-update', (_event, calls) => callback(calls)),
 
+    // Device Call Toast window channels
+    onDeviceCallToastData: (callback: any) =>
+        ipcRenderer.on('device-call-toast-data', (_event, data) => callback(data)),
+    onDeviceCallToastResolve: (callback: any) =>
+        ipcRenderer.on('device-call-toast-resolve', (_event, data) => callback(data)),
+    deviceCallAction: (payload: any) => ipcRenderer.send('device-call-action', payload),
+
     // Admin CRUD
     createUser: (data: any) => safeInvoke('create-user', data),
     updateUser: (id: string, data: any) => safeInvoke('update-user', id, data),

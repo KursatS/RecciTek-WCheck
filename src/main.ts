@@ -27,7 +27,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData, parseZReportData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, subscribeToDeviceCalls } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, cancelDeviceCall, subscribeToDeviceCalls } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -296,6 +296,7 @@ function setupIpcHandlers() {
       deviceCallsUnsubscribe();
       deviceCallsUnsubscribe = null;
     }
+    windowManager.closeAllDeviceCallToasts();
     globalShortcut.unregisterAll();
     windowManager.closePopup();
     windowManager.closePriorityPopup();
@@ -646,6 +647,31 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+
+  // Device call toast window action (from the native toast window)
+  ipcMain.on('device-call-action', async (_, payload) => {
+    const { action, callId } = payload;
+    if (action === 'here') {
+      const myName = currentSettings.personnelName || 'Bilinmiyor';
+      try {
+        await resolveDeviceCall(callId, myName);
+      } catch (err) {
+        console.error('device-call-action here error:', err);
+      }
+    } else if (action === 'cancel') {
+      // Caller cancels the call — marks as cancelled in Firestore → all windows close
+      try {
+        await cancelDeviceCall(callId);
+      } catch (err) {
+        console.error('device-call-action cancel error:', err);
+        // Even if Firestore fails, close this window locally
+        windowManager.closeDeviceCallToast(callId);
+      }
+    } else if (action === 'nothere') {
+      // Close only this user's toast window for this call — do NOT resolve
+      windowManager.closeDeviceCallToast(callId);
+    }
+  });
 }
 
 function startDeviceCallsListener() {
@@ -653,12 +679,61 @@ function startDeviceCallsListener() {
     deviceCallsUnsubscribe();
     deviceCallsUnsubscribe = null;
   }
+
+  // Track which calls we have already shown a toast for, and their last status
+  const shownCalls = new Map<string, string>(); // callId -> status
+
   deviceCallsUnsubscribe = subscribeToDeviceCalls((calls: any[]) => {
     cachedDeviceCalls = calls;
+
+    // Also notify main window renderer (for in-app state)
     const mainWin = windowManager.getMainWindow();
     if (mainWin && !mainWin.isDestroyed()) {
       mainWin.webContents.send('device-calls-update', calls);
     }
+
+    const myName = currentSettings.personnelName || '';
+    const myRole = currentSettings.role;
+
+    // Only show toasts for kargo_kabul
+    if (myRole !== 'kargo_kabul') return;
+
+    calls.forEach((call: any) => {
+      const isMine = call.created_by === myName;
+      const prevStatus = shownCalls.get(call.id);
+
+      if (call.status === 'active') {
+        if (!prevStatus) {
+          // New call — open a toast window
+          windowManager.showDeviceCallToast(call.id, {
+            ...call,
+            isMine
+          });
+          shownCalls.set(call.id, 'active');
+        }
+      } else if (call.status === 'resolved' || call.status === 'cancelled') {
+        if (prevStatus === 'active') {
+          if (call.status === 'resolved' && isMine && call.resolved_by) {
+            // Tell the caller's toast to show resolution and auto-close after 8s
+            windowManager.sendDeviceCallToastResolve(call.id, call);
+            setTimeout(() => windowManager.closeDeviceCallToast(call.id), 8000);
+          } else {
+            // Others (or caller cancelled): close the toast immediately
+            windowManager.closeDeviceCallToast(call.id);
+          }
+          shownCalls.set(call.id, call.status);
+        }
+      }
+    });
+
+    // Remove windows for calls that disappeared from Firestore entirely
+    const currentIds = new Set(calls.map((c: any) => c.id));
+    shownCalls.forEach((_, id) => {
+      if (!currentIds.has(id)) {
+        windowManager.closeDeviceCallToast(id);
+        shownCalls.delete(id);
+      }
+    });
   });
 }
 

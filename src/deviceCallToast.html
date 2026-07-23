@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Cihaz Aranıyor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; user-select: none; -webkit-user-select: none; }
+
+    html, body {
+      width: 400px;
+      height: auto;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .toast {
+      width: 400px;
+      background: linear-gradient(135deg, #1a2540 0%, #0d1420 100%);
+      border: 1px solid rgba(245,158,11,0.5);
+      border-radius: 18px;
+      padding: 18px 20px 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(245,158,11,0.2), 0 0 60px rgba(245,158,11,0.1);
+      animation: slideIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both;
+      position: relative;
+    }
+
+    .toast.resolved {
+      border-color: rgba(34,197,94,0.6);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,197,94,0.2), 0 0 60px rgba(34,197,94,0.1);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #f59e0b;
+      margin-bottom: 8px;
+    }
+
+    .pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f59e0b;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .model-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+
+    .serial-line {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .customer-line {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .caller-line {
+      font-size: 0.72rem;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-here {
+      flex: 1;
+      padding: 10px 0;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+    }
+
+    .btn-here:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(22,163,74,0.45); }
+    .btn-here:active { transform: translateY(0); }
+    .btn-here:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+    .btn-nothere {
+      flex: 1;
+      padding: 10px 0;
+      background: rgba(255,255,255,0.07);
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nothere:hover { background: rgba(255,255,255,0.12); color: #cbd5e1; }
+
+    /* Resolved state */
+    .resolved-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .check-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .resolved-label {
+      font-size: 0.72rem;
+      color: #22c55e;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .resolved-who {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 2px;
+    }
+
+    .resolved-device {
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-20px) scale(0.94); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.75); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast">
+
+  <!-- Normal search state -->
+  <div id="state-search">
+    <div class="badge" id="badge-el"><span class="pulse" id="badge-pulse"></span> <span id="badge-text">Cihaz Aranıyor</span></div>
+    <div class="model-name" id="model-name">—</div>
+    <div class="serial-line">Seri: <strong id="serial-val">—</strong></div>
+    <div class="customer-line" id="customer-wrap" style="display:none;">Müşteri: <strong id="customer-val"></strong></div>
+    <div class="caller-line">Çağrı yapan: <span id="caller-val">—</span></div>
+    <!-- Shown to other personnel -->
+    <div class="btn-row" id="btn-row-others">
+      <button class="btn-here" id="btn-here">📱 Cihaz Bende</button>
+      <button class="btn-nothere" id="btn-nothere">Bende Değil</button>
+    </div>
+    <!-- Shown to the caller instead -->
+    <div id="btn-row-mine" style="display:none;">
+      <button class="btn-nothere" id="btn-cancel" style="width:100%;margin-top:4px;color:#f87171;border-color:rgba(248,113,113,0.3);">✕ Çağrıyı İptal Et</button>
+    </div>
+  </div>
+
+  <!-- Resolved state (shown when current user is the caller and someone resolved) -->
+  <div id="state-resolved" style="display:none;">
+    <div class="resolved-wrap">
+      <div class="check-icon">✅</div>
+      <div>
+        <div class="resolved-label">Cihaz Bulundu!</div>
+        <div class="resolved-who" id="resolved-who">—</div>
+        <div class="resolved-device" id="resolved-device">—</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const api = window.electronAPI;
+
+  let callId = null;
+  let isMine = false;
+
+  api.onDeviceCallToastData((data) => {
+    callId = data.id;
+    isMine = data.isMine;
+
+    if (data.resolved) {
+      showResolved(data);
+    } else {
+      document.getElementById('model-name').textContent = data.model_name || '—';
+      document.getElementById('serial-val').textContent = data.serial || '—';
+      document.getElementById('caller-val').textContent = data.created_by || '—';
+
+      if (data.customer_name) {
+        document.getElementById('customer-val').textContent = data.customer_name;
+        document.getElementById('customer-wrap').style.display = '';
+      } else {
+        document.getElementById('customer-wrap').style.display = 'none';
+      }
+
+      if (isMine) {
+        // Caller sees badge + cancel button; NOT the action buttons
+        document.getElementById('badge-text').textContent = 'Çağrı Gönderildi — Yanıt Bekleniyor';
+        document.getElementById('badge-el').style.color = '#f59e0b';
+        const pulse = document.getElementById('badge-pulse');
+        if (pulse) pulse.style.background = '#f59e0b';
+        document.getElementById('caller-line').style.display = 'none';
+        document.getElementById('btn-row-others').style.display = 'none';
+        document.getElementById('btn-row-mine').style.display = '';
+      } else {
+        document.getElementById('btn-row-others').style.display = 'flex';
+        document.getElementById('btn-row-mine').style.display = 'none';
+      }
+
+      document.getElementById('state-search').style.display = '';
+      document.getElementById('state-resolved').style.display = 'none';
+    }
+  });
+
+  api.onDeviceCallToastResolve((data) => {
+    showResolved(data);
+  });
+
+  function showResolved(data) {
+    document.getElementById('state-search').style.display = 'none';
+    document.getElementById('state-resolved').style.display = '';
+    document.getElementById('toast').classList.add('resolved');
+    document.getElementById('resolved-who').textContent = (data.resolved_by || '?') + ' cihazın kendisinde olduğunu belirtti.';
+    document.getElementById('resolved-device').textContent = (data.model_name || '') + ' · ' + (data.serial || '');
+  }
+
+  document.getElementById('btn-here').onclick = () => {
+    const btn = document.getElementById('btn-here');
+    btn.textContent = 'Gönderiliyor...';
+    btn.disabled = true;
+    api.deviceCallAction({ action: 'here', callId });
+  };
+
+  document.getElementById('btn-nothere').onclick = () => {
+    api.deviceCallAction({ action: 'nothere', callId });
+  };
+
+  document.getElementById('btn-cancel').onclick = () => {
+    const btn = document.getElementById('btn-cancel');
+    btn.textContent = 'İptal ediliyor...';
+    btn.disabled = true;
+    api.deviceCallAction({ action: 'cancel', callId });
+  };
+</script>
+
+</body>
+</html>

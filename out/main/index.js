@@ -322,6 +322,7 @@ class WindowManager {
     this.popupRemaining = 0;
     this.preloadPath = "";
     this.mainWindowReady = false;
+    this.deviceCallToasts = /* @__PURE__ */ new Map();
     this.preloadPath = path__namespace.join(__dirname, "../preload/index.js");
   }
   loadFile(win, fileName) {
@@ -610,7 +611,72 @@ class WindowManager {
       this.popupTimeout = setTimeout(() => this.closePopup(), this.popupRemaining);
     }
   }
+  showDeviceCallToast(callId, data) {
+    if (this.deviceCallToasts.has(callId)) {
+      const existing = this.deviceCallToasts.get(callId);
+      if (!existing.isDestroyed()) {
+        existing.webContents.send("device-call-toast-data", data);
+        return;
+      }
+    }
+    const { width } = electron$1.screen.getPrimaryDisplay().workAreaSize;
+    const toastWidth = 420;
+    const toastHeight = data.isMine ? 170 : 215;
+    const x = Math.round((width - toastWidth) / 2);
+    const y = 16;
+    const win = new electron$1.BrowserWindow({
+      width: toastWidth,
+      height: toastHeight,
+      x,
+      y,
+      show: false,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      resizable: false,
+      skipTaskbar: true,
+      focusable: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: this.preloadPath
+      }
+    });
+    win.setAlwaysOnTop(true, "screen-saver");
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    this.loadFile(win, "deviceCallToast.html");
+    this.deviceCallToasts.set(callId, win);
+    win.once("ready-to-show", () => {
+      if (!win.isDestroyed()) {
+        win.showInactive();
+        win.webContents.send("device-call-toast-data", data);
+      }
+    });
+    win.on("closed", () => {
+      this.deviceCallToasts.delete(callId);
+    });
+  }
+  sendDeviceCallToastResolve(callId, data) {
+    const win = this.deviceCallToasts.get(callId);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("device-call-toast-resolve", data);
+    }
+  }
+  closeDeviceCallToast(callId) {
+    const win = this.deviceCallToasts.get(callId);
+    if (win && !win.isDestroyed()) {
+      win.close();
+    }
+    this.deviceCallToasts.delete(callId);
+  }
+  closeAllDeviceCallToasts() {
+    this.deviceCallToasts.forEach((win) => {
+      if (!win.isDestroyed()) win.close();
+    });
+    this.deviceCallToasts.clear();
+  }
   forceQuit() {
+    this.closeAllDeviceCallToasts();
     [this.mainWindow, this.loginWindow, this.currentPopup, this.priorityPopup].forEach((win) => {
       if (win && !win.isDestroyed()) {
         win.destroy();
@@ -1091,6 +1157,12 @@ async function resolveDeviceCall(id, resolved_by) {
     resolved_at: firestore.serverTimestamp()
   });
 }
+async function cancelDeviceCall(id) {
+  await firestore.updateDoc(firestore.doc(db, DEVICE_CALLS_COLLECTION, id), {
+    status: "cancelled",
+    resolved_at: firestore.serverTimestamp()
+  });
+}
 function subscribeToDeviceCalls(callback) {
   const q = firestore.query(firestore.collection(db, DEVICE_CALLS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(50));
   return firestore.onSnapshot(q, (snapshot) => {
@@ -1341,6 +1413,7 @@ function setupIpcHandlers() {
       deviceCallsUnsubscribe();
       deviceCallsUnsubscribe = null;
     }
+    windowManager.closeAllDeviceCallToasts();
     electron$1.globalShortcut.unregisterAll();
     windowManager.closePopup();
     windowManager.closePriorityPopup();
@@ -1650,17 +1723,71 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+  electron$1.ipcMain.on("device-call-action", async (_, payload) => {
+    const { action, callId } = payload;
+    if (action === "here") {
+      const myName = currentSettings.personnelName || "Bilinmiyor";
+      try {
+        await resolveDeviceCall(callId, myName);
+      } catch (err) {
+        console.error("device-call-action here error:", err);
+      }
+    } else if (action === "cancel") {
+      try {
+        await cancelDeviceCall(callId);
+      } catch (err) {
+        console.error("device-call-action cancel error:", err);
+        windowManager.closeDeviceCallToast(callId);
+      }
+    } else if (action === "nothere") {
+      windowManager.closeDeviceCallToast(callId);
+    }
+  });
 }
 function startDeviceCallsListener() {
   if (deviceCallsUnsubscribe) {
     deviceCallsUnsubscribe();
     deviceCallsUnsubscribe = null;
   }
+  const shownCalls = /* @__PURE__ */ new Map();
   deviceCallsUnsubscribe = subscribeToDeviceCalls((calls) => {
     const mainWin = windowManager.getMainWindow();
     if (mainWin && !mainWin.isDestroyed()) {
       mainWin.webContents.send("device-calls-update", calls);
     }
+    const myName = currentSettings.personnelName || "";
+    const myRole = currentSettings.role;
+    if (myRole !== "kargo_kabul") return;
+    calls.forEach((call) => {
+      const isMine = call.created_by === myName;
+      const prevStatus = shownCalls.get(call.id);
+      if (call.status === "active") {
+        if (!prevStatus) {
+          windowManager.showDeviceCallToast(call.id, {
+            ...call,
+            isMine
+          });
+          shownCalls.set(call.id, "active");
+        }
+      } else if (call.status === "resolved" || call.status === "cancelled") {
+        if (prevStatus === "active") {
+          if (call.status === "resolved" && isMine && call.resolved_by) {
+            windowManager.sendDeviceCallToastResolve(call.id, call);
+            setTimeout(() => windowManager.closeDeviceCallToast(call.id), 8e3);
+          } else {
+            windowManager.closeDeviceCallToast(call.id);
+          }
+          shownCalls.set(call.id, call.status);
+        }
+      }
+    });
+    const currentIds = new Set(calls.map((c) => c.id));
+    shownCalls.forEach((_, id) => {
+      if (!currentIds.has(id)) {
+        windowManager.closeDeviceCallToast(id);
+        shownCalls.delete(id);
+      }
+    });
   });
 }
 function createTray() {

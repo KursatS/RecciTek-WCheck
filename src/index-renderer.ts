@@ -1078,27 +1078,44 @@ const { loadAdminUsers } = initAdminLogic(api, {
 
         // Handle resolved calls
         resolvedCalls.forEach((call: any) => {
-            if (activeToasts.has(call.id)) {
-                const isMine = call.created_by === personnelName
+            const isMine = call.created_by === personnelName
 
-                if (isMine && call.resolved_by) {
-                    // Show resolution notification to the caller
-                    const existing = activeToasts.get(call.id)!
-                    existing.style.border = '1px solid rgba(34,197,94,0.5)'
-                    existing.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:1.5rem;">\u2705</span>
-                            <div>
-                                <div style="font-size:0.72rem;color:#22c55e;font-weight:700;">Cihaz Bulundu!</div>
-                                <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.resolved_by} cihaz\u0131n kendisinde oldu\u011funu belirtti.</div>
-                                <div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">${call.model_name} • ${call.serial}</div>
-                            </div>
-                        </div>`
-                    setTimeout(() => removeToast(call.id), 6000)
-                } else {
-                    // Others: just remove the toast
-                    removeToast(call.id)
+            if (isMine && call.resolved_by) {
+                // If caller still has a toast or hasn't shown resolution yet
+                let existing = activeToasts.get(call.id)
+                if (!existing) {
+                    // Create resolution card if not already rendered
+                    existing = document.createElement('div')
+                    existing.style.cssText = [
+                        'pointer-events: all',
+                        'background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                        'border: 1px solid rgba(34,197,94,0.5)',
+                        'border-radius: 16px',
+                        'padding: 16px 20px',
+                        'min-width: 320px',
+                        'max-width: 460px',
+                        'box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(34,197,94,0.2)',
+                        'animation: slideDownFade 0.35s cubic-bezier(0.175,0.885,0.32,1.275)',
+                        'backdrop-filter: blur(12px)'
+                    ].join(';')
+                    deviceCallToastContainer.appendChild(existing)
+                    activeToasts.set(call.id, existing)
                 }
+
+                existing.style.border = '1px solid rgba(34,197,94,0.6)'
+                existing.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:1.5rem;">\u2705</span>
+                        <div>
+                            <div style="font-size:0.72rem;color:#22c55e;font-weight:700;">Cihaz Bulundu!</div>
+                            <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.resolved_by} cihaz\u0131n kendisinde oldu\u011funu belirtti.</div>
+                            <div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">${call.model_name} • ${call.serial}</div>
+                        </div>
+                    </div>`
+                setTimeout(() => removeToast(call.id), 8000)
+            } else {
+                // Others: remove the toast
+                removeToast(call.id)
             }
         })
 

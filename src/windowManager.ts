@@ -31,6 +31,7 @@ export class WindowManager {
     private popupRemaining = 0;
     private preloadPath = '';
     private mainWindowReady = false;
+    private deviceCallToasts: Map<string, BrowserWindow> = new Map();
 
     constructor(private appPath: string) {
         this.preloadPath = path.join(__dirname, '../preload/index.js');
@@ -367,7 +368,84 @@ export class WindowManager {
         }
     }
 
+    showDeviceCallToast(callId: string, data: any): void {
+        // Don't create a duplicate window for the same call
+        if (this.deviceCallToasts.has(callId)) {
+            const existing = this.deviceCallToasts.get(callId)!;
+            if (!existing.isDestroyed()) {
+                existing.webContents.send('device-call-toast-data', data);
+                return;
+            }
+        }
+
+        const { width } = screen.getPrimaryDisplay().workAreaSize;
+        const toastWidth = 420;
+        const toastHeight = data.isMine ? 170 : 215;
+        const x = Math.round((width - toastWidth) / 2);
+        const y = 16;
+
+        const win = new BrowserWindow({
+            width: toastWidth,
+            height: toastHeight,
+            x,
+            y,
+            show: false,
+            frame: false,
+            transparent: true,
+            alwaysOnTop: true,
+            resizable: false,
+            skipTaskbar: true,
+            focusable: true,
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: this.preloadPath
+            }
+        });
+
+        // Keep it above everything including fullscreen apps
+        win.setAlwaysOnTop(true, 'screen-saver');
+        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+        this.loadFile(win, 'deviceCallToast.html');
+        this.deviceCallToasts.set(callId, win);
+
+        win.once('ready-to-show', () => {
+            if (!win.isDestroyed()) {
+                win.showInactive(); // show without stealing focus
+                win.webContents.send('device-call-toast-data', data);
+            }
+        });
+
+        win.on('closed', () => {
+            this.deviceCallToasts.delete(callId);
+        });
+    }
+
+    sendDeviceCallToastResolve(callId: string, data: any): void {
+        const win = this.deviceCallToasts.get(callId);
+        if (win && !win.isDestroyed()) {
+            win.webContents.send('device-call-toast-resolve', data);
+        }
+    }
+
+    closeDeviceCallToast(callId: string): void {
+        const win = this.deviceCallToasts.get(callId);
+        if (win && !win.isDestroyed()) {
+            win.close();
+        }
+        this.deviceCallToasts.delete(callId);
+    }
+
+    closeAllDeviceCallToasts(): void {
+        this.deviceCallToasts.forEach((win) => {
+            if (!win.isDestroyed()) win.close();
+        });
+        this.deviceCallToasts.clear();
+    }
+
     forceQuit(): void {
+        this.closeAllDeviceCallToasts();
         [this.mainWindow, this.loginWindow, this.currentPopup, this.priorityPopup].forEach(win => {
             if (win && !win.isDestroyed()) {
                 win.destroy();
