@@ -1304,6 +1304,7 @@ function initZReportLogic(api2, elements) {
     if (zreportFileInput2.files && zreportFileInput2.files[0]) {
       const file = zreportFileInput2.files[0];
       await handleZReportFile(file);
+      zreportFileInput2.value = "";
     }
   };
   async function handleZReportFile(file) {
@@ -1382,6 +1383,20 @@ function initZReportLogic(api2, elements) {
                 <h3 style="margin:0 0 14px 0;">Model Bazlı Toplamlar</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
                     ${modelCards}
+                </div>
+            </div>
+
+            <div style="margin-top:28px; margin-bottom:24px;">
+                <h3 style="margin:0 0 14px 0;">Personel Bazlı Kayıt Sayıları</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                    ${(res.personnel || []).map((p) => `
+                        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:16px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:0.88rem; font-weight:700; color:var(--text-main); word-break:break-word;">${escapeHtml(p.name)}</div>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">
+                                Kayıt Sayısı: <strong style="color:var(--accent);">${p.count}</strong>
+                            </div>
+                        </div>
+                    `).join("") || '<p style="color:var(--text-muted);">Veri yok</p>'}
                 </div>
             </div>
         `;
@@ -1482,6 +1497,14 @@ const adminFullname = document.getElementById("admin-user-fullname");
 const adminRole = document.getElementById("admin-user-role");
 const btnCancelAdminModal = document.getElementById("btn-cancel-admin-modal");
 const btnSaveAdminUser = document.getElementById("btn-save-admin-user");
+const sideDeviceCallBtn = document.getElementById("side-device-call-btn");
+const deviceCallModal = document.getElementById("device-call-modal");
+const dcallSerial = document.getElementById("dcall-serial");
+const dcallModel = document.getElementById("dcall-model");
+const dcallCustomer = document.getElementById("dcall-customer");
+const btnCancelDeviceCall = document.getElementById("btn-cancel-device-call");
+const btnSendDeviceCall = document.getElementById("btn-send-device-call");
+const deviceCallToastContainer = document.getElementById("device-call-toast-container");
 const modalOverlay = document.getElementById("modal-overlay");
 const modalTitle = document.getElementById("modal-title");
 const modalText = document.getElementById("modal-text");
@@ -1991,6 +2014,7 @@ Promise.all([
   const sideProfile = document.getElementById("side-profile-btn");
   if (sideBonus) sideBonus.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
   if (btnManualTicket) btnManualTicket.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
+  if (sideDeviceCallBtn) sideDeviceCallBtn.style.display = currentRole === "kargo_kabul" ? "flex" : "none";
   if (tQueueBar) tQueueBar.style.display = "flex";
   if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
   if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
@@ -2014,6 +2038,7 @@ api.onRefreshCards(() => {
     const sideProfile = document.getElementById("side-profile-btn");
     if (sideBonus) sideBonus.style.display = s.role === "kargo_kabul" ? "flex" : "none";
     if (btnManualTicket) btnManualTicket.style.display = s.role === "kargo_kabul" ? "flex" : "none";
+    if (sideDeviceCallBtn) sideDeviceCallBtn.style.display = s.role === "kargo_kabul" ? "flex" : "none";
     if (tQueueBar) tQueueBar.style.display = "flex";
     if (sideAdmin) sideAdmin.style.display = isAdmin ? "flex" : "none";
     if (sideProfile) sideProfile.style.display = isLoggedIn ? "flex" : "none";
@@ -2116,4 +2141,174 @@ const { loadAdminUsers } = initAdminLogic(api, {
   dismissBtn.onclick = () => {
     bar.style.display = "none";
   };
+})();
+(() => {
+  const dismissedCalls = /* @__PURE__ */ new Set();
+  const activeToasts = /* @__PURE__ */ new Map();
+  function openDeviceCallModal() {
+    dcallSerial.value = "";
+    dcallModel.value = "";
+    dcallCustomer.value = "";
+    deviceCallModal.classList.add("active");
+    dcallSerial.focus();
+  }
+  function closeDeviceCallModal() {
+    deviceCallModal.classList.remove("active");
+  }
+  sideDeviceCallBtn.onclick = () => openDeviceCallModal();
+  btnCancelDeviceCall.onclick = () => closeDeviceCallModal();
+  btnSendDeviceCall.onclick = async () => {
+    const serial = dcallSerial.value.trim().toUpperCase();
+    const model = dcallModel.value.trim().toUpperCase();
+    const customer = dcallCustomer.value.trim();
+    if (!serial) {
+      dcallSerial.focus();
+      return;
+    }
+    if (!model) {
+      dcallModel.focus();
+      return;
+    }
+    btnSendDeviceCall.textContent = "Gönderiliyor...";
+    btnSendDeviceCall.setAttribute("disabled", "true");
+    try {
+      await api.createDeviceCall({
+        serial,
+        model_name: model,
+        customer_name: customer,
+        created_by: personnelName || "Bilinmiyor"
+      });
+      closeDeviceCallModal();
+    } catch (err) {
+      console.error("Device call error:", err);
+    } finally {
+      btnSendDeviceCall.textContent = "📢 Çağrı Gönder";
+      btnSendDeviceCall.removeAttribute("disabled");
+    }
+  };
+  function createCallToast(call, isMine) {
+    const toast = document.createElement("div");
+    toast.style.cssText = [
+      "pointer-events: all",
+      "background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+      "border: 1px solid rgba(245,158,11,0.4)",
+      "border-radius: 16px",
+      "padding: 16px 20px",
+      "min-width: 320px",
+      "max-width: 460px",
+      "box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(245,158,11,0.15)",
+      "animation: slideDownFade 0.35s cubic-bezier(0.175,0.885,0.32,1.275)",
+      "backdrop-filter: blur(12px)"
+    ].join(";");
+    const customerLine = call.customer_name ? `<div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">Müşteri: <strong>${call.customer_name}</strong></div>` : "";
+    const callerInfo = `<div style="font-size:0.72rem;color:#64748b;margin-top:6px;">Çağrı yapan: ${call.created_by}</div>`;
+    if (isMine) {
+      toast.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    <span style="font-size:1.3rem;">📡</span>
+                    <div>
+                        <div style="font-size:0.72rem;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Çağrı Gönderildi</div>
+                        <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.model_name}</div>
+                        <div style="font-size:0.78rem;color:#94a3b8;">Seri: <strong>${call.serial}</strong></div>
+                        ${customerLine}
+                    </div>
+                </div>
+                <div style="font-size:0.78rem;color:#94a3b8;">Yanıt bekleniyor...</div>`;
+    } else {
+      toast.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="font-size:1.3rem;">📢</span>
+                    <div style="flex:1;">
+                        <div style="font-size:0.72rem;color:#f59e0b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Cihaz Aranıyor</div>
+                        <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.model_name}</div>
+                        <div style="font-size:0.78rem;color:#94a3b8;">Seri: <strong>${call.serial}</strong></div>
+                        ${customerLine}
+                        ${callerInfo}
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button id="dcall-here-${call.id}" style="flex:1;padding:8px 0;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;">📲 Cihaz Bende</button>
+                    <button id="dcall-nothere-${call.id}" style="flex:1;padding:8px 0;background:rgba(255,255,255,0.07);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);border-radius:10px;font-weight:600;font-size:0.88rem;cursor:pointer;">Bende Değil</button>
+                </div>`;
+      setTimeout(() => {
+        const hereBtn = document.getElementById(`dcall-here-${call.id}`);
+        const notHereBtn = document.getElementById(`dcall-nothere-${call.id}`);
+        if (hereBtn) {
+          hereBtn.onclick = async () => {
+            hereBtn.textContent = "Gönderiliyor...";
+            hereBtn.setAttribute("disabled", "true");
+            try {
+              await api.resolveDeviceCall(call.id, personnelName || "Bilinmiyor");
+            } catch (err) {
+              console.error("Resolve error:", err);
+            }
+          };
+        }
+        if (notHereBtn) {
+          notHereBtn.onclick = () => {
+            dismissedCalls.add(call.id);
+            removeToast(call.id);
+          };
+        }
+      }, 0);
+    }
+    return toast;
+  }
+  function removeToast(callId) {
+    const existing = activeToasts.get(callId);
+    if (existing) {
+      existing.style.opacity = "0";
+      existing.style.transform = "translateY(-20px) scale(0.95)";
+      existing.style.transition = "all 0.25s ease";
+      setTimeout(() => {
+        existing.remove();
+        activeToasts.delete(callId);
+      }, 260);
+    }
+  }
+  api.onDeviceCallsUpdate((calls) => {
+    if (currentRole !== "kargo_kabul") return;
+    const activeCalls = calls.filter((c) => c.status === "active");
+    const resolvedCalls = calls.filter((c) => c.status === "resolved");
+    activeCalls.forEach((call) => {
+      const isMine = call.created_by === personnelName;
+      if (!isMine && dismissedCalls.has(call.id)) return;
+      if (!activeToasts.has(call.id)) {
+        const toast = createCallToast(call, isMine);
+        deviceCallToastContainer.appendChild(toast);
+        activeToasts.set(call.id, toast);
+      }
+    });
+    resolvedCalls.forEach((call) => {
+      if (activeToasts.has(call.id)) {
+        const isMine = call.created_by === personnelName;
+        if (isMine && call.resolved_by) {
+          const existing = activeToasts.get(call.id);
+          existing.style.border = "1px solid rgba(34,197,94,0.5)";
+          existing.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:1.5rem;">✅</span>
+                            <div>
+                                <div style="font-size:0.72rem;color:#22c55e;font-weight:700;">Cihaz Bulundu!</div>
+                                <div style="font-size:0.95rem;font-weight:700;color:#f8fafc;">${call.resolved_by} cihazın kendisinde olduğunu belirtti.</div>
+                                <div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">${call.model_name} • ${call.serial}</div>
+                            </div>
+                        </div>`;
+          setTimeout(() => removeToast(call.id), 6e3);
+        } else {
+          removeToast(call.id);
+        }
+      }
+    });
+    const allCallIds = new Set(calls.map((c) => c.id));
+    activeToasts.forEach((_, id) => {
+      if (!allCallIds.has(id)) removeToast(id);
+    });
+  });
+  if (!document.getElementById("dcall-keyframes")) {
+    const style = document.createElement("style");
+    style.id = "dcall-keyframes";
+    style.textContent = `@keyframes slideDownFade { from { opacity:0; transform:translateY(-16px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }`;
+    document.head.appendChild(style);
+  }
 })();

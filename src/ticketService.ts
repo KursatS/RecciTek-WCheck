@@ -1,4 +1,4 @@
-﻿import {
+import {
     collection,
     addDoc,
     updateDoc,
@@ -295,5 +295,52 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function resetUserXp(id: string): Promise<void> {
     await updateDoc(doc(db, 'users', id), { xp: 0, level: 1 })
+}
+
+const DEVICE_CALLS_COLLECTION = 'device_calls'
+
+export async function createDeviceCall(data: {
+    serial: string
+    model_name: string
+    customer_name?: string
+    created_by: string
+}): Promise<string> {
+    const docRef = await addDoc(collection(db, DEVICE_CALLS_COLLECTION), {
+        serial: data.serial.trim().toUpperCase(),
+        model_name: data.model_name.trim().toUpperCase(),
+        customer_name: (data.customer_name || '').trim(),
+        created_by: data.created_by,
+        created_at: serverTimestamp(),
+        status: 'active',
+        resolved_by: '',
+        resolved_at: null
+    })
+    return docRef.id
+}
+
+export async function resolveDeviceCall(id: string, resolved_by: string): Promise<void> {
+    await updateDoc(doc(db, DEVICE_CALLS_COLLECTION, id), {
+        status: 'resolved',
+        resolved_by: resolved_by,
+        resolved_at: serverTimestamp()
+    })
+}
+
+export function subscribeToDeviceCalls(
+    callback: (calls: any[]) => void
+): Unsubscribe {
+    const q = query(collection(db, DEVICE_CALLS_COLLECTION), orderBy('created_at', 'desc'), limit(50))
+    return onSnapshot(q, (snapshot) => {
+        const calls = snapshot.docs.map(d => {
+            const data = d.data()
+            return {
+                id: d.id,
+                ...data,
+                created_at: data.created_at?.toMillis?.() ?? null,
+                resolved_at: data.resolved_at?.toMillis?.() ?? null
+            }
+        })
+        callback(calls)
+    }, (error) => console.error('Firestore listener error (DeviceCalls):', error))
 }
 

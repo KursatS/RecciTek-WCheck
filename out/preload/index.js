@@ -72,6 +72,10 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   onPriorityDeviceMatch: (callback) => electron.ipcRenderer.on("priority-device-match", (_event, device) => callback(device)),
   onFocusPriorityDevice: (callback) => electron.ipcRenderer.on("focus-priority-device", (_event, device) => callback(device)),
   onPriorityDevicesUpdate: (callback) => electron.ipcRenderer.on("priority-devices-update", (_event, devices) => callback(devices)),
+  // Device Calls
+  createDeviceCall: (data) => safeInvoke("create-device-call", data),
+  resolveDeviceCall: (id, resolved_by) => safeInvoke("resolve-device-call", id, resolved_by),
+  onDeviceCallsUpdate: (callback) => electron.ipcRenderer.on("device-calls-update", (_event, calls) => callback(calls)),
   // Admin CRUD
   createUser: (data) => safeInvoke("create-user", data),
   updateUser: (id, data) => safeInvoke("update-user", id, data),

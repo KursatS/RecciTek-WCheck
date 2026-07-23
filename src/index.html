@@ -513,6 +513,44 @@
     </div>
   </div>
 
+  <!-- Device Call Modal -->
+  <div class="admin-modal-overlay" id="device-call-modal">
+    <div class="admin-modal-content" style="max-width:440px;">
+      <h2 style="color:#f59e0b;">📢 Cihaz Nerede?</h2>
+      <p style="font-size:0.85rem; color:#94a3b8; margin-top:-8px; margin-bottom:16px;">Tüm kargo kabul personeline anlık çağrı gönderilir.</p>
+      <div class="form-group">
+        <label>Seri Numarası <span style="color:#ef4444;">*</span></label>
+        <input type="text" id="dcall-serial" placeholder="Seri numarasını girin..." style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <label>Model <span style="color:#ef4444;">*</span></label>
+        <input type="text" id="dcall-model" placeholder="Model adını girin..." style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <label>Müşteri İsmi <span style="color:#64748b; font-size:0.78rem;">(opsiyonel)</span></label>
+        <input type="text" id="dcall-customer" placeholder="Müşteri adı...">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="btn-cancel-device-call" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1;">İptal</button>
+        <button class="btn" id="btn-send-device-call" style="background:#f59e0b; color:#000; font-weight:700;">📢 Çağrı Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Device Call Toast Container -->
+  <div id="device-call-toast-container" style="
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    pointer-events: none;
+  "></div>
+
   <div class="app-layout">
     <!-- ── Sidebar ── -->
     <aside class="sidebar">
@@ -562,6 +600,10 @@
         <button class="nav-item" data-view="zreport" id="side-zreport-btn" title="Z Raporu">
           <span class="icon">📝</span>
           <span class="label">Z Raporu</span>
+        </button>
+        <button class="nav-item" id="side-device-call-btn" title="Cihaz Sor — Kargo kabul içi cihaz konumu bulma çağrısı" style="display:none;">
+          <span class="icon">📢</span>
+          <span class="label">Cihaz Sor</span>
         </button>
         <div class="nav-spacer"></div>
         <button class="nav-item" data-view="settings" id="side-settings-btn" title="Ayarlar">

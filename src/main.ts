@@ -27,7 +27,7 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData, parseZReportData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp } from './ticketService';
+import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, subscribeToDeviceCalls } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -65,8 +65,10 @@ let lastDetectedSerial: string = '';
 let statusInterval: NodeJS.Timeout | null = null;
 let ticketUnsubscribe: Unsubscribe | null = null;
 let priorityUnsubscribe: Unsubscribe | null = null;
+let deviceCallsUnsubscribe: Unsubscribe | null = null;
 let cachedTickets: any[] = [];
 let cachedPriorityDevices: any[] = [];
+let cachedDeviceCalls: any[] = [];
 
 function extractCopyText(data: any): string {
   if (!data) return '';
@@ -86,7 +88,7 @@ async function checkServerStatus(): Promise<void> {
   try {
     const request = net.request({
       method: 'HEAD',
-      url: 'https://garantibelgesi.recciteknoloji.com/',
+      url: 'https://www.recciteknoloji.com/garantibelgesi2/',
       redirect: 'follow'
     });
 
@@ -290,6 +292,10 @@ function setupIpcHandlers() {
       priorityUnsubscribe();
       priorityUnsubscribe = null;
     }
+    if (deviceCallsUnsubscribe) {
+      deviceCallsUnsubscribe();
+      deviceCallsUnsubscribe = null;
+    }
     globalShortcut.unregisterAll();
     windowManager.closePopup();
     windowManager.closePriorityPopup();
@@ -339,6 +345,7 @@ function setupIpcHandlers() {
     startServerStatusMonitor();
     startTicketListener();
     startPriorityDevicesListener();
+    startDeviceCallsListener();
     registerShortcuts();
     
     return true;
@@ -619,6 +626,40 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+  // ── Device Calls IPC ──────────────────────────────────────────
+  ipcMain.handle('create-device-call', async (_, data) => {
+    try {
+      const id = await createDeviceCall(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error('Error creating device call:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('resolve-device-call', async (_, id, resolved_by) => {
+    try {
+      await resolveDeviceCall(id, resolved_by);
+      return { success: true };
+    } catch (error) {
+      console.error('Error resolving device call:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+}
+
+function startDeviceCallsListener() {
+  if (deviceCallsUnsubscribe) {
+    deviceCallsUnsubscribe();
+    deviceCallsUnsubscribe = null;
+  }
+  deviceCallsUnsubscribe = subscribeToDeviceCalls((calls: any[]) => {
+    cachedDeviceCalls = calls;
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('device-calls-update', calls);
+    }
+  });
 }
 
 // Helper to create the system tray
@@ -880,6 +921,10 @@ app.on('will-quit', () => {
   if (priorityUnsubscribe) {
     priorityUnsubscribe();
     priorityUnsubscribe = null;
+  }
+  if (deviceCallsUnsubscribe) {
+    deviceCallsUnsubscribe();
+    deviceCallsUnsubscribe = null;
   }
 });
 

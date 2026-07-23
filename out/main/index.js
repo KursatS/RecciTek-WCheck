@@ -77,43 +77,30 @@ async function checkWarranty(serial) {
     });
   }
   try {
-    const html = await makeRequest(`https://garantibelgesi.recciteknoloji.com/sorgu/${serial}`);
+    const html = await makeRequest(`https://www.recciteknoloji.com/garantibelgesi2/?q=${serial}`);
     const dom = new jsdom.JSDOM(html);
     const document = dom.window.document;
-    const body = document.body;
-    if (body && body.textContent.includes("Ürün Resmi Roborock Türkiye Garanti Kapsamındadır.")) {
-      const modelElement = document.querySelector("html > body > div > div:nth-child(3) > div > div:nth-child(2) > a > h3");
-      let modelInfo = modelElement ? modelElement.textContent.trim() : "";
-      if (!modelInfo) {
-        const allElements = document.querySelectorAll("*");
-        for (const element of allElements) {
-          const text = element.textContent.trim();
-          if (text.includes("ROBOROCK") && (text.includes("BEYAZ") || text.includes("SİYAH"))) {
-            modelInfo = text;
-            break;
-          }
-        }
+    const window = dom.window;
+    const getByXPath = (xpath) => {
+      try {
+        const res = document.evaluate(xpath, document, null, window.XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+        return res.singleNodeValue ? res.singleNodeValue.textContent.trim() : "";
+      } catch (e) {
+        return "";
       }
-      let model_name = "Model Bulunamadı";
-      let model_color = "Renk Bulunamadı";
-      if (modelInfo) {
-        modelInfo = modelInfo.replace(/\s+/g, " ").trim();
-        if (modelInfo.includes("ROBOROCK") && (modelInfo.includes("BEYAZ") || modelInfo.includes("SİYAH"))) {
-          const parts = modelInfo.split(" ");
-          if (parts.length >= 3) {
-            model_name = parts.slice(1, -1).join(" ").trim();
-            model_color = parts[parts.length - 1].trim();
-          }
-        } else {
-          model_name = modelInfo.trim();
-        }
-        model_name = model_name.toUpperCase();
-        if (model_name.includes("QREVO")) {
-          model_name = model_name.replace("QREVO", "Q REVO");
-        }
-        if (model_name.includes("S8")) {
-          model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
-        }
+    };
+    const rawModel = getByXPath("/html/body/main/div/div[1]/div[2]/div[2]");
+    const rawColor = getByXPath("/html/body/main/div/div[1]/div[3]/div[2]");
+    const rawStatus = getByXPath("/html/body/main/div/div[4]");
+    const isGarantili = rawStatus.toUpperCase().includes("GARANTİ KAPSAMINDADIR") || rawStatus.toUpperCase().includes("GARANTI KAPSAMINDADIR") || document.body.textContent.includes("Garanti Kapsamındadır");
+    if (isGarantili && rawModel) {
+      let model_name = rawModel.toUpperCase().trim().replace(/^(MODEL|MARKA)\s*:\s*/i, "").replace(/^(MODEL|MARKA)\s*/i, "").trim();
+      let model_color = rawColor.toUpperCase().trim().replace(/^RENK\s*:\s*/i, "").replace(/^RENK\s*/i, "").trim();
+      if (model_name.includes("QREVO")) {
+        model_name = model_name.replace("QREVO", "Q REVO");
+      }
+      if (model_name.includes("S8")) {
+        model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
       }
       return {
         serial,
@@ -121,7 +108,6 @@ async function checkWarranty(serial) {
         model_name,
         model_color
       };
-    } else if (body && body.textContent.includes("Bu ürün Roborock Türkiye Garanti kapsamında değildir!")) {
     }
   } catch (error) {
     if (error.message && error.message.includes("HTTP Error:")) ;
@@ -846,6 +832,7 @@ function parseZReportData(buffer) {
   const headers = rows[0] || [];
   const dateIndex = findColumnIndex(headers, ["kayit tarihi", "kayit zamani", "olusturma tarihi", "olusturma zamani"], 14);
   const modelIndex = findColumnIndex(headers, ["model", "urun modeli", "cihaz modeli"], 2);
+  const personnelIndex = findColumnIndex(headers, ["kayd a an", "kaydi acan", "kaydi acan personel", "kullanici", "created_by"], 15);
   const dailyAccumulator = {};
   rows.forEach((row, rowIndex) => {
     if (rowIndex === 0 || !row) return;
@@ -853,26 +840,31 @@ function parseZReportData(buffer) {
     if (!date) return;
     const dayKey = dateFns.format(date, "yyyy-MM-dd");
     const modelName = String(row[modelIndex] || "Model belirtilmedi").trim() || "Model belirtilmedi";
+    const personnelName = String(row[personnelIndex] || "Bilinmiyor").trim() || "Bilinmiyor";
     if (!dailyAccumulator[dayKey]) {
       dailyAccumulator[dayKey] = {
         total: 0,
-        models: {}
+        models: {},
+        personnel: {}
       };
     }
     dailyAccumulator[dayKey].total++;
     dailyAccumulator[dayKey].models[modelName] = (dailyAccumulator[dayKey].models[modelName] || 0) + 1;
+    dailyAccumulator[dayKey].personnel[personnelName] = (dailyAccumulator[dayKey].personnel[personnelName] || 0) + 1;
   });
   const sortedDays = Object.keys(dailyAccumulator).sort((a, b) => b.localeCompare(a));
   const last5Days = sortedDays.slice(0, 5);
   return last5Days.map((dayKey) => {
     const data = dailyAccumulator[dayKey];
     const modelsArray = Object.entries(data.models).map(([model, count]) => ({ model, count })).sort((a, b) => b.count - a.count || a.model.localeCompare(b.model, "tr"));
+    const personnelArray = Object.entries(data.personnel).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "tr"));
     const parsedDate = dateFns.parse(dayKey, "yyyy-MM-dd", /* @__PURE__ */ new Date());
     const displayDate = dateFns.isValid(parsedDate) ? dateFns.format(parsedDate, "dd.MM.yyyy") : dayKey;
     return {
       date: displayDate,
       totalCount: data.total,
-      models: modelsArray
+      models: modelsArray,
+      personnel: personnelArray
     };
   });
 }
@@ -1078,6 +1070,42 @@ async function deleteUser(id) {
 async function resetUserXp(id) {
   await firestore.updateDoc(firestore.doc(db, "users", id), { xp: 0, level: 1 });
 }
+const DEVICE_CALLS_COLLECTION = "device_calls";
+async function createDeviceCall(data) {
+  const docRef = await firestore.addDoc(firestore.collection(db, DEVICE_CALLS_COLLECTION), {
+    serial: data.serial.trim().toUpperCase(),
+    model_name: data.model_name.trim().toUpperCase(),
+    customer_name: (data.customer_name || "").trim(),
+    created_by: data.created_by,
+    created_at: firestore.serverTimestamp(),
+    status: "active",
+    resolved_by: "",
+    resolved_at: null
+  });
+  return docRef.id;
+}
+async function resolveDeviceCall(id, resolved_by) {
+  await firestore.updateDoc(firestore.doc(db, DEVICE_CALLS_COLLECTION, id), {
+    status: "resolved",
+    resolved_by,
+    resolved_at: firestore.serverTimestamp()
+  });
+}
+function subscribeToDeviceCalls(callback) {
+  const q = firestore.query(firestore.collection(db, DEVICE_CALLS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(50));
+  return firestore.onSnapshot(q, (snapshot) => {
+    const calls = snapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        ...data,
+        created_at: data.created_at?.toMillis?.() ?? null,
+        resolved_at: data.resolved_at?.toMillis?.() ?? null
+      };
+    });
+    callback(calls);
+  }, (error) => console.error("Firestore listener error (DeviceCalls):", error));
+}
 const gotTheLock = electron$1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
   electron$1.app.quit();
@@ -1108,6 +1136,7 @@ let lastDetectedSerial = "";
 let statusInterval = null;
 let ticketUnsubscribe = null;
 let priorityUnsubscribe = null;
+let deviceCallsUnsubscribe = null;
 let cachedTickets = [];
 let cachedPriorityDevices = [];
 function extractCopyText(data) {
@@ -1125,7 +1154,7 @@ async function checkServerStatus() {
   try {
     const request = electron$1.net.request({
       method: "HEAD",
-      url: "https://garantibelgesi.recciteknoloji.com/",
+      url: "https://www.recciteknoloji.com/garantibelgesi2/",
       redirect: "follow"
     });
     request.on("response", (response) => {
@@ -1308,6 +1337,10 @@ function setupIpcHandlers() {
       priorityUnsubscribe();
       priorityUnsubscribe = null;
     }
+    if (deviceCallsUnsubscribe) {
+      deviceCallsUnsubscribe();
+      deviceCallsUnsubscribe = null;
+    }
     electron$1.globalShortcut.unregisterAll();
     windowManager.closePopup();
     windowManager.closePriorityPopup();
@@ -1352,6 +1385,7 @@ function setupIpcHandlers() {
     startServerStatusMonitor();
     startTicketListener();
     startPriorityDevicesListener();
+    startDeviceCallsListener();
     registerShortcuts();
     return true;
   });
@@ -1598,6 +1632,36 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+  electron$1.ipcMain.handle("create-device-call", async (_, data) => {
+    try {
+      const id = await createDeviceCall(data);
+      return { success: true, id };
+    } catch (error) {
+      console.error("Error creating device call:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+  electron$1.ipcMain.handle("resolve-device-call", async (_, id, resolved_by) => {
+    try {
+      await resolveDeviceCall(id, resolved_by);
+      return { success: true };
+    } catch (error) {
+      console.error("Error resolving device call:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+}
+function startDeviceCallsListener() {
+  if (deviceCallsUnsubscribe) {
+    deviceCallsUnsubscribe();
+    deviceCallsUnsubscribe = null;
+  }
+  deviceCallsUnsubscribe = subscribeToDeviceCalls((calls) => {
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send("device-calls-update", calls);
+    }
+  });
 }
 function createTray() {
   const mainWindow = windowManager.getMainWindow();
@@ -1807,6 +1871,10 @@ electron$1.app.on("will-quit", () => {
   if (priorityUnsubscribe) {
     priorityUnsubscribe();
     priorityUnsubscribe = null;
+  }
+  if (deviceCallsUnsubscribe) {
+    deviceCallsUnsubscribe();
+    deviceCallsUnsubscribe = null;
   }
 });
 electron$1.app.on("window-all-closed", () => {

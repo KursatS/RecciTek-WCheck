@@ -1,3 +1,5 @@
+import { escapeHtml } from './html'
+
 export function initZReportLogic(api: any, elements: any) {
     const {
         zreportDropZone,
@@ -26,6 +28,7 @@ export function initZReportLogic(api: any, elements: any) {
             const file = zreportFileInput.files[0]
             lastZReportFile = file
             await handleZReportFile(file)
+            zreportFileInput.value = ''
         }
     }
 
@@ -118,6 +121,20 @@ export function initZReportLogic(api: any, elements: any) {
                 <h3 style="margin:0 0 14px 0;">Model Bazl\u0131 Toplamlar</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
                     ${modelCards}
+                </div>
+            </div>
+
+            <div style="margin-top:28px; margin-bottom:24px;">
+                <h3 style="margin:0 0 14px 0;">Personel Bazl\u0131 Kay\u0131t Say\u0131lar\u0131</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                    ${(res.personnel || []).map((p: any) => `
+                        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:16px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:0.88rem; font-weight:700; color:var(--text-main); word-break:break-word;">${escapeHtml(p.name)}</div>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">
+                                Kay\u0131t Say\u0131s\u0131: <strong style="color:var(--accent);">${p.count}</strong>
+                            </div>
+                        </div>
+                    `).join('') || '<p style="color:var(--text-muted);">Veri yok</p>'}
                 </div>
             </div>
         `

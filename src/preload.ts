@@ -93,6 +93,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onPriorityDevicesUpdate: (callback: any) =>
         ipcRenderer.on('priority-devices-update', (_event, devices) => callback(devices)),
 
+    // Device Calls
+    createDeviceCall: (data: any) => safeInvoke('create-device-call', data),
+    resolveDeviceCall: (id: string, resolved_by: string) => safeInvoke('resolve-device-call', id, resolved_by),
+    onDeviceCallsUpdate: (callback: any) =>
+        ipcRenderer.on('device-calls-update', (_event, calls) => callback(calls)),
+
     // Admin CRUD
     createUser: (data: any) => safeInvoke('create-user', data),
     updateUser: (id: string, data: any) => safeInvoke('update-user', id, data),

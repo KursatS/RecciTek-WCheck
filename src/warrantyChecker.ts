@@ -56,52 +56,46 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
   }
 
   try {
-    const html = await makeRequest(`https://garantibelgesi.recciteknoloji.com/sorgu/${serial}`);
+    const html = await makeRequest(`https://www.recciteknoloji.com/garantibelgesi2/?q=${serial}`);
 
     const dom = new JSDOM(html);
     const document = dom.window.document;
-    const body = document.body;
+    const window = dom.window;
 
-    if (body && body.textContent.includes('Ürün Resmi Roborock Türkiye Garanti Kapsamındadır.')) {
-      const modelElement = document.querySelector('html > body > div > div:nth-child(3) > div > div:nth-child(2) > a > h3');
-      let modelInfo = modelElement ? modelElement.textContent.trim() : '';
-
-      if (!modelInfo) {
-        const allElements = document.querySelectorAll('*');
-        for (const element of allElements) {
-          const text = element.textContent.trim();
-          if (text.includes('ROBOROCK') && (text.includes('BEYAZ') || text.includes('SİYAH'))) {
-            modelInfo = text;
-            break;
-          }
-        }
+    const getByXPath = (xpath: string): string => {
+      try {
+        const res = document.evaluate(xpath, document, null, window.XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+        return res.singleNodeValue ? res.singleNodeValue.textContent.trim() : '';
+      } catch (e) {
+        return '';
       }
+    };
 
-      let model_name = 'Model Bulunamadı';
-      let model_color = 'Renk Bulunamadı';
+    const rawModel = getByXPath('/html/body/main/div/div[1]/div[2]/div[2]');
+    const rawColor = getByXPath('/html/body/main/div/div[1]/div[3]/div[2]');
+    const rawStatus = getByXPath('/html/body/main/div/div[4]');
 
-      if (modelInfo) {
-        modelInfo = modelInfo.replace(/\s+/g, ' ').trim();
+    const isGarantili = rawStatus.toUpperCase().includes('GARANTİ KAPSAMINDADIR') || 
+                        rawStatus.toUpperCase().includes('GARANTI KAPSAMINDADIR') ||
+                        document.body.textContent.includes('Garanti Kapsamındadır');
 
-        if (modelInfo.includes('ROBOROCK') && (modelInfo.includes('BEYAZ') || modelInfo.includes('SİYAH'))) {
-          const parts = modelInfo.split(' ');
-          if (parts.length >= 3) {
-            model_name = parts.slice(1, -1).join(' ').trim();
-            model_color = parts[parts.length - 1].trim();
-          }
-        } else {
-          model_name = modelInfo.trim();
-        }
+    if (isGarantili && rawModel) {
+      let model_name = rawModel.toUpperCase().trim()
+        .replace(/^(MODEL|MARKA)\s*:\s*/i, '')
+        .replace(/^(MODEL|MARKA)\s*/i, '')
+        .trim();
 
-        model_name = model_name.toUpperCase();
-        if (model_name.includes('QREVO')) {
-          model_name = model_name.replace('QREVO', 'Q REVO');
-        }
-        if (model_name.includes('S8')) {
-          model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
-        }
+      let model_color = rawColor.toUpperCase().trim()
+        .replace(/^RENK\s*:\s*/i, '')
+        .replace(/^RENK\s*/i, '')
+        .trim();
+
+      if (model_name.includes('QREVO')) {
+        model_name = model_name.replace('QREVO', 'Q REVO');
       }
-
+      if (model_name.includes('S8')) {
+        model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
+      }
 
       return {
         serial,
@@ -109,7 +103,6 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
         model_name,
         model_color
       };
-    } else if (body && body.textContent.includes('Bu ürün Roborock Türkiye Garanti kapsamında değildir!')) {
     }
   } catch (error: any) {
     if (error.message && error.message.includes('HTTP Error:')) {

@@ -258,10 +258,16 @@ export interface ZReportModelDetail {
     count: number;
 }
 
+export interface ZReportPersonnelDetail {
+    name: string;
+    count: number;
+}
+
 export interface ZReportDayResult {
     date: string;
     totalCount: number;
     models: ZReportModelDetail[];
+    personnel: ZReportPersonnelDetail[];
 }
 
 export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
@@ -275,8 +281,9 @@ export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
     const headers = rows[0] || [];
     const dateIndex = findColumnIndex(headers, ['kayit tarihi', 'kayit zamani', 'olusturma tarihi', 'olusturma zamani'], 14);
     const modelIndex = findColumnIndex(headers, ['model', 'urun modeli', 'cihaz modeli'], 2);
+    const personnelIndex = findColumnIndex(headers, ['kayd a an', 'kaydi acan', 'kaydi acan personel', 'kullanici', 'created_by'], 15);
 
-    const dailyAccumulator: Record<string, { total: number; models: Record<string, number> }> = {};
+    const dailyAccumulator: Record<string, { total: number; models: Record<string, number>; personnel: Record<string, number> }> = {};
 
     rows.forEach((row, rowIndex) => {
         if (rowIndex === 0 || !row) return;
@@ -286,16 +293,19 @@ export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
 
         const dayKey = format(date, 'yyyy-MM-dd');
         const modelName = String(row[modelIndex] || 'Model belirtilmedi').trim() || 'Model belirtilmedi';
+        const personnelName = String(row[personnelIndex] || 'Bilinmiyor').trim() || 'Bilinmiyor';
 
         if (!dailyAccumulator[dayKey]) {
             dailyAccumulator[dayKey] = {
                 total: 0,
-                models: {}
+                models: {},
+                personnel: {}
             };
         }
 
         dailyAccumulator[dayKey].total++;
         dailyAccumulator[dayKey].models[modelName] = (dailyAccumulator[dayKey].models[modelName] || 0) + 1;
+        dailyAccumulator[dayKey].personnel[personnelName] = (dailyAccumulator[dayKey].personnel[personnelName] || 0) + 1;
     });
 
     const sortedDays = Object.keys(dailyAccumulator).sort((a, b) => b.localeCompare(a));
@@ -308,13 +318,18 @@ export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
             .map(([model, count]) => ({ model, count }))
             .sort((a, b) => b.count - a.count || a.model.localeCompare(b.model, 'tr'));
 
+        const personnelArray: ZReportPersonnelDetail[] = Object.entries(data.personnel)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'tr'));
+
         const parsedDate = parse(dayKey, 'yyyy-MM-dd', new Date());
         const displayDate = isValid(parsedDate) ? format(parsedDate, 'dd.MM.yyyy') : dayKey;
 
         return {
             date: displayDate,
             totalCount: data.total,
-            models: modelsArray
+            models: modelsArray,
+            personnel: personnelArray
         };
     });
 }
