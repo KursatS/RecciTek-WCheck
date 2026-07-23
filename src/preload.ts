@@ -106,8 +106,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resetUserXp: (id: string) => safeInvoke('reset-user-xp', id),
 
     // Auto-Updater
+    checkForUpdates: () => safeInvoke('check-for-updates'),
     onUpdateAvailable: (callback: any) =>
         ipcRenderer.on('update-available', (_event, version) => callback(version)),
+    onUpdateNotAvailable: (callback: any) =>
+        ipcRenderer.on('update-not-available', () => callback()),
+    onUpdateError: (callback: any) =>
+        ipcRenderer.on('update-error', (_event, error) => callback(error)),
     onUpdateProgress: (callback: any) =>
         ipcRenderer.on('update-progress', (_event, percent) => callback(percent)),
     onUpdateDownloaded: (callback: any) =>

@@ -1835,6 +1835,18 @@ electron$1.app.whenReady().then(() => {
         mainWindow.webContents.send("update-available", info.version);
       }
     });
+    electronUpdater.autoUpdater.on("update-not-available", () => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("update-not-available");
+      }
+    });
+    electronUpdater.autoUpdater.on("error", (err) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("update-error", err?.message || "Bilinmeyen hata");
+      }
+    });
     electronUpdater.autoUpdater.on("download-progress", (progress) => {
       const mainWindow = windowManager?.getMainWindow();
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1847,6 +1859,14 @@ electron$1.app.whenReady().then(() => {
         mainWindow.webContents.send("update-downloaded");
       }
     });
+    electron$1.ipcMain.handle("check-for-updates", async () => {
+      try {
+        const result = await electronUpdater.autoUpdater.checkForUpdates();
+        return { success: true, updateInfo: result?.updateInfo };
+      } catch (err) {
+        return { success: false, error: err?.message || "Güncelleme kontrolü başarısız" };
+      }
+    });
     electron$1.ipcMain.on("start-update-download", () => {
       electronUpdater.autoUpdater.downloadUpdate();
     });
@@ -1857,9 +1877,9 @@ electron$1.app.whenReady().then(() => {
     });
     setTimeout(() => {
       electronUpdater.autoUpdater.checkForUpdates().catch((err) => {
-        console.log("Update check failed:", err?.message);
+        console.log("Startup update check failed:", err?.message);
       });
-    }, 1e4);
+    }, 3e3);
   }
 });
 electron$1.app.on("will-quit", () => {

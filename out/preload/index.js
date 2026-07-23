@@ -82,7 +82,10 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   deleteUser: (id) => safeInvoke("delete-user", id),
   resetUserXp: (id) => safeInvoke("reset-user-xp", id),
   // Auto-Updater
+  checkForUpdates: () => safeInvoke("check-for-updates"),
   onUpdateAvailable: (callback) => electron.ipcRenderer.on("update-available", (_event, version) => callback(version)),
+  onUpdateNotAvailable: (callback) => electron.ipcRenderer.on("update-not-available", () => callback()),
+  onUpdateError: (callback) => electron.ipcRenderer.on("update-error", (_event, error) => callback(error)),
   onUpdateProgress: (callback) => electron.ipcRenderer.on("update-progress", (_event, percent) => callback(percent)),
   onUpdateDownloaded: (callback) => electron.ipcRenderer.on("update-downloaded", () => callback()),
   startUpdateDownload: () => electron.ipcRenderer.send("start-update-download"),

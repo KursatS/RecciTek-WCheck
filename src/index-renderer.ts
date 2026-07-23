@@ -827,13 +827,44 @@ const { loadAdminUsers } = initAdminLogic(api, {
     const actionBtn = document.getElementById('update-action-btn')!
     const dismissBtn = document.getElementById('update-dismiss-btn')!
 
-    let updateState: 'available' | 'downloading' | 'ready' = 'available'
+    const btnCheckUpdate = document.getElementById('btn-check-update') as HTMLButtonElement | null
+    const updateCheckStatus = document.getElementById('update-check-status') as HTMLDivElement | null
 
     api.onUpdateAvailable((version: string) => {
         updateMsg.textContent = `📢 Yeni sürüm mevcut: v${version}`
         bar.style.display = 'flex'
         updateState = 'available'
         actionBtn.textContent = 'İndir'
+        if (updateCheckStatus) {
+            updateCheckStatus.style.color = '#38bdf8'
+            updateCheckStatus.textContent = `📢 Yeni sürüm bulundu: v${version}`
+        }
+        if (btnCheckUpdate) {
+            btnCheckUpdate.textContent = '🔄 Tekrar Denetle'
+            btnCheckUpdate.disabled = false
+        }
+    })
+
+    api.onUpdateNotAvailable(() => {
+        if (updateCheckStatus) {
+            updateCheckStatus.style.color = '#4ade80'
+            updateCheckStatus.textContent = '✓ Harika! En güncel sürümü kullanıyorsunuz.'
+        }
+        if (btnCheckUpdate) {
+            btnCheckUpdate.textContent = '🔍 Güncellemeleri Kontrol Et'
+            btnCheckUpdate.disabled = false
+        }
+    })
+
+    api.onUpdateError((err: string) => {
+        if (updateCheckStatus) {
+            updateCheckStatus.style.color = '#f87171'
+            updateCheckStatus.textContent = `⚠️ Kontrol hatası: ${err}`
+        }
+        if (btnCheckUpdate) {
+            btnCheckUpdate.textContent = '🔍 Güncellemeleri Kontrol Et'
+            btnCheckUpdate.disabled = false
+        }
     })
 
     api.onUpdateProgress((percent: number) => {
@@ -862,6 +893,27 @@ const { loadAdminUsers } = initAdminLogic(api, {
 
     dismissBtn.onclick = () => {
         bar.style.display = 'none'
+    }
+
+    if (btnCheckUpdate) {
+        btnCheckUpdate.onclick = async () => {
+            btnCheckUpdate.disabled = true
+            btnCheckUpdate.textContent = '⏳ Kontrol Ediliyor...'
+            if (updateCheckStatus) {
+                updateCheckStatus.style.color = '#94a3b8'
+                updateCheckStatus.textContent = 'GitHub sunucularına bağlanılıyor...'
+            }
+            try {
+                await api.checkForUpdates()
+            } catch (e: any) {
+                btnCheckUpdate.disabled = false
+                btnCheckUpdate.textContent = '🔍 Güncellemeleri Kontrol Et'
+                if (updateCheckStatus) {
+                    updateCheckStatus.style.color = '#f87171'
+                    updateCheckStatus.textContent = '⚠️ Güncelleme kontrolü başlatılamadı.'
+                }
+            }
+        }
     }
 })()
 

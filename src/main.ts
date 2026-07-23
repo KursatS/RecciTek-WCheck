@@ -878,6 +878,20 @@ app.whenReady().then(() => {
       }
     });
 
+    autoUpdater.on('update-not-available', () => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-not-available');
+      }
+    });
+
+    autoUpdater.on('error', (err) => {
+      const mainWindow = windowManager?.getMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-error', err?.message || 'Bilinmeyen hata');
+      }
+    });
+
     autoUpdater.on('download-progress', (progress) => {
       const mainWindow = windowManager?.getMainWindow();
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -889,6 +903,15 @@ app.whenReady().then(() => {
       const mainWindow = windowManager?.getMainWindow();
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('update-downloaded');
+      }
+    });
+
+    ipcMain.handle('check-for-updates', async () => {
+      try {
+        const result = await autoUpdater.checkForUpdates();
+        return { success: true, updateInfo: result?.updateInfo };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Güncelleme kontrolü başarısız' };
       }
     });
 
@@ -904,11 +927,12 @@ app.whenReady().then(() => {
       setTimeout(() => app.exit(0), 500);
     });
 
+    // Run update check 3 seconds after startup
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch((err) => {
-        console.log('Update check failed:', err?.message);
+        console.log('Startup update check failed:', err?.message);
       });
-    }, 10000);
+    }, 3000);
   }
 });
 
