@@ -1,7 +1,6 @@
 "use strict";
 const electron$1 = require("electron");
 const path = require("path");
-const jsdom = require("jsdom");
 const Database = require("better-sqlite3");
 const fs = require("fs");
 const XLSX = require("xlsx");
@@ -62,7 +61,7 @@ async function checkWarranty(serial) {
           try {
             const fullBuffer = Buffer.concat(buffers);
             const data = fullBuffer.toString("utf8");
-            const cleanData = data.replace(/�/g, "").replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+            const cleanData = data.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
             resolve(cleanData);
           } catch (error) {
             reject(error);
@@ -76,37 +75,72 @@ async function checkWarranty(serial) {
       request.end();
     });
   }
+  function parseRecciHtml(html) {
+    const stripTags = (str) => str.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const getMatch = (pattern) => {
+      const m = html.match(pattern);
+      return m ? stripTags(m[1]) : "";
+    };
+    const ptitle = getMatch(/<[^>]+class=["'][^"']*ptitle[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
+    const valMatches = [];
+    const valRegex = /<[^>]+class=["'][^"']*val[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let valMatch;
+    while ((valMatch = valRegex.exec(html)) !== null) {
+      valMatches.push(stripTags(valMatch[1]));
+    }
+    const rawModel = valMatches[0] || ptitle || "";
+    const rawColor = valMatches[1] || "";
+    const rawStatus = getMatch(/<[^>]+class=["'][^"']*pill[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
+    const cleanText = stripTags(html);
+    const upperText = cleanText.toUpperCase();
+    const upperStatus = rawStatus.toUpperCase();
+    const isGarantili = upperStatus.includes("GARANTİ KAPSAMINDADIR") || upperStatus.includes("GARANTI KAPSAMINDADIR") || upperText.includes("GARANTİ KAPSAMINDADIR") || cleanText.includes("Garanti Kapsamındadır");
+    const isExpired = upperStatus.includes("GARANTİ SÜRESİ DOLMUŞTUR") || upperStatus.includes("GARANTI SURESI DOLMUSTUR") || cleanText.toLowerCase().includes("garanti süresi dolmuştur");
+    let warranty_end = "";
+    const dateItemRegex = /<[^>]+class=["'][^"']*date-item[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let dateMatch;
+    while ((dateMatch = dateItemRegex.exec(html)) !== null) {
+      const text = stripTags(dateMatch[1]);
+      if (/Garanti Bitiş/i.test(text)) {
+        const m = text.match(/\d{2}\.\d{2}\.\d{4}/);
+        if (m) warranty_end = m[0];
+      }
+    }
+    if (!warranty_end) {
+      const genMatch = cleanText.match(/Garanti Bitiş[^\d]*(\d{2}\.\d{2}\.\d{4})/i);
+      if (genMatch) warranty_end = genMatch[1];
+    }
+    return { rawModel, rawColor, rawStatus, ptitle, cleanText, isGarantili, isExpired, warranty_end };
+  }
   try {
     const html = await makeRequest(`https://www.recciteknoloji.com/garantibelgesi2/?q=${serial}`);
-    const dom = new jsdom.JSDOM(html);
-    const document = dom.window.document;
-    const window = dom.window;
-    const getByXPath = (xpath) => {
-      try {
-        const res = document.evaluate(xpath, document, null, window.XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-        return res.singleNodeValue ? res.singleNodeValue.textContent.trim() : "";
-      } catch (e) {
-        return "";
+    const parsed = parseRecciHtml(html);
+    let model_name = (parsed.rawModel || parsed.ptitle).toUpperCase().trim().replace(/^(MODEL|MARKA)\s*:\s*/i, "").replace(/^(MODEL|MARKA)\s*/i, "").trim();
+    let model_color = (parsed.rawColor || "").toUpperCase().trim().replace(/^RENK\s*:\s*/i, "").replace(/^RENK\s*/i, "").trim();
+    if (!model_color && parsed.ptitle) {
+      const parts = parsed.ptitle.split(" ");
+      if (parts.length > 1) {
+        const lastWord = parts[parts.length - 1].toUpperCase();
+        if (["SİYAH", "BEYAZ", "GRİ", "KIRMIZI", "MAVİ", "GOLD", "ROSE"].includes(lastWord)) {
+          model_color = lastWord;
+          model_name = parts.slice(0, -1).join(" ").trim();
+        }
       }
-    };
-    const rawModel = getByXPath("/html/body/main/div/div[1]/div[2]/div[2]");
-    const rawColor = getByXPath("/html/body/main/div/div[1]/div[3]/div[2]");
-    const rawStatus = getByXPath("/html/body/main/div/div[4]");
-    const isGarantili = rawStatus.toUpperCase().includes("GARANTİ KAPSAMINDADIR") || rawStatus.toUpperCase().includes("GARANTI KAPSAMINDADIR") || document.body.textContent.includes("Garanti Kapsamındadır");
-    if (isGarantili && rawModel) {
-      let model_name = rawModel.toUpperCase().trim().replace(/^(MODEL|MARKA)\s*:\s*/i, "").replace(/^(MODEL|MARKA)\s*/i, "").trim();
-      let model_color = rawColor.toUpperCase().trim().replace(/^RENK\s*:\s*/i, "").replace(/^RENK\s*/i, "").trim();
-      if (model_name.includes("QREVO")) {
-        model_name = model_name.replace("QREVO", "Q REVO");
-      }
-      if (model_name.includes("S8")) {
-        model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
-      }
+    }
+    if (model_name.includes("QREVO")) {
+      model_name = model_name.replace("QREVO", "Q REVO");
+    }
+    if (model_name.includes("S8")) {
+      model_name = model_name.replace(/SON[Iİ]C/g, "").trim();
+    }
+    if (model_name && (parsed.isGarantili || parsed.isExpired || parsed.warranty_end || parsed.cleanText.includes("Recci Teknoloji"))) {
+      const statusStr = parsed.isExpired && !parsed.isGarantili ? "RECCI GARANTILI (SÜRESİ DOLMUŞ - FATURA KONTROL)" : "RECCI GARANTILI";
       return {
         serial,
-        warranty_status: "RECCI GARANTILI",
+        warranty_status: statusStr,
         model_name,
-        model_color
+        model_color,
+        warranty_end: parsed.warranty_end || void 0
       };
     }
   } catch (error) {
@@ -411,6 +445,18 @@ class WindowManager {
     this.mainWindow.webContents.on("did-finish-load", () => {
       this.mainWindowReady = true;
     });
+    this.mainWindow.webContents.on("render-process-gone", (_event, details) => {
+      console.warn("[WindowManager] Renderer process gone, reloading...", details);
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.reload();
+      }
+    });
+    this.mainWindow.on("unresponsive", () => {
+      console.warn("[WindowManager] Main window unresponsive, reloading...");
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.reload();
+      }
+    });
     let saveBoundsTimer = null;
     const saveBounds = () => {
       if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -434,8 +480,8 @@ class WindowManager {
   }
   createLoginWindow(showOnReady = true) {
     this.loginWindow = new electron$1.BrowserWindow({
-      width: 500,
-      height: 500,
+      width: 480,
+      height: 480,
       frame: false,
       resizable: false,
       show: false,
@@ -677,6 +723,14 @@ class WindowManager {
     const win = this.deviceCallToasts.get(callId);
     if (win && !win.isDestroyed()) {
       win.webContents.send("device-call-status-update", statusData);
+    }
+  }
+  resizeDeviceCallToast(callId, height) {
+    const win = this.deviceCallToasts.get(callId);
+    if (win && !win.isDestroyed()) {
+      const targetHeight = Math.max(130, Math.min(Math.ceil(height), 460));
+      const [currentWidth] = win.getSize();
+      win.setSize(currentWidth, targetHeight);
     }
   }
   closeDeviceCallToast(callId) {
@@ -961,144 +1015,7 @@ const firebaseConfig = {
 };
 const app = app$2.initializeApp(firebaseConfig);
 const db = firestore.getFirestore(app);
-const TICKETS_COLLECTION = "tickets";
 const PRIORITY_COLLECTION = "priority_devices";
-async function createTicket(data) {
-  const missingTypeTokens = data.missing_type.split(",").map((token) => token.trim()).filter(Boolean);
-  const docRef = await firestore.addDoc(firestore.collection(db, TICKETS_COLLECTION), {
-    ...data,
-    missing_type_tokens: missingTypeTokens,
-    created_at: firestore.serverTimestamp(),
-    status: "pending",
-    response: "",
-    responded_by: "",
-    responded_at: null,
-    action_history: [{
-      action: "Oluşturuldu",
-      user: data.created_by,
-      timestamp: Date.now()
-    }]
-  });
-  try {
-    const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", data.created_by));
-    const snapshot = await firestore.getDocs(q);
-    if (!snapshot.empty) {
-      await firestore.updateDoc(firestore.doc(db, "users", snapshot.docs[0].id), { xp: firestore.increment(5) });
-    }
-  } catch (e) {
-    console.error("Error adding xp:", e);
-  }
-  return docRef.id;
-}
-async function claimTicket(ticketId, personnelName) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    status: "in_progress",
-    responded_by: personnelName,
-    action_history: firestore.arrayUnion({
-      action: "Üstlendi",
-      user: personnelName,
-      timestamp: Date.now()
-    })
-  });
-}
-async function completeTicket(ticketId, response) {
-  const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
-  let respondedBy = "";
-  let xp_awarded = false;
-  if (!ticketDoc.empty) {
-    const data = ticketDoc.docs[0].data();
-    respondedBy = data.responded_by;
-    xp_awarded = data.xp_awarded || false;
-  }
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    status: "completed",
-    response,
-    responded_at: firestore.serverTimestamp(),
-    xp_awarded: true,
-    action_history: firestore.arrayUnion({
-      action: "Tamamlandı",
-      user: respondedBy || "Bilinmiyor",
-      timestamp: Date.now()
-    })
-  });
-  if (respondedBy && !xp_awarded) {
-    try {
-      const q = firestore.query(firestore.collection(db, "users"), firestore.where("fullName", "==", respondedBy));
-      const snapshot = await firestore.getDocs(q);
-      if (!snapshot.empty) {
-        await firestore.updateDoc(firestore.doc(db, "users", snapshot.docs[0].id), { xp: firestore.increment(10) });
-      }
-    } catch (e) {
-      console.error("Error adding xp:", e);
-    }
-  }
-}
-async function reopenTicket(ticketId, personnelName) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    status: "in_progress",
-    action_history: firestore.arrayUnion({
-      action: "Yeniden Açtı",
-      user: personnelName,
-      timestamp: Date.now()
-    })
-    // Do not clear response so the user can edit their previous response.
-  });
-}
-async function hideTicket(ticketId, personnelName) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    is_hidden: true,
-    hidden_by: personnelName
-  });
-}
-async function unhideTicket(ticketId) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-    is_hidden: false,
-    hidden_by: ""
-  });
-}
-async function deleteTicket(ticketId) {
-  await firestore.deleteDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId));
-}
-async function updateTicketDetails(ticketId, details) {
-  await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), { ...details });
-}
-async function markTicketUnreachable(ticketId, personnelName) {
-  const ticketDoc = await firestore.getDocs(firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.where("__name__", "==", ticketId)));
-  if (!ticketDoc.empty) {
-    await firestore.updateDoc(firestore.doc(db, TICKETS_COLLECTION, ticketId), {
-      status: "pending",
-      responded_by: "",
-      last_contact_attempt_at: firestore.serverTimestamp(),
-      action_history: firestore.arrayUnion({
-        action: "Ulaşılamadı Olarak İşaretledi",
-        user: personnelName,
-        timestamp: Date.now()
-      })
-    });
-  }
-}
-function subscribeAsKargoKabul(personnelName, callback) {
-  const q = firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(200));
-  return firestore.onSnapshot(q, (snapshot) => {
-    const tickets = snapshot.docs.map((d) => {
-      const data = d.data();
-      return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null };
-    });
-    tickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    callback(tickets);
-  }, (error) => console.error("Firestore listener error (KK):", error));
-}
-function subscribeAsMH(callback) {
-  const q = firestore.query(firestore.collection(db, TICKETS_COLLECTION), firestore.orderBy("created_at", "desc"), firestore.limit(200));
-  return firestore.onSnapshot(q, (snapshot) => {
-    const tickets = snapshot.docs.map((d) => {
-      const data = d.data();
-      return { id: d.id, ...data, created_at: data.created_at?.toMillis?.() ?? null, responded_at: data.responded_at?.toMillis?.() ?? null };
-    });
-    tickets.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    callback(tickets);
-  }, (error) => console.error("Firestore listener error (MH):", error));
-}
 async function addPriorityDevice(data) {
   const docRef = await firestore.addDoc(firestore.collection(db, PRIORITY_COLLECTION), {
     ...data,
@@ -1149,9 +1066,6 @@ async function updateUser(id, data) {
 }
 async function deleteUser(id) {
   await firestore.deleteDoc(firestore.doc(db, "users", id));
-}
-async function resetUserXp(id) {
-  await firestore.updateDoc(firestore.doc(db, "users", id), { xp: 0, level: 1 });
 }
 const DEVICE_CALLS_COLLECTION = "device_calls";
 async function createDeviceCall(data) {
@@ -1209,6 +1123,8 @@ function subscribeToDeviceCalls(callback) {
     callback(calls);
   }, (error) => console.error("Firestore listener error (DeviceCalls):", error));
 }
+electron$1.app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
+electron$1.app.commandLine.appendSwitch("disable-direct-composition");
 const gotTheLock = electron$1.app.requestSingleInstanceLock();
 if (!gotTheLock) {
   electron$1.app.quit();
@@ -1237,10 +1153,8 @@ let monitoringEnabled = true;
 let currentPopupData = null;
 let lastDetectedSerial = "";
 let statusInterval = null;
-let ticketUnsubscribe = null;
 let priorityUnsubscribe = null;
 let deviceCallsUnsubscribe = null;
-let cachedTickets = [];
 let cachedPriorityDevices = [];
 function extractCopyText(data) {
   if (!data) return "";
@@ -1400,7 +1314,6 @@ function setupIpcHandlers() {
     currentSettings = { ...currentSettings, ...settings };
     saveSettings(currentSettings);
     registerShortcuts();
-    startTicketListener();
     electron$1.app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
       path: electron$1.app.getPath("exe")
@@ -1432,10 +1345,6 @@ function setupIpcHandlers() {
       clearTimeout(statusInterval);
       statusInterval = null;
     }
-    if (ticketUnsubscribe) {
-      ticketUnsubscribe();
-      ticketUnsubscribe = null;
-    }
     if (priorityUnsubscribe) {
       priorityUnsubscribe();
       priorityUnsubscribe = null;
@@ -1463,31 +1372,18 @@ function setupIpcHandlers() {
     windowManager.getMainWindow()?.webContents.send("switch-view", "settings");
     windowManager.getMainWindow()?.show();
   });
-  electron$1.ipcMain.on("open-bonus", () => {
-    windowManager.getMainWindow()?.webContents.send("switch-view", "bonus");
-    windowManager.getMainWindow()?.show();
-  });
   electron$1.ipcMain.on("open-admin", () => {
     windowManager.getMainWindow()?.webContents.send("switch-view", "admin");
-    windowManager.getMainWindow()?.show();
-  });
-  electron$1.ipcMain.on("open-profile", () => {
-    windowManager.getMainWindow()?.webContents.send("switch-view", "profile");
     windowManager.getMainWindow()?.show();
   });
   electron$1.ipcMain.on("open-priority", () => {
     windowManager.getMainWindow()?.webContents.send("switch-view", "priority");
     windowManager.getMainWindow()?.show();
   });
-  electron$1.ipcMain.on("open-tickets", () => {
-    windowManager.getMainWindow()?.webContents.send("switch-view", "tickets");
-    windowManager.getMainWindow()?.show();
-  });
   electron$1.ipcMain.handle("login-success", async () => {
     windowManager.onLoginSuccess();
     clipboardMonitor.start();
     startServerStatusMonitor();
-    startTicketListener();
     startPriorityDevicesListener();
     startDeviceCallsListener();
     registerShortcuts();
@@ -1626,88 +1522,6 @@ function setupIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
-  electron$1.ipcMain.handle("get-tickets", async () => cachedTickets);
-  electron$1.ipcMain.handle("create-ticket", async (_, data) => {
-    try {
-      const id = await createTicket(data);
-      return { success: true, id };
-    } catch (error) {
-      console.error("Error creating ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("claim-ticket", async (_, id, name) => {
-    try {
-      await claimTicket(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error("Error claiming ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("complete-ticket", async (_, id, response) => {
-    try {
-      await completeTicket(id, response);
-      return { success: true };
-    } catch (error) {
-      console.error("Error completing ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("reopen-ticket", async (_, id, name) => {
-    try {
-      await reopenTicket(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error("Error reopening ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("update-ticket-details", async (_, id, details) => {
-    try {
-      await updateTicketDetails(id, details);
-      return { success: true };
-    } catch (error) {
-      console.error("Error updating ticket details:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("mark-ticket-unreachable", async (_, id, name) => {
-    try {
-      await markTicketUnreachable(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error("Error marking ticket unreachable:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("hide-ticket", async (_, id, personnelName) => {
-    try {
-      await hideTicket(id, personnelName);
-      return { success: true };
-    } catch (error) {
-      console.error("Error hiding ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("unhide-ticket", async (_, id) => {
-    try {
-      await unhideTicket(id);
-      return { success: true };
-    } catch (error) {
-      console.error("Error unhiding ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
-  electron$1.ipcMain.handle("delete-ticket", async (_, id) => {
-    try {
-      await deleteTicket(id);
-      return { success: true };
-    } catch (error) {
-      console.error("Error deleting ticket:", error);
-      return { success: false, error: String(error) };
-    }
-  });
   electron$1.ipcMain.handle("get-priority-devices", async () => cachedPriorityDevices);
   electron$1.ipcMain.handle("add-priority-device", async (_, data) => {
     try {
@@ -1778,6 +1592,11 @@ function setupIpcHandlers() {
         console.error("device-call-action nothere error:", err);
       }
       windowManager.closeDeviceCallToast(callId);
+    }
+  });
+  electron$1.ipcMain.on("resize-device-call-toast", (_, payload) => {
+    if (payload && payload.callId && typeof payload.height === "number") {
+      windowManager.resizeDeviceCallToast(payload.callId, payload.height);
     }
   });
 }
@@ -1929,49 +1748,6 @@ function startPriorityDevicesListener() {
       }
     });
   });
-}
-function startTicketListener() {
-  if (ticketUnsubscribe) {
-    ticketUnsubscribe();
-    ticketUnsubscribe = null;
-  }
-  const broadcastTickets = (tickets) => {
-    if (cachedTickets.length > 0) {
-      const oldMap = new Map(cachedTickets.map((t) => [t.id, t]));
-      tickets.forEach((ticket) => {
-        const old = oldMap.get(ticket.id);
-        if (!old && ticket.status === "pending" && currentSettings.role === "mh") {
-          new electron$1.Notification({
-            title: "Yeni Talep",
-            body: `${ticket.serial || "Bilinmeyen"} için yeni bilgi talebi`,
-            silent: true
-          }).show();
-        } else if (old && old.status !== ticket.status) {
-          if (currentSettings.role === "kargo_kabul" && ticket.created_by === (currentSettings.personnelName || "İsimsiz Personel")) {
-            if (ticket.status === "completed") {
-              new electron$1.Notification({
-                title: "Talep Tamamlandı",
-                body: `${ticket.serial || "Bilinmeyen"} talebiniz tamamlandı`,
-                silent: true
-              }).show();
-            }
-          }
-        }
-      });
-    }
-    cachedTickets = tickets;
-    electron$1.BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send("ticket-update", tickets);
-      }
-    });
-  };
-  if (currentSettings.role === "mh") {
-    ticketUnsubscribe = subscribeAsMH(broadcastTickets);
-  } else {
-    const name = (currentSettings.personnelName || "İsimsiz Personel").replace(/\s/g, "").toUpperCase();
-    ticketUnsubscribe = subscribeAsKargoKabul(name, broadcastTickets);
-  }
 }
 function initializeApp() {
   currentSettings = loadSettings();

@@ -466,8 +466,8 @@
       color: var(--text-muted);
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-C0I6xpO4.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/input-D3DAzxkw.css">
+  <script type="module" crossorigin src="./assets/index-2_ggZKIj.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-BFAFI04Z.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
 
@@ -557,17 +557,8 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="profile-compact">
-          <div class="level-circle">
-            <span id="side-level">1</span>
-          </div>
-          <div class="profile-info">
-            <div class="name" id="side-name">Yükleniyor...</div>
-            <div class="xp-container">
-              <div class="xp-bar">
-                <div class="xp-fill" id="side-xp-fill" style="width: 0%"></div>
-              </div>
-              <span class="xp-text"><span id="side-xp">0</span> XP</span>
-            </div>
+          <div class="profile-info" style="margin:0; padding:6px 0;">
+            <div class="name" id="side-name" style="font-size:1.1rem; font-weight:700;">Yükleniyor...</div>
           </div>
         </div>
       </div>
@@ -577,22 +568,9 @@
           <span class="icon">🕒</span>
           <span class="label">Geçmiş</span>
         </button>
-        <button class="nav-item" data-view="tickets" title="Bildirim Paneli">
-          <span class="icon">📋</span>
-          <span class="label">Bildirimler</span>
-          <span id="ticket-badge" class="badge" style="display:none;">0</span>
-        </button>
-        <button class="nav-item" data-view="profile" id="side-profile-btn" title="Profil & Sıralama">
-          <span class="icon">🏆</span>
-          <span class="label">Sıralama</span>
-        </button>
         <button class="nav-item" data-view="priority" title="Öncelikli Cihazlar">
           <span class="icon">⚠️</span>
           <span class="label">Öncelikli</span>
-        </button>
-        <button class="nav-item" data-view="bonus" id="side-bonus-btn" title="Prim Analizi" style="display:none;">
-          <span class="icon">💰</span>
-          <span class="label">Prim</span>
         </button>
         <button class="nav-item" data-view="admin" id="side-admin-btn" title="Yönetici Paneli" style="display:none;">
           <span class="icon">👨‍💼</span>
@@ -602,7 +580,7 @@
           <span class="icon">📝</span>
           <span class="label">Z Raporu</span>
         </button>
-        <button class="nav-item" id="side-device-call-btn" title="Cihaz Sor — Kargo kabul içi cihaz konumu bulma çağrısı" style="display:none;">
+        <button class="nav-item" data-view="device-calls" id="side-device-call-btn" title="Cihaz Çağrı Geçmişi" style="display:none;">
           <span class="icon">📢</span>
           <span class="label">Cihaz Sor</span>
         </button>
@@ -639,7 +617,6 @@
           <button id="toggle" class="btn btn-primary">
             <span>👁️ Clipboard İzleme: Aktif</span>
           </button>
-          <button id="double-copy-toggle" class="btn btn-warning">🔄 Double Copy: Kapalı</button>
           <button id="clipboard-upper-toggle" class="btn btn-primary" title="Ctrl+Shift+V kısayolu ile panodaki yazıları otomatik olarak Türkçe büyük harfe dönüştürür ve yapıştırır.">
             <span>🔠 Büyük Harf Yapıştır: Aktif</span>
           </button>
@@ -647,84 +624,6 @@
         </div>
 
         <div class="cards-grid" id="cards"></div>
-      </section>
-
-      <!-- View: Tickets (Embedded) -->
-      <section id="view-tickets" class="view-section">
-        <header class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div>
-            <h1>📋 Bildirim Paneli</h1>
-            <p>Eksik bilgi talepleri — gerçek zamanlı</p>
-          </div>
-          <button id="btn-manual-ticket" class="btn btn-primary" style="margin-top: 10px;">+ Manuel Bildirim Aç</button>
-        </header>
-        <div class="stats-bar" id="stats-bar">
-          <div class="stat-chip"><div class="dot dot-pending"></div> Bekleyen: <span id="count-pending">0</span></div>
-          <div class="stat-chip"><div class="dot dot-progress"></div> İşleniyor: <span id="count-progress">0</span></div>
-          <div class="stat-chip"><div class="dot dot-completed"></div> Tamamlanan: <span id="count-completed">0</span></div>
-        </div>
-        <div class="search-bar">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="ticket-search" placeholder="Seri no veya müşteri ismi ile ara...">
-        </div>
-        <div id="ticket-queue-bar" style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
-          <button id="ticket-queue-main" data-queue="main" data-mode="main" style="border:1px solid rgba(56,189,248,0.55); background:rgba(56,189,248,0.2); color:#e0f2fe; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap; box-shadow:0 10px 25px rgba(56,189,248,0.15);" title="Telefonu bulunan ve normal akışta işlenecek biletler">
-            Ana Panel
-          </button>
-          <button id="ticket-queue-phone" data-queue="phone" data-mode="main" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Aras kodu var fakat telefon numarası eksik biletler">
-            Telefon Bekleyen
-          </button>
-          <button id="ticket-queue-detail" data-queue="detail" data-mode="main" style="border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; padding:8px 14px; border-radius:10px; cursor:pointer; font-size:0.85rem; transition:all 0.2s; white-space:nowrap;" title="Telefonu tamamlanmış ama başka bilgi eksiği süren biletler">
-            Bilgi Bekleyen
-          </button>
-        </div>
-        <div class="filter-dropdowns" id="filter-dropdowns" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="filter-status" style="font-size: 0.85rem; color: #94a3b8;">Durum:</label>
-            <select id="filter-status" class="ticket-filter-select">
-              <option value="all">Tümü</option>
-              <option value="pending">Bekleyen</option>
-              <option value="in_progress">İşleniyor</option>
-              <option value="completed">Tamamlanan</option>
-            </select>
-          </div>
-        </div>
-        <div class="ticket-list" id="ticket-list">
-          <div class="empty-state" id="empty-state">
-            <div class="icon" style="animation: pulse-soft 2s ease-in-out infinite;">📭</div>
-            <h3>Henüz talep yok</h3>
-            <p>Yeni talepler otomatik olarak burada görünecek</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- View: Profile (Embedded) -->
-      <section id="view-profile" class="view-section">
-        <header class="view-header">
-          <h1>🏆 Liderlik Tablosu</h1>
-          <p>Tüm çalışma arkadaşlarınız arasındaki sıralamanız</p>
-        </header>
-        <div class="profile-banner">
-          <div class="level-badge"><span>Level</span><span id="my-level">1</span></div>
-          <div class="profile-details" style="flex:1;">
-            <h3 id="my-name">—</h3>
-            <p id="my-role">—</p>
-            <div class="xp-bar-container"><div class="xp-bar-fill" id="my-xp-fill"></div></div>
-            <div class="xp-text">
-              <span>Mevcut XP: <strong id="my-xp">0</strong></span>
-              <span>Sonraki Seviye: <strong id="next-level-xp">100</strong> XP</span>
-            </div>
-          </div>
-        </div>
-        <div class="scoreboard-header">
-          <h2>Sıralama</h2>
-          <div class="filter-group">
-            <button class="filter-btn active" data-role="all">Tümü</button>
-            <button class="filter-btn" data-role="mh">MH</button>
-            <button class="filter-btn" data-role="kargo_kabul">Kargo Kabul</button>
-          </div>
-        </div>
-        <div class="scoreboard" id="scoreboard"></div>
       </section>
 
       <!-- View: Priority (Embedded) -->
@@ -747,38 +646,6 @@
           </div>
           <div class="priority-list" id="priority-list"></div>
         </div>
-      </section>
-
-      <!-- View: Bonus (Embedded) -->
-      <section id="view-bonus" class="view-section">
-        <header class="view-header">
-          <h1>💰 Prim Analizi</h1>
-          <p>CRM kayıtlarınızı yükleyin ve aylık prim durumunuzu görün</p>
-        </header>
-        <div style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 30px;">
-          <div id="bonus-drop-zone" class="upload-area" style="flex: 2;">
-            <span style="font-size: 3rem; margin-bottom: 20px; display: block;">📊</span>
-            <h2 style="font-size: 1.25rem;">Dosyayı Sürükleyin</h2>
-            <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">veya tıklayarak seçin</p>
-            <input type="file" id="bonus-file-input" style="display: none;" accept=".xlsx, .xls, .csv">
-          </div>
-          <div style="flex: 1; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
-            <h3 style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Mesai Saatleri</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div>
-                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Başlangıç</label>
-                <input type="time" id="work-start" value="08:00" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px;">
-              </div>
-              <div>
-                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Bitiş</label>
-                <input type="time" id="work-end" value="18:30" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px;">
-              </div>
-            </div>
-            <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">Saatleri değiştirdiğinizde veriler anlık olarak yeniden hesaplanır.</p>
-          </div>
-        </div>
-        <div id="bonus-results" class="results-container"></div>
-        <div id="bonus-analytics" class="analytics-panel" style="display:none;"></div>
       </section>
 
       <!-- View: Admin (Embedded) -->
@@ -811,14 +678,48 @@
         <div id="zreport-analytics" class="analytics-panel" style="display:none;"></div>
       </section>
 
+      <!-- View: Device Calls (Embedded) -->
+      <section id="view-device-calls" class="view-section">
+        <header class="view-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h1>📢 Cihaz Çağrı Geçmişi</h1>
+            <p>Tüm kargo kabul personelleri tarafından oluşturulan cihaz arama çağrıları ve canlı durumları</p>
+          </div>
+          <button id="btn-open-device-call-modal" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; border: none; font-size: 0.9rem; padding: 10px 20px; box-shadow: 0 4px 14px rgba(245,158,11,0.3); margin-top: 10px;">
+            📢 Yeni Cihaz Sor
+          </button>
+        </header>
+
+        <!-- Filter & Search Bar -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+          <div style="position: relative; flex: 1; min-width: 260px;">
+            <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+            <input type="text" id="device-call-search" placeholder="Seri no, model veya personel ismi ile ara..." style="width: 100%; padding: 10px 14px 10px 38px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 14px; color: var(--text-main); font-size: 0.9rem; outline: none;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="device-call-status-filter" style="font-size: 0.85rem; color: #94a3b8;">Durum:</label>
+            <select id="device-call-status-filter" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-main); padding: 8px 14px; font-size: 0.85rem; outline: none;">
+              <option value="all">Tümü</option>
+              <option value="active">⏳ Aktif (Yanıt Bekleyen)</option>
+              <option value="resolved">✅ Bulundu</option>
+              <option value="cancelled">✕ İptal Edildi</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Device Call List Container -->
+        <div id="device-call-history-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px;">
+        </div>
+      </section>
+
       <!-- View: Settings (Embedded) -->
       <section id="view-settings" class="view-section">
-        <header class="view-header">
+        <header class="view-header" style="text-align: center;">
           <h1>⚙️ Uygulama Ayarları</h1>
           <p>Kişiselleştirme ve sistem tercihleri</p>
         </header>
 
-        <div style="max-width: 660px;">
+        <div style="max-width: 680px; margin: 0 auto;">
           <!-- Profil -->
           <h3 class="settings-group-title">Profil</h3>
           <div class="setting-group">
@@ -954,11 +855,31 @@
     .profile-compact {
       display: flex;
       align-items: center;
-      gap: 15px;
+      justify-content: center;
+      text-align: center;
       background: rgba(255, 255, 255, 0.03);
-      padding: 12px;
-      border-radius: 20px;
+      padding: 12px 14px;
+      border-radius: 16px;
       border: 1px solid var(--glass-border);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .profile-info {
+      width: 100%;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .profile-info .name {
+      text-align: center;
+      word-break: break-word;
+      white-space: normal;
+      line-height: 1.35;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
     }
 
     .level-circle {

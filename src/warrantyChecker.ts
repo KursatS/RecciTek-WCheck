@@ -1,5 +1,4 @@
 import { net } from 'electron';
-import { JSDOM } from 'jsdom';
 
 export interface WarrantyInfo {
   serial: string;
@@ -40,7 +39,7 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
           try {
             const fullBuffer = Buffer.concat(buffers);
             const data = fullBuffer.toString('utf8');
-            const cleanData = data.replace(/�/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+            const cleanData = data.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
             resolve(cleanData);
           } catch (error) {
             reject(error);
@@ -55,61 +54,108 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
     });
   }
 
-  try {
-    const html = await makeRequest(`https://www.recciteknoloji.com/garantibelgesi2/?q=${serial}`);
+  function parseRecciHtml(html: string) {
+    const stripTags = (str: string) => str.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-    const window = dom.window;
-
-    const getByXPath = (xpath: string): string => {
-      try {
-        const res = document.evaluate(xpath, document, null, window.XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-        return res.singleNodeValue ? res.singleNodeValue.textContent.trim() : '';
-      } catch (e) {
-        return '';
-      }
+    const getMatch = (pattern: RegExp) => {
+      const m = html.match(pattern);
+      return m ? stripTags(m[1]) : '';
     };
 
-    const rawModel = getByXPath('/html/body/main/div/div[1]/div[2]/div[2]');
-    const rawColor = getByXPath('/html/body/main/div/div[1]/div[3]/div[2]');
-    const rawStatus = getByXPath('/html/body/main/div/div[4]');
+    const ptitle = getMatch(/<[^>]+class=["'][^"']*ptitle[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
 
-    const isGarantili = rawStatus.toUpperCase().includes('GARANTİ KAPSAMINDADIR') || 
-                        rawStatus.toUpperCase().includes('GARANTI KAPSAMINDADIR') ||
-                        document.body.textContent.includes('Garanti Kapsamındadır');
+    const valMatches: string[] = [];
+    const valRegex = /<[^>]+class=["'][^"']*val[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let valMatch;
+    while ((valMatch = valRegex.exec(html)) !== null) {
+      valMatches.push(stripTags(valMatch[1]));
+    }
 
-    if (isGarantili && rawModel) {
-      let model_name = rawModel.toUpperCase().trim()
-        .replace(/^(MODEL|MARKA)\s*:\s*/i, '')
-        .replace(/^(MODEL|MARKA)\s*/i, '')
-        .trim();
+    const rawModel = valMatches[0] || ptitle || '';
+    const rawColor = valMatches[1] || '';
+    const rawStatus = getMatch(/<[^>]+class=["'][^"']*pill[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
 
-      let model_color = rawColor.toUpperCase().trim()
-        .replace(/^RENK\s*:\s*/i, '')
-        .replace(/^RENK\s*/i, '')
-        .trim();
+    const cleanText = stripTags(html);
+    const upperText = cleanText.toUpperCase();
+    const upperStatus = rawStatus.toUpperCase();
 
-      if (model_name.includes('QREVO')) {
-        model_name = model_name.replace('QREVO', 'Q REVO');
+    const isGarantili = upperStatus.includes('GARANTİ KAPSAMINDADIR') ||
+                        upperStatus.includes('GARANTI KAPSAMINDADIR') ||
+                        upperText.includes('GARANTİ KAPSAMINDADIR') ||
+                        cleanText.includes('Garanti Kapsamındadır');
+
+    const isExpired = upperStatus.includes('GARANTİ SÜRESİ DOLMUŞTUR') ||
+                      upperStatus.includes('GARANTI SURESI DOLMUSTUR') ||
+                      cleanText.toLowerCase().includes('garanti süresi dolmuştur');
+
+    let warranty_end = '';
+    const dateItemRegex = /<[^>]+class=["'][^"']*date-item[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let dateMatch;
+    while ((dateMatch = dateItemRegex.exec(html)) !== null) {
+      const text = stripTags(dateMatch[1]);
+      if (/Garanti Bitiş/i.test(text)) {
+        const m = text.match(/\d{2}\.\d{2}\.\d{4}/);
+        if (m) warranty_end = m[0];
       }
-      if (model_name.includes('S8')) {
-        model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
+    }
+
+    if (!warranty_end) {
+      const genMatch = cleanText.match(/Garanti Bitiş[^\d]*(\d{2}\.\d{2}\.\d{4})/i);
+      if (genMatch) warranty_end = genMatch[1];
+    }
+
+    return { rawModel, rawColor, rawStatus, ptitle, cleanText, isGarantili, isExpired, warranty_end };
+  }
+
+  try {
+    const html = await makeRequest(`https://www.recciteknoloji.com/garantibelgesi2/?q=${serial}`);
+    const parsed = parseRecciHtml(html);
+
+    let model_name = (parsed.rawModel || parsed.ptitle).toUpperCase().trim()
+      .replace(/^(MODEL|MARKA)\s*:\s*/i, '')
+      .replace(/^(MODEL|MARKA)\s*/i, '')
+      .trim();
+
+    let model_color = (parsed.rawColor || '').toUpperCase().trim()
+      .replace(/^RENK\s*:\s*/i, '')
+      .replace(/^RENK\s*/i, '')
+      .trim();
+
+    if (!model_color && parsed.ptitle) {
+      const parts = parsed.ptitle.split(' ');
+      if (parts.length > 1) {
+        const lastWord = parts[parts.length - 1].toUpperCase();
+        if (['SİYAH', 'BEYAZ', 'GRİ', 'KIRMIZI', 'MAVİ', 'GOLD', 'ROSE'].includes(lastWord)) {
+          model_color = lastWord;
+          model_name = parts.slice(0, -1).join(' ').trim();
+        }
       }
+    }
+
+    if (model_name.includes('QREVO')) {
+      model_name = model_name.replace('QREVO', 'Q REVO');
+    }
+    if (model_name.includes('S8')) {
+      model_name = model_name.replace(/SON[Iİ]C/g, '').trim();
+    }
+
+    if (model_name && (parsed.isGarantili || parsed.isExpired || parsed.warranty_end || parsed.cleanText.includes('Recci Teknoloji'))) {
+      const statusStr = (parsed.isExpired && !parsed.isGarantili)
+        ? 'RECCI GARANTILI (SÜRESİ DOLMUŞ - FATURA KONTROL)'
+        : 'RECCI GARANTILI';
 
       return {
         serial,
-        warranty_status: 'RECCI GARANTILI',
+        warranty_status: statusStr,
         model_name,
-        model_color
+        model_color,
+        warranty_end: parsed.warranty_end || undefined
       };
     }
   } catch (error: any) {
     if (error.message && error.message.includes('HTTP Error:')) {
-      // Allow fallback if primary server has an HTTP error (e.g. 500)
+      // Fallback
     } else {
-      // Any error from the first API (timeout or connection error) should be treated as timeout
-      // because the second API will also fail with the same connection issue
       throw new Error('TIMEOUT');
     }
   }
@@ -154,10 +200,8 @@ export async function checkWarranty(serial: string): Promise<WarrantyInfo> {
     }
   } catch (error: any) {
     if (error.message && error.message.includes('HTTP Error:')) {
-      // Ignore inner HTTP error 
+      // Fallback
     } else {
-      // Any error from the first API (timeout or connection error) should be treated as timeout
-      // because the second API will also fail with the same connection issue
       throw new Error('TIMEOUT');
     }
   }

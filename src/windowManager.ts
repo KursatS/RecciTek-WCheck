@@ -132,6 +132,21 @@ export class WindowManager {
             this.mainWindowReady = true;
         });
 
+        // Auto-recover if renderer crashes or freezes (prevents black screen on office GPUs)
+        this.mainWindow.webContents.on('render-process-gone', (_event, details) => {
+            console.warn('[WindowManager] Renderer process gone, reloading...', details);
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.reload();
+            }
+        });
+
+        this.mainWindow.on('unresponsive', () => {
+            console.warn('[WindowManager] Main window unresponsive, reloading...');
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.reload();
+            }
+        });
+
         let saveBoundsTimer: NodeJS.Timeout | null = null;
         const saveBounds = () => {
             if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -159,8 +174,8 @@ export class WindowManager {
 
     createLoginWindow(showOnReady: boolean = true): BrowserWindow {
         this.loginWindow = new BrowserWindow({
-            width: 500,
-            height: 500,
+            width: 480,
+            height: 480,
             frame: false,
             resizable: false,
             show: false,
@@ -455,6 +470,16 @@ export class WindowManager {
         const win = this.deviceCallToasts.get(callId);
         if (win && !win.isDestroyed()) {
             win.webContents.send('device-call-status-update', statusData);
+        }
+    }
+
+    resizeDeviceCallToast(callId: string, height: number): void {
+        const win = this.deviceCallToasts.get(callId);
+        if (win && !win.isDestroyed()) {
+            // Clamp window height between reasonable limits (e.g. 130px min, 460px max)
+            const targetHeight = Math.max(130, Math.min(Math.ceil(height), 460));
+            const [currentWidth] = win.getSize();
+            win.setSize(currentWidth, targetHeight);
         }
     }
 

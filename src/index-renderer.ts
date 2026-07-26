@@ -1,13 +1,11 @@
 export { }
 import { showToast } from './utils/toastUtils'
 import { SVG_EMPTY_FOLDER } from './utils/svgUtils'
-import { initTicketLogic } from './utils/ticketLogic'
-import { initProfileLogic } from './utils/profileLogic'
 import { initPriorityLogic } from './utils/priorityLogic'
 import { initSettingsLogic } from './utils/settingsLogic'
-import { initBonusLogic } from './utils/bonusLogic'
 import { initAdminLogic } from './utils/adminLogic'
 import { initZReportLogic } from './utils/zreportLogic'
+import { initDeviceCallLogic } from './utils/deviceCallLogic'
 import { escapeHtml } from './utils/html'
 
 //
@@ -16,45 +14,15 @@ const searchInput = document.getElementById('search') as HTMLInputElement
 const toggleBtn = document.getElementById('toggle')!
 const themeBtn = document.getElementById('theme-toggle')!
 const clearCacheBtn = document.getElementById('clear-cache')!
-const dcBtn = document.getElementById('double-copy-toggle')!
 const clipboardUpperToggleBtn = document.getElementById('clipboard-upper-toggle')!
 const statusDot = document.getElementById('status-dot')!
 const statusInfo = document.getElementById('status-info')!
 const statusRefreshBtn = document.getElementById('status-refresh-btn')!
 
 // Sidebar Elements
-const sideLevel = document.getElementById('side-level')!
 const sideName = document.getElementById('side-name')!
-const sideXp = document.getElementById('side-xp')!
-const sideXpFill = document.getElementById('side-xp-fill')!
 const navItems = document.querySelectorAll('.nav-item')
 const viewSections = document.querySelectorAll('.view-section')
-const ticketBadge = document.getElementById('ticket-badge')!
-
-// Tickets View Elements
-const ticketList = document.getElementById('ticket-list')!
-const tcPending = document.getElementById('count-pending')!
-const tcProgress = document.getElementById('count-progress')!
-const tcCompleted = document.getElementById('count-completed')!
-const tQueueBar = document.getElementById('ticket-queue-bar') as HTMLDivElement
-const tSearchInput = document.getElementById('ticket-search') as HTMLInputElement
-const tFilterStatus = document.getElementById('filter-status')!
-const tFilterVisibility = document.getElementById('filter-visibility')!
-const tFilterOwnership = document.getElementById('filter-ownership-toggle')!
-const tQueueAll = document.getElementById('ticket-queue-main') as HTMLButtonElement
-const tQueuePhone = document.getElementById('ticket-queue-phone') as HTMLButtonElement
-const tQueueDetail = document.getElementById('ticket-queue-detail') as HTMLButtonElement
-const btnManualTicket = document.getElementById('btn-manual-ticket')
-
-// Profile View Elements
-const pMyLevel = document.getElementById('my-level')!
-const pMyName = document.getElementById('my-name')!
-const pMyRole = document.getElementById('my-role')!
-const pMyXp = document.getElementById('my-xp')!
-const pNextLevelXp = document.getElementById('next-level-xp')!
-const pXpFill = document.getElementById('my-xp-fill')!
-const scoreboardContainer = document.getElementById('scoreboard')!
-const profileFilterBtns = document.querySelectorAll('.filter-btn')
 
 // Priority View Elements
 const prioList = document.getElementById('priority-list')!
@@ -111,6 +79,10 @@ const dcallCustomer = document.getElementById('dcall-customer') as HTMLInputElem
 const btnCancelDeviceCall = document.getElementById('btn-cancel-device-call')!
 const btnSendDeviceCall = document.getElementById('btn-send-device-call')!
 const deviceCallToastContainer = document.getElementById('device-call-toast-container')!
+const dcallHistoryList = document.getElementById('device-call-history-list')
+const dcallSearchInput = document.getElementById('device-call-search') as HTMLInputElement
+const dcallStatusFilter = document.getElementById('device-call-status-filter') as HTMLSelectElement
+const btnOpenDeviceCallModal = document.getElementById('btn-open-device-call-modal')
 
 
 // Modal elements
@@ -125,7 +97,6 @@ const api = (window as any).electronAPI
 let monitoringEnabled = true
 let currentRole = 'kargo_kabul'
 let personnelName = ''
-let activeTickets: any[] = []
 
 //
 export function showConfirm(title: string, message: string, confirmText = 'Evet, Sil'): Promise<boolean> {
@@ -149,101 +120,6 @@ export function showConfirm(title: string, message: string, confirmText = 'Evet,
     })
 }
 ;(window as any).showConfirm = showConfirm
-
-//
-function showAskMHModal(serial: string, modelName: string, modelColor: string): void {
-    modalTitle.textContent = 'MH\'ye Sor'
-    modalText.innerHTML = ''
-
-    const form = document.createElement('div')
-    form.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:12px;'
-
-    // Checkbox elements
-    const fields = [
-        { id: 'chk-ariza', label: 'Ar\u0131za Beyan\u0131' },
-        { id: 'chk-adres', label: 'Adres Bilgisi' },
-        { id: 'chk-tel', label: 'Telefon Numaras\u0131' },
-        { id: 'chk-fatura', label: 'Fatura Tarihi' },
-        { id: 'chk-seri', label: 'Seri Numaras\u0131' },
-        { id: 'chk-isim', label: '\u0130sim ve Soyisim' }
-    ]
-
-    let checkboxesHtml = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">'
-    fields.forEach(f => {
-        checkboxesHtml += `
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;cursor:pointer;">
-                <input type="checkbox" id="${f.id}" value="${f.label}" style="accent-color:#38bdf8;width:16px;height:16px;">
-                ${f.label}
-            </label>
-        `
-    })
-    checkboxesHtml += '</div>'
-
-    form.innerHTML = `
-    <label style="font-size:0.85rem;color:#94a3b8;margin-bottom:-8px;">Eksik Bilgiler (Birden fazla se\u00e7ebilirsiniz)</label>
-    ${checkboxesHtml}
-    
-    <label style="font-size:0.85rem;color:#94a3b8;">M\u00fc\u015fteri \u0130smi (Opsiyonel)</label>
-    <input type="text" id="mh-customer" placeholder="M\u00fc\u015fteri ad\u0131 soyad\u0131..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
-
-    <label style="font-size:0.85rem;color:#94a3b8;">Aras Kodu (Opsiyonel)</label>
-    <input type="text" id="mh-aras" placeholder="Aras kargo kodu..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
-
-    <label style="font-size:0.85rem;color:#94a3b8;">Telefon Numaras\u0131 (Opsiyonel)</label>
-    <input type="text" id="mh-phone" placeholder="M\u00fc\u015fteri ileti\u015fim numaras\u0131..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
-
-    <label style="font-size:0.85rem;color:#94a3b8;">Not (Opsiyonel)</label>
-    <input type="text" id="mh-note" placeholder="Ekstra detay ekleyin..." style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;outline:none;">
-    `
-    modalText.appendChild(form)
-    modalConfirm.textContent = 'G\u00f6nder'
-
-    modalOverlay.classList.add('active')
-
-    modalConfirm.onclick = async () => {
-        // Collect checked missing types
-        const selectedTypes: string[] = []
-        fields.forEach(f => {
-            const el = document.getElementById(f.id) as HTMLInputElement
-            if (el && el.checked) {
-                selectedTypes.push(el.value)
-            }
-        })
-
-        const missingType = selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Belirtilmedi'
-        const note = (document.getElementById('mh-note') as HTMLInputElement).value.trim()
-        const customerName = (document.getElementById('mh-customer') as HTMLInputElement).value.trim()
-        const arasCode = (document.getElementById('mh-aras') as HTMLInputElement).value.trim()
-        const phoneNumber = (document.getElementById('mh-phone') as HTMLInputElement).value.trim()
-
-        try {
-            await api.createTicket({
-                serial,
-                model_name: modelName,
-                model_color: modelColor,
-                missing_type: missingType,
-                note,
-                customer_name: customerName,
-                aras_code: arasCode,
-                phone_number: phoneNumber,
-                created_by: personnelName || '\u0130simsiz Personel'
-            })
-            showToast('Eksik bilgi talebiniz MH departman\u0131na iletildi.', 'success')
-        } catch (e: any) {
-            showToast('Talep olu\u015fturulurken hata: ' + e.message, 'error')
-        }
-
-        modalOverlay.classList.remove('active')
-    }
-
-    modalCancel.onclick = () => {
-        modalOverlay.classList.remove('active')
-    }
-
-    modalOverlay.onclick = (e: MouseEvent) => {
-        if (e.target === modalOverlay) modalOverlay.classList.remove('active')
-    }
-}
 
 //
 function formatDate(dateString: string): string {
@@ -283,14 +159,6 @@ function loadCards() {
         const query = searchInput.value.toLowerCase()
         data.sort((a: any, b: any) => new Date(b.copy_date).getTime() - new Date(a.copy_date).getTime())
 
-        // FIX: PRECOMPUTE TICKET MAP (O(1) lookups)
-        const completedTicketsMap = new Map();
-        activeTickets.forEach(t => {
-            if (t.status === 'completed') {
-                completedTicketsMap.set(t.serial, t);
-            }
-        });
-
         // FIX: BATCH DOM APPENDS
         const fragment = document.createDocumentFragment();
 
@@ -304,40 +172,26 @@ function loadCards() {
                 else if (statusLabel.includes('KVK')) cardClass += ' kvk'
                 else cardClass += ' out-of-warranty'
 
-                // Check if this serial has a completed ticket to show MH response
-                const completedTicket = completedTicketsMap.get(item.serial);
-
-                // MH'ye Sor button (STRICTLY only for kargo_kabul role and if no completed response exists)
-                const askMHBtn = (currentRole === 'kargo_kabul' && !completedTicket?.response)
-                    ? `<button class="ask-mh-btn" data-serial="${item.serial}" data-model="${item.model_name || ''}" data-color="${item.model_color || ''}" style="position:absolute;bottom:12px;right:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;" title="MH'ye Sor">&#128233; MH'ye Sor</button>`
-                    : ''
+                const isExpiredRecci = statusLabel.includes('SÜRESİ DOLMUŞ') || statusLabel.includes('FATURA KONTROL')
+                const statusTagContent = isExpiredRecci
+                    ? `<span style="color:#10b981;">RECCI GARANTİLİ</span> <span style="color:#f59e0b;font-weight:700;">(SÜRESİ DOLMUŞ - FATURA KONTROL)</span>`
+                    : statusLabel
 
                 card.className = cardClass
                 card.style.position = 'relative'
                 card.innerHTML = `
           <button class="delete-btn" onclick="deleteEntry('${item.serial}')">&#10005;</button>
-          ${askMHBtn}
-          <div class="status-tag">${statusLabel}</div>
+          <div class="status-tag">${statusTagContent}</div>
           <p><strong>Seri:</strong> ${item.serial}</p>
           <p><strong>Model:</strong> ${item.model_name || 'Bilinmiyor'} ${item.model_color || ''}</p>
           <p><strong>Tarih:</strong> ${formatDate(item.copy_date)}</p>
-          ${item.warranty_end ? `<p><strong>Biti\u015f:</strong> ${item.warranty_end}</p>` : ''}
-          ${completedTicket?.response ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-radius:10px;font-size:0.8rem;max-height:100px;overflow-y:auto;word-break:break-word;border:1px solid rgba(16,185,129,0.2);"><strong style="color:#10b981;display:block;margin-bottom:2px;">MH Cevap:</strong>${completedTicket.response}</div>` : ''}
+          ${item.warranty_end ? `<p><strong>FT Biti\u015f:</strong> ${item.warranty_end}</p>` : ''}
         `
                 fragment.appendChild(card)
             }
         })
 
         cardsDiv.appendChild(fragment)
-
-        // Bind Ask MH buttons
-        cardsDiv.querySelectorAll('.ask-mh-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const el = btn as HTMLElement
-                showAskMHModal(el.dataset.serial!, el.dataset.model!, el.dataset.color!)
-            })
-        })
     })
 }
 
@@ -429,11 +283,10 @@ function switchView(viewName: string) {
             updateClipboardUpperUI(s.clipboardUpperEnabled !== false)
         })
     }
-    else if (viewName === 'tickets') loadTickets()
-    else if (viewName === 'profile') loadProfileScoreboard()
     else if (viewName === 'priority') loadPriorityDevices()
     else if (viewName === 'admin') loadAdminUsers()
     else if (viewName === 'settings') loadSettingsToUI()
+    else if (viewName === 'device-calls') deviceCallController.renderHistory()
 }
 
 navItems.forEach(item => {
@@ -444,43 +297,11 @@ navItems.forEach(item => {
 })
 
 //
-function calculateLevel(xp: number): { level: number, nextXp: number } {
-    let level = 1
-    let threshold = 100
-    while (xp >= threshold) {
-        level++
-        threshold += 100 * (level * 0.5)
-    }
-    return { level, nextXp: Math.floor(threshold) }
-}
-
 async function refreshSidebarProfile() {
     const settings = await api.getSettings()
-    personnelName = settings.personnelName || '\u0130simsiz'
-    sideName.textContent = personnelName.toUpperCase()
-
-    // Fetch user from DB for XP
-    const users = await api.getUsers() // I need to add this IPC if it doesn't exist, or use scoreboard data
-    const me = users?.find((u: any) => u.username === settings.username)
-    if (me) {
-        const { level, nextXp } = calculateLevel(me.xp || 0)
-        sideLevel.textContent = String(level)
-        sideXp.textContent = String(me.xp || 0)
-        const progress = ((me.xp || 0) / nextXp) * 100
-        sideXpFill.style.width = `${Math.min(100, progress)}%`
-
-        // Also update Profile view if active
-        if (pMyLevel) {
-            pMyLevel.textContent = String(level)
-            pMyName.textContent = me.fullName || me.username
-            pMyRole.textContent = me.role === 'mh' ? 'M\u00fc\u015fteri Hizmetleri' : 'Kargo Kabul'
-            pMyXp.textContent = String(me.xp || 0)
-            pNextLevelXp.textContent = String(nextXp)
-            pXpFill.style.width = `${Math.min(100, progress)}%`
-        }
-    }
+    personnelName = settings.personnelName || 'İsimsiz'
+    if (sideName) sideName.textContent = personnelName.toUpperCase()
 }
-
 
 //
 clearCacheBtn.onclick = async () => {
@@ -516,26 +337,6 @@ clearCacheBtn.onclick = async () => {
             }
         }
     }
-
-//
-function updateDCUI(enabled: boolean) {
-    dcBtn.textContent = enabled ? '🔄 Double Copy: Açık' : '🔄 Double Copy: Kapalı'
-    dcBtn.classList.toggle('btn-warning', !enabled)
-    dcBtn.classList.toggle('btn-primary', enabled)
-}
-
-api.getDoubleCopy().then((enabled: boolean) => updateDCUI(enabled))
-
-dcBtn.onclick = async () => {
-    const current = dcBtn.textContent!.includes('Açık')
-    try {
-        await api.toggleDoubleCopy(!current)
-        updateDCUI(!current)
-        showToast(`Double Copy modu ${!current ? 'a\u00e7\u0131ld\u0131' : 'kapat\u0131ld\u0131'}.`, 'info')
-    } catch (e: any) {
-        showToast('Double Copy değişemedi: ' + e.message, 'error')
-    }
-}
 
 function updateClipboardUpperUI(enabled: boolean) {
     const span = clipboardUpperToggleBtn.querySelector('span')
@@ -655,30 +456,6 @@ api.onPriorityDeviceMatch((device: any) => {
 })
 
 //
-const { loadTickets, renderTicketsList } = initTicketLogic(
-    api,
-    { ticketList, tSearchInput, tFilterStatus, tFilterVisibility, tFilterOwnership, tQueueAll, tQueuePhone, tQueueDetail, tcPending, tcProgress, tcCompleted, btnManualTicket },
-    () => currentRole,
-    () => personnelName
-)
-
-const { loadProfileScoreboard } = initProfileLogic(
-    api,
-    {
-        scoreboardContainer,
-        profileFilterBtns,
-        pMyLevel,
-        pMyName,
-        pMyRole,
-        pMyXp,
-        pNextLevelXp,
-        pXpFill
-    },
-    personnelName,
-    calculateLevel,
-    refreshSidebarProfile
-)
-
 const { loadPriorityDevices, focusPriorityDevice } = initPriorityLogic(api, {
     prioList, addPrioBtn, pSerial, pCustomer, pDesc
 })
@@ -706,33 +483,19 @@ const { loadSettingsToUI } = initSettingsLogic(api, {
 //
 Promise.all([
     api.getSettings(),
-    api.getTickets(),
     api.getUsers().catch(() => [])
-]).then(([s, tickets, users]: [any, any[], any[]]) => {
+]).then(([s]: [any, any[]]) => {
     currentRole = s.role || 'kargo_kabul'
     personnelName = s.personnelName || ''
     
     const isAdmin = s.isAdmin === true || s.username === 'KursatS'
-    const isLoggedIn = !!s.personnelName?.trim()
 
     // Sidebar role-based items
-    const sideBonus = document.getElementById('side-bonus-btn')
     const sideAdmin = document.getElementById('side-admin-btn')
-    const sideProfile = document.getElementById('side-profile-btn')
+    const sideDeviceCallBtn = document.getElementById('side-device-call-btn')
 
-    if (sideBonus) sideBonus.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
-    if (btnManualTicket) btnManualTicket.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
     if (sideDeviceCallBtn) sideDeviceCallBtn.style.display = currentRole === 'kargo_kabul' ? 'flex' : 'none'
-    if (tQueueBar) tQueueBar.style.display = 'flex'
     if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
-    if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
-
-    if (tickets) {
-        activeTickets = tickets
-        const pendingCount = tickets.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').length
-        ticketBadge.style.display = pendingCount > 0 ? 'flex' : 'none'
-        ticketBadge.textContent = String(pendingCount)
-    }
     
     refreshSidebarProfile()
     loadCards()
@@ -744,33 +507,15 @@ api.onRefreshCards(() => {
         personnelName = s.personnelName || ''
         
         const isAdmin = s.isAdmin === true || s.username === 'KursatS'
-        const isLoggedIn = !!s.personnelName?.trim()
-        
-        const sideBonus = document.getElementById('side-bonus-btn')
         const sideAdmin = document.getElementById('side-admin-btn')
-        const sideProfile = document.getElementById('side-profile-btn')
+        const sideDeviceCallBtn = document.getElementById('side-device-call-btn')
 
-        if (sideBonus) sideBonus.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
-        if (btnManualTicket) btnManualTicket.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
         if (sideDeviceCallBtn) sideDeviceCallBtn.style.display = s.role === 'kargo_kabul' ? 'flex' : 'none'
-        if (tQueueBar) tQueueBar.style.display = 'flex'
         if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none'
-        if (sideProfile) sideProfile.style.display = isLoggedIn ? 'flex' : 'none'
 
         refreshSidebarProfile()
         loadCards()
     })
-})
-
-api.onTicketUpdate((tickets: any[]) => {
-    activeTickets = tickets
-    const pendingCount = tickets.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').length
-    ticketBadge.style.display = pendingCount > 0 ? 'flex' : 'none'
-    ticketBadge.textContent = String(pendingCount)
-    if (document.getElementById('view-tickets')?.classList.contains('active')) {
-        renderTicketsList(tickets)
-    }
-    loadCards()
 })
 
 api.onFocusPriorityDevice((device: any) => {
@@ -782,15 +527,6 @@ api.onFocusPriorityDevice((device: any) => {
 
 api.onPriorityDevicesUpdate(() => {
     loadPriorityDevices()
-})
-
-initBonusLogic(api, {
-    bonusDropZone,
-    bonusFileInput,
-    bonusResults,
-    bonusAnalytics,
-    workStartInput,
-    workEndInput
 })
 
 initZReportLogic(api, {
@@ -969,47 +705,20 @@ const { loadAdminUsers } = initAdminLogic(api, {
 })()
 
 // ── Device Call System ────────────────────────────────────────────────
-;(() => {
-    function openDeviceCallModal() {
-        dcallSerial.value = ''
-        dcallModel.value = ''
-        dcallCustomer.value = ''
-        deviceCallModal.classList.add('active')
-        dcallSerial.focus()
-    }
+const deviceCallController = initDeviceCallLogic(api, {
+    dcallHistoryList,
+    dcallSearchInput,
+    dcallStatusFilter,
+    btnOpenModal: btnOpenDeviceCallModal,
+    deviceCallModal,
+    dcallSerial,
+    dcallModel,
+    dcallCustomer,
+    btnCancelModal: btnCancelDeviceCall,
+    btnSendModal: btnSendDeviceCall
+})
 
-    function closeDeviceCallModal() {
-        deviceCallModal.classList.remove('active')
-    }
-
-    sideDeviceCallBtn.onclick = () => openDeviceCallModal()
-    btnCancelDeviceCall.onclick = () => closeDeviceCallModal()
-
-    btnSendDeviceCall.onclick = async () => {
-        const serial = dcallSerial.value.trim().toUpperCase()
-        const model = dcallModel.value.trim().toUpperCase()
-        const customer = dcallCustomer.value.trim()
-
-        if (!serial) { dcallSerial.focus(); return }
-        if (!model) { dcallModel.focus(); return }
-
-        btnSendDeviceCall.textContent = 'Gönderiliyor...'
-        btnSendDeviceCall.setAttribute('disabled', 'true')
-
-        try {
-            await api.createDeviceCall({
-                serial,
-                model_name: model,
-                customer_name: customer,
-                created_by: personnelName || 'Bilinmiyor'
-            })
-            closeDeviceCallModal()
-        } catch (err) {
-            console.error('Device call error:', err)
-        } finally {
-            btnSendDeviceCall.textContent = '📢 Çağrı Gönder'
-            btnSendDeviceCall.removeAttribute('disabled')
-        }
-    }
-})()
+api.onDeviceCallsUpdate((calls: any[]) => {
+    deviceCallController.updateData(calls, personnelName)
+})
 

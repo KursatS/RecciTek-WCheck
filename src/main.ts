@@ -27,11 +27,15 @@ import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
 import { parseBonusData, parseZReportData } from './bonusCalculator';
-import { createTicket, claimTicket, completeTicket, reopenTicket, hideTicket, unhideTicket, deleteTicket, subscribeAsKargoKabul, subscribeAsMH, updateTicketDetails, markTicketUnreachable, addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, resetUserXp, createDeviceCall, resolveDeviceCall, cancelDeviceCall, markDeviceCallRecipient, dismissDeviceCallBy, subscribeToDeviceCalls } from './ticketService';
+import { addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, createDeviceCall, resolveDeviceCall, cancelDeviceCall, markDeviceCallRecipient, dismissDeviceCallBy, subscribeToDeviceCalls } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { autoUpdater } from 'electron-updater';
+
+// Hardware acceleration & GPU recovery switches for Windows office GPUs (prevents black screen bug)
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+app.commandLine.appendSwitch('disable-direct-composition');
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -63,10 +67,8 @@ let monitoringEnabled = true;
 let currentPopupData: any = null;
 let lastDetectedSerial: string = '';
 let statusInterval: NodeJS.Timeout | null = null;
-let ticketUnsubscribe: Unsubscribe | null = null;
 let priorityUnsubscribe: Unsubscribe | null = null;
 let deviceCallsUnsubscribe: Unsubscribe | null = null;
-let cachedTickets: any[] = [];
 let cachedPriorityDevices: any[] = [];
 let cachedDeviceCalls: any[] = [];
 
@@ -248,7 +250,6 @@ function setupIpcHandlers() {
     currentSettings = { ...currentSettings, ...settings };
     saveSettings(currentSettings);
     registerShortcuts();
-    startTicketListener(); // Restart listener if role changed
 
     app.setLoginItemSettings({
       openAtLogin: currentSettings.autoStartEnabled,
@@ -284,10 +285,6 @@ function setupIpcHandlers() {
       clearTimeout(statusInterval);
       statusInterval = null;
     }
-    if (ticketUnsubscribe) {
-      ticketUnsubscribe();
-      ticketUnsubscribe = null;
-    }
     if (priorityUnsubscribe) {
       priorityUnsubscribe();
       priorityUnsubscribe = null;
@@ -317,24 +314,12 @@ function setupIpcHandlers() {
     windowManager.getMainWindow()?.webContents.send('switch-view', 'settings');
     windowManager.getMainWindow()?.show();
   });
-  ipcMain.on('open-bonus', () => {
-    windowManager.getMainWindow()?.webContents.send('switch-view', 'bonus');
-    windowManager.getMainWindow()?.show();
-  });
   ipcMain.on('open-admin', () => {
     windowManager.getMainWindow()?.webContents.send('switch-view', 'admin');
     windowManager.getMainWindow()?.show();
   });
-  ipcMain.on('open-profile', () => {
-    windowManager.getMainWindow()?.webContents.send('switch-view', 'profile');
-    windowManager.getMainWindow()?.show();
-  });
   ipcMain.on('open-priority', () => {
     windowManager.getMainWindow()?.webContents.send('switch-view', 'priority');
-    windowManager.getMainWindow()?.show();
-  });
-  ipcMain.on('open-tickets', () => {
-    windowManager.getMainWindow()?.webContents.send('switch-view', 'tickets');
     windowManager.getMainWindow()?.show();
   });
 
@@ -344,7 +329,6 @@ function setupIpcHandlers() {
     // Uygulama login olduğunda arka plan işlemlerini başlat
     clipboardMonitor.start();
     startServerStatusMonitor();
-    startTicketListener();
     startPriorityDevicesListener();
     startDeviceCallsListener();
     registerShortcuts();
@@ -503,98 +487,6 @@ function setupIpcHandlers() {
     }
   });
 
-  // ── Ticket System IPC ─────────────────────────────────────────────
-  ipcMain.handle('get-tickets', async () => cachedTickets);
-
-  ipcMain.handle('create-ticket', async (_, data) => {
-    try {
-      const id = await createTicket(data);
-      return { success: true, id };
-    } catch (error) {
-      console.error('Error creating ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('claim-ticket', async (_, id, name) => {
-    try {
-      await claimTicket(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error('Error claiming ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('complete-ticket', async (_, id, response) => {
-    try {
-      await completeTicket(id, response);
-      return { success: true };
-    } catch (error) {
-      console.error('Error completing ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('reopen-ticket', async (_, id, name) => {
-    try {
-      await reopenTicket(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error('Error reopening ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('update-ticket-details', async (_, id, details) => {
-    try {
-      await updateTicketDetails(id, details);
-      return { success: true };
-    } catch (error) {
-      console.error('Error updating ticket details:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('mark-ticket-unreachable', async (_, id, name) => {
-    try {
-      await markTicketUnreachable(id, name);
-      return { success: true };
-    } catch (error) {
-      console.error('Error marking ticket unreachable:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('hide-ticket', async (_, id, personnelName) => {
-    try {
-      await hideTicket(id, personnelName);
-      return { success: true };
-    } catch (error) {
-      console.error('Error hiding ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  ipcMain.handle('unhide-ticket', async (_, id) => {
-    try {
-      await unhideTicket(id);
-      return { success: true };
-    } catch (error) {
-      console.error('Error unhiding ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-  
-  ipcMain.handle('delete-ticket', async (_, id) => {
-    try {
-      await deleteTicket(id);
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting ticket:', error);
-      return { success: false, error: String(error) };
-    }
-  });
   // ── Priority Devices IPC ──────────────────────────────────────────
   ipcMain.handle('get-priority-devices', async () => cachedPriorityDevices);
 
@@ -677,6 +569,12 @@ function setupIpcHandlers() {
       }
       // Close only this user's toast window for this call — do NOT resolve
       windowManager.closeDeviceCallToast(callId);
+    }
+  });
+
+  ipcMain.on('resize-device-call-toast', (_, payload) => {
+    if (payload && payload.callId && typeof payload.height === 'number') {
+      windowManager.resizeDeviceCallToast(payload.callId, payload.height);
     }
   });
 }
@@ -884,57 +782,7 @@ function startPriorityDevicesListener() {
   });
 }
 
-function startTicketListener() {
-  // Unsubscribe from previous listener if exists
-  if (ticketUnsubscribe) {
-    ticketUnsubscribe();
-    ticketUnsubscribe = null;
-  }
 
-  const broadcastTickets = (tickets: any[]) => {
-    // ── Silent Desktop Notifications ──
-    if (cachedTickets.length > 0) {
-      const oldMap = new Map(cachedTickets.map((t: any) => [t.id, t]));
-
-      tickets.forEach((ticket: any) => {
-        const old = oldMap.get(ticket.id);
-
-        if (!old && ticket.status === 'pending' && currentSettings.role === 'mh') {
-          // New ticket → notify MH
-          new Notification({
-            title: 'Yeni Talep',
-            body: `${ticket.serial || 'Bilinmeyen'} için yeni bilgi talebi`,
-            silent: true
-          }).show();
-        } else if (old && old.status !== ticket.status) {
-          if (currentSettings.role === 'kargo_kabul' && ticket.created_by === (currentSettings.personnelName || 'İsimsiz Personel')) {
-            if (ticket.status === 'completed') {
-              new Notification({
-                title: 'Talep Tamamlandı',
-                body: `${ticket.serial || 'Bilinmeyen'} talebiniz tamamlandı`,
-                silent: true
-              }).show();
-            }
-          }
-        }
-      });
-    }
-
-    cachedTickets = tickets;
-    BrowserWindow.getAllWindows().forEach((win: BrowserWindow) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send('ticket-update', tickets);
-      }
-    });
-  };
-
-  if (currentSettings.role === 'mh') {
-    ticketUnsubscribe = subscribeAsMH(broadcastTickets);
-  } else {
-    const name = (currentSettings.personnelName || 'İsimsiz Personel').replace(/\s/g, '').toUpperCase();
-    ticketUnsubscribe = subscribeAsKargoKabul(name, broadcastTickets);
-  }
-}
 
 function initializeApp() {
   currentSettings = loadSettings();

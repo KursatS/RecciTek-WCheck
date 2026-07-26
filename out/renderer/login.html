@@ -7,32 +7,52 @@
   <style>
     body {
       margin: 0;
+      padding: 0;
       overflow: hidden;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       height: 100vh;
+      width: 100vw;
       background: #0f172a;
       color: #f8fafc;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 36px;
+      -webkit-app-region: drag;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      z-index: 100;
+    }
+
     .main-content {
-      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      width: 100%;
+      height: calc(100vh - 36px);
+      margin-top: 36px;
+      box-sizing: border-box;
     }
 
     .login-container {
-      background: rgba(30, 41, 59, 0.7);
+      background: rgba(30, 41, 59, 0.75);
       backdrop-filter: blur(12px);
-      padding: 32px;
+      padding: 24px 28px 28px;
       border-radius: 20px;
       border: 1px solid rgba(255, 255, 255, 0.1);
-      width: 450px;
+      width: 380px;
+      max-width: 90%;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       text-align: center;
+      margin: auto;
     }
 
     h2 {
@@ -159,8 +179,8 @@
       background: #ef4444;
     }
   </style>
-  <script type="module" crossorigin src="./assets/login-Artja3dJ.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/input-D3DAzxkw.css">
+  <script type="module" crossorigin src="./assets/login-DSjHCmqk.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/input-BFAFI04Z.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
 

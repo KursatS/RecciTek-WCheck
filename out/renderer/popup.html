@@ -80,38 +80,41 @@
 
     .close-btn {
       position: absolute;
-      top: 15px;
-      right: 15px;
-      width: 30px;
-      height: 30px;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      color: rgba(255, 255, 255, 0.8);
+      color: rgba(255, 255, 255, 0.9);
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.12);
-      border: none;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       transition: all 0.2s;
+      z-index: 50;
     }
 
     .close-btn:hover {
-      background: rgba(255, 255, 255, 0.18);
+      background: rgba(239, 68, 68, 0.85);
       color: #fff;
-      transform: rotate(90deg);
+      transform: scale(1.08);
     }
 
     .status-badge {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(0, 0, 0, 0.2);
       backdrop-filter: blur(8px);
-      padding: 10px 24px;
+      padding: 8px 18px;
       border-radius: 50px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      margin-bottom: 22px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      margin-bottom: 20px;
+      max-width: calc(100% - 64px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     }
 
     .check-icon {
@@ -127,6 +130,24 @@
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-status-badge {
+      display: none;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fbbf24;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      padding: 3px 12px;
+      border-radius: 20px;
+      margin: -14px 0 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
     .serial-number {
@@ -143,22 +164,24 @@
       font-size: var(--fs-model);
       font-weight: 500;
       color: var(--popup-text-muted);
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       line-height: 1.2;
     }
 
     .priority-meta {
       display: none;
       width: 100%;
-      max-width: 360px;
-      min-height: 58px;
-      max-height: 58px;
+      max-width: 380px;
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.84);
+      color: #fef08a;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 12px;
       line-height: 1.4;
-      margin: -8px 0 24px;
-      padding: 0 8px;
-      overflow-y: auto;
+      margin: -6px 0 20px;
+      padding: 8px 14px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     .copy-button,
@@ -222,7 +245,7 @@
       will-change: transform;
     }
   </style>
-  <link rel="stylesheet" crossorigin href="./assets/input-D3DAzxkw.css">
+  <link rel="stylesheet" crossorigin href="./assets/input-BFAFI04Z.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
 
@@ -242,6 +265,7 @@
       </div>
       <span id="status-text" class="status-text">Yükleniyor...</span>
     </div>
+    <div id="sub-status-badge" class="sub-status-badge"></div>
 
     <div id="serial" class="serial-number">...</div>
     <div id="model" class="model-info">...</div>
@@ -274,6 +298,7 @@
 
     const popup = document.getElementById('popup');
     const statusText = document.getElementById('status-text');
+    const subStatusBadge = document.getElementById('sub-status-badge');
     const statusIconContainer = document.getElementById('status-icon-container');
     const serialDisplay = document.getElementById('serial');
     const modelDisplay = document.getElementById('model');
@@ -296,6 +321,7 @@
       popup.classList.remove('theme-recci', 'theme-kvk', 'theme-none', 'theme-error', 'theme-priority');
 
       serialDisplay.textContent = info.serial || 'Unknown Serial';
+      subStatusBadge.style.display = 'none';
       priorityMeta.style.display = 'none';
       actionRow.style.display = 'none';
       copyBtn.style.display = 'none';
@@ -317,10 +343,22 @@
         modelDisplay.textContent = 'Bağlantı kesildi';
       } else if (status.includes('RECCI')) {
         popup.classList.add('theme-recci');
-        statusText.textContent = status;
-        statusIconContainer.innerHTML = icons.check;
-        modelDisplay.textContent = `${info.model_name || ''} - ${info.model_color || ''}`;
-        copyBtn.style.display = 'inline-flex';
+        if (status.includes('SÜRESİ DOLMUŞ') || status.includes('FATURA KONTROL')) {
+          statusText.textContent = 'RECCI GARANTİLİ';
+          statusIconContainer.innerHTML = icons.check;
+          subStatusBadge.textContent = '⚠️ SİSTEM GARANTİ SÜRESİ DOLMUŞ';
+          subStatusBadge.style.display = 'inline-block';
+          modelDisplay.textContent = `${info.model_name || ''} - ${info.model_color || ''}`;
+          priorityMeta.innerHTML = '⚠️ <span style="color:#fbbf24; font-weight:800;">LÜTFEN FATURA TARİHİNİ İNCELEYİNİZ!</span>';
+          priorityMeta.style.display = 'block';
+          copyBtn.style.display = 'inline-flex';
+        } else {
+          statusText.textContent = status;
+          statusIconContainer.innerHTML = icons.check;
+          subStatusBadge.style.display = 'none';
+          modelDisplay.textContent = `${info.model_name || ''} - ${info.model_color || ''}`;
+          copyBtn.style.display = 'inline-flex';
+        }
       } else if (status.includes('KVK')) {
         popup.classList.add('theme-kvk');
         statusText.textContent = status;

@@ -63,24 +63,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onSwitchView: (callback: any) =>
         ipcRenderer.on('switch-view', (_event, view) => callback(view)),
 
-    // Ticket System
-    getTickets: () => safeInvoke('get-tickets'),
-    createTicket: (data: any) => safeInvoke('create-ticket', data),
-    claimTicket: (id: string, name: string) => safeInvoke('claim-ticket', id, name),
-    completeTicket: (id: string, response: string) => safeInvoke('complete-ticket', id, response),
-    reopenTicket: (id: string, name: string) => safeInvoke('reopen-ticket', id, name),
-    hideTicket: (id: string, personnelName: string) => safeInvoke('hide-ticket', id, personnelName),
-    unhideTicket: (id: string) => safeInvoke('unhide-ticket', id),
-    deleteTicket: (id: string) => safeInvoke('delete-ticket', id),
-    updateTicketDetails: (id: string, details: any) => safeInvoke('update-ticket-details', id, details),
-    markTicketUnreachable: (id: string, name: string) => safeInvoke('mark-ticket-unreachable', id, name),
-    onTicketUpdate: (callback: any) =>
-        ipcRenderer.on('ticket-update', (_event, tickets) => callback(tickets)),
-
-    // Tickets & Priority Windows
-    openTickets: () => ipcRenderer.send('open-tickets'),
-    openPriority: () => ipcRenderer.send('open-priority'),
-
     // Priority Devices
     getPriorityDevices: () => safeInvoke('get-priority-devices'),
     addPriorityDevice: (data: any) => safeInvoke('add-priority-device', data),
@@ -107,12 +89,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDeviceCallStatusUpdate: (callback: any) =>
         ipcRenderer.on('device-call-status-update', (_event, data) => callback(data)),
     deviceCallAction: (payload: any) => ipcRenderer.send('device-call-action', payload),
+    resizeDeviceCallToast: (payload: { callId: string; height: number }) =>
+        ipcRenderer.send('resize-device-call-toast', payload),
 
     // Admin CRUD
     createUser: (data: any) => safeInvoke('create-user', data),
     updateUser: (id: string, data: any) => safeInvoke('update-user', id, data),
     deleteUser: (id: string) => safeInvoke('delete-user', id),
-    resetUserXp: (id: string) => safeInvoke('reset-user-xp', id),
 
     // Auto-Updater
     checkForUpdates: () => safeInvoke('check-for-updates'),
