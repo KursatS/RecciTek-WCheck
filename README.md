@@ -1,10 +1,14 @@
 # 🚀 RecciTek WCheck
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/KursatS/reccitek-wcheck)
+[![Version](https://img.shields.io/badge/version-2.5.6-blue.svg)](https://github.com/KursatS/RecciTek-WCheck)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Electron](https://img.shields.io/badge/electron-22.0.0-purple.svg)](https://electronjs.org)
+[![Electron](https://img.shields.io/badge/electron-34.0.0-purple.svg)](https://electronjs.org)
+[![Vite](https://img.shields.io/badge/vite-6.4.1-646CFF.svg)](https://vitejs.dev)
+[![TypeScript](https://img.shields.io/badge/typescript-5.7.3-3178C6.svg)](https://www.typescriptlang.org)
 
-RecciTek WCheck - Gelişmiş Garanti Takip Sistemi. Clipboard'dan seri numarası kopyalayın, garanti durumunu anlık olarak sorgulayın ve modern popup bildirimleri ile takip edin.
+**RecciTek WCheck** — Gelişmiş Garanti Takip, Cihaz Çağrı ve Servis Analiz Sistemi. Panodan kopyalanan seri numaralarını anında algılar, Recci & KVK servis sunucularından garanti durumunu sorgular, canlı öncelikli cihaz takibi sağlar ve detaylı Z Raporu analizleri sunar.
+
+---
 
 ## 🖼️ Ekran Görüntüleri
 
@@ -14,23 +18,31 @@ RecciTek WCheck - Gelişmiş Garanti Takip Sistemi. Clipboard'dan seri numarası
 | ![Ana Panel](assets/screenshots/home.png) | ![Açılış Ekranı](assets/screenshots/splash.png) |
 
 ### Akıllı Durum Bildirimleri (Popups)
-| Garanti Kapsamında | Garanti Dışı / Hata | Bağlantı Sorunu |
+| Garanti Kapsamında | Garanti Dışı / Fatura Kontrol | Bağlantı Sorunu |
 | :---: | :---: | :---: |
 | ![RECCI/KVK](assets/screenshots/inwarrantypopup.png) | ![Dışında](assets/screenshots/outofwarrantypopup.png) | ![Hata](assets/screenshots/connectionproblempopup.png) |
 
-## ✨ Yeni Nesil Özellikler (v1.4.0)
+---
 
-- 🎨 **Premium Glassmorphic UI**: Tüm uygulama modern "Glassmorphism" tasarımı ve "Inter" font ailesi ile baştan aşağı yenilendi.
-- 📡 **Canlı Sunucu Durumu**: Ana sayfa üzerinden Recci garanti sunucularının aktiflik durumunu ve ms cinsinden gecikme süresini anlık takip edin.
-- 🔄 **Anlık Yenileme (Instant Refresh)**: Bir popup açıkken yeni bir seri kopyaladığınızda beklemeden anında yeni cihaz bilgileriyle güncellenir.
-- 🔍 **Akıllı Takip Mantığı**: Aynı seri numarasının üst üste kopyalanması durumunda gereksiz popup oluşumu engellenir.
-- 🏗️ **Güçlü Mimari**: Merkezi pencere yönetimi (`WindowManager`) ve ayar yönetimi (`SettingsManager`) ile daha stabil bir deneyim.
-- 📉 **Düşük Sunucu Yükü**: Gelişmiş durum izleme mekanizması, sunucuya minimum yük bindirecek şekilde jitter (rastgele gecikme) ile çalışır.
+## ✨ Güncel Özellikler (v2.5.6)
+
+- ⚡ **Akıllı Panodan Garanti Sorgulama**: Seri numaralarını panodan kopyaladığınız anda anında algılar. Özel hafif Regex HTML parser ile Recci ve KVK servis verilerini milisaniyeler içinde ekrana getirir.
+- 🏷️ **Recci İthalat & Fatura Kontrol Rozeti**: Türkiye garantili olup sistemde süresi dolmuş görünen cihazlar için canlı yeşil `✓ RECCI GARANTİLİ` ve turuncu `(SÜRESİ DOLMUŞ - FATURA KONTROL)` akıllı rozet gösterimi.
+- 🔠 **AHK Tarzı "Büyük Harf Yapıştır" (Ctrl+Shift+V)**: Panodaki metinleri Türkçe karakter uyumlu olarak otomatik büyük harfe dönüştürüp hızlıca yapıştırma imkanı.
+- 📢 **Canlı Cihaz Çağrı (Cihaz Sor) Sistemi**: Kargo kabul ve servis personeli arasında anlık cihaz sorgulama, canlı yanıt takibi ve Web Audio API tabanlı pürüzsüz bildirim sesleri (`Chime / Pop`).
+- ⚠️ **Öncelikli Cihaz Takip Sistemi**: Acil takibe alınan cihazları Firestore veritabanı üzerinden tarih/saat damgasıyla canlı senkronize etme ve masaüstü popup bildirimleri fırlatma.
+- 📝 **Excel Z Raporu Analizi**: Servis kayıt dosyalarını sürükle-bırak yöntemiyle inceleme; en son 5 güne ait toplam kayıt sayılarını, model dağılımlarını ve personel bazlı çalışma adetlerini grafiksel görselleştirme.
+- 🔄 **Otomatik Güncelleme (Auto Update)**: GitHub Releases entegrasyonu ile uygulama açılışında arka plan güncelleme kontrolü ve tek tıkla kurulum.
+- 🎨 **Premium Glassmorphic UI & Dark Mode**: Modern "Glassmorphism" tasarımı, Inter font ailesi ve duyarlı (responsive) ortalanmış form düzeni.
+- ⚙️ **Anlık Auto-Save & Debounce**: Ayarlar sayfasındaki tüm değişikliklerin form alanlarından anında otomatik kaydedilmesi.
+- 🛡️ **Ofis GPU Kararlılık Düzeltmesi**: Dahili/tümleşik ekran kartlı ofis bilgisayarlarında siyah ekran kalma ve render donması sorunlarına karşı otomatik GPU recovery ve auto-reload koruması.
+
+---
 
 ## 🛠️ Kurulum & Derleme
 
 ### Gereksinimler
-- Node.js 16+
+- Node.js 18+
 - npm
 
 ### Geliştirici Adımları
@@ -38,42 +50,51 @@ RecciTek WCheck - Gelişmiş Garanti Takip Sistemi. Clipboard'dan seri numarası
 # Bağımlılıkları yükleyin
 npm install
 
-# Projeyi derleyin
-npm run build
+# Geliştirici modunda çalıştırın (Dev Mode)
+npm run dev
 
-# Uygulamayı başlatın
-npm start
+# Projeyi derleyin (Build)
+npm run build
 ```
 
-### Setup / Kurulum Dosyası Oluşturma
-Uygulamanın Windows (.exe) kurulum dosyasını oluşturmak için:
+### Setup / Windows Kurulum (.exe) Dosyası Oluşturma
+Uygulamanın Windows kurulum (NSIS `.exe`) paketini oluşturmak için:
 ```bash
 npm run dist
 ```
-Dosya `release` klasörü altında oluşturulacaktır.
+Oluşturulan kurulum dosyası `release/` klasörü altına kaydedilecektir.
+
+---
 
 ## 🎯 Kullanım
 
-1. **Seri Numarası Kopyalayın**: R ile başlayan seri numarasını kopyalayın.
-2. **Popup'ı İnceleyin**: Modern, renk kodlu (Yeşil: RECCI, Mavi: KVK, Kırmızı: Hata/Yok) popup ile garanti durumunu görün.
-3. **Geçmişi Yönetin**: Ana ekran üzerinden tüm sorgu geçmişinizi, model bilgilerini ve tarihleri inceleyin.
+1. **Seri Numarası Kopyalayın**: Panoya seri numarasını kopyaladığınız an sistem otomatik olarak garanti durumunu sorgular.
+2. **Popup'ı İnceleyin**: Ekranın sağ alt köşesinde beliren renk kodlu (Yeşil: RECCI, Mavi: KVK, Gri/Turuncu: Fatura Kontrol) masaüstü popup'ı ile durumu anında görün.
+3. **Cihaz Çağrısı Atın**: Kargo kabul personelinden "Cihaz Sor" sekmesiyle anlık cihaz bulunma çağrısı yapın.
+4. **Z Raporu Yükleyin**: Servis Excel dosyanızı sürükleyip bırakarak günlük personel ve model istatistiklerini raporlayın.
+
+---
 
 ## 📁 Dosya Yapısı
 
 ```
-reccitek-wcheck/
+RecciTek-WCheck/
 ├── assets/                 # Logolar, ikonlar ve ekran görüntüleri
 ├── src/                    # Kaynak kodları (TypeScript)
-│   ├── main.ts            # Merkezi Electron süreci
-│   ├── windowManager.ts   # Pencere & Popup Yönetimi
-│   ├── settingsManager.ts # Ayar & Dosya Yönetimi
-│   ├── warrantyChecker.ts # Garanti API Entegrasyonları
-│   ├── cacheManager.ts    # SQLite Veri Yönetimi
-│   └── *.html             # Modern UI Dosyaları
-├── release/               # Kurulum dosyalarının oluşturulduğu dizin
-├── package.json           # Proje bileşenleri ve versiyon
-└── README.md              # Kullanım Klavuzu
+│   ├── main.ts            # Ana Electron süreci & IPC İşleyicileri
+│   ├── windowManager.ts   # Pencere, Popup & Tray Yönetimi
+│   ├── settingsManager.ts # Ayar & Persistence Yönetimi
+│   ├── warrantyChecker.ts # Recci & KVK Garanti Scraper
+│   ├── cacheManager.ts    # SQLite Veritabanı (better-sqlite3)
+│   ├── ticketService.ts   # Firestore Entegrasyonu & Öncelikli Cihazlar
+│   ├── utils/             # Yardımcı Mantık Kütüphaneleri (Z-Report, Debounce, Toast)
+│   └── *.html             # Modern UI Arayüz Dosyaları
+├── release/               # Derlenen kurulum (.exe) dosyaları
+├── package.json           # Proje paketleri, bağımlılıklar ve versiyon
+└── README.md              # Kullanım ve Teknik Dokümantasyon
 ```
+
+---
 
 ## 👨‍💻 Geliştirici
 
