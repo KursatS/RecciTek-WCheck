@@ -32,10 +32,6 @@
 - 📢 **Canlı Cihaz Çağrı (Cihaz Sor) Sistemi**: Kargo kabul ve servis personeli arasında anlık cihaz sorgulama, canlı yanıt takibi ve Web Audio API tabanlı pürüzsüz bildirim sesleri (`Chime / Pop`).
 - ⚠️ **Öncelikli Cihaz Takip Sistemi**: Acil takibe alınan cihazları Firestore veritabanı üzerinden tarih/saat damgasıyla canlı senkronize etme ve masaüstü popup bildirimleri fırlatma.
 - 📝 **Excel Z Raporu Analizi**: Servis kayıt dosyalarını sürükle-bırak yöntemiyle inceleme; en son 5 güne ait toplam kayıt sayılarını, model dağılımlarını ve personel bazlı çalışma adetlerini grafiksel görselleştirme.
-- 🔄 **Otomatik Güncelleme (Auto Update)**: GitHub Releases entegrasyonu ile uygulama açılışında arka plan güncelleme kontrolü ve tek tıkla kurulum.
-- 🎨 **Premium Glassmorphic UI & Dark Mode**: Modern "Glassmorphism" tasarımı, Inter font ailesi ve duyarlı (responsive) ortalanmış form düzeni.
-- ⚙️ **Anlık Auto-Save & Debounce**: Ayarlar sayfasındaki tüm değişikliklerin form alanlarından anında otomatik kaydedilmesi.
-- 🛡️ **Ofis GPU Kararlılık Düzeltmesi**: Dahili/tümleşik ekran kartlı ofis bilgisayarlarında siyah ekran kalma ve render donması sorunlarına karşı otomatik GPU recovery ve auto-reload koruması.
 
 ---
 
