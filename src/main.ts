@@ -26,7 +26,7 @@ import {
 import { WindowManager } from './windowManager';
 import { loadSettings, saveSettings, AppSettings } from './settingsManager';
 import { ClipboardMonitor } from './clipboardMonitor';
-import { parseBonusData, parseZReportData } from './bonusCalculator';
+import { parseZReportData } from './bonusCalculator';
 import { addPriorityDevice, updatePriorityDevice, deletePriorityDevice, subscribeToPriorityDevices, getUsers, createUser, updateUser, deleteUser, createDeviceCall, resolveDeviceCall, cancelDeviceCall, markDeviceCallRecipient, dismissDeviceCallBy, subscribeToDeviceCalls } from './ticketService';
 import type { Unsubscribe } from 'firebase/firestore';
 import * as fs from 'fs';
@@ -373,23 +373,6 @@ function setupIpcHandlers() {
         mainWindow.webContents.send('focus-priority-device', device);
       }
     }, 180);
-  });
-
-  ipcMain.handle('calculate-bonus', async (_, fileData, customHours) => {
-    try {
-      const settings = loadSettings();
-      let buffer: Buffer;
-      if (typeof fileData === 'string') {
-        buffer = fs.readFileSync(fileData);
-      } else {
-        buffer = Buffer.from(fileData);
-      }
-      const workingHours = customHours || settings.workingHours || { start: '08:00', end: '18:30' };
-      return parseBonusData(buffer, workingHours);
-    } catch (error) {
-      console.error('Bonus calculation error:', error);
-      throw error;
-    }
   });
 
   ipcMain.handle('calculate-zreport', async (_, fileData) => {
@@ -924,10 +907,6 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  if (ticketUnsubscribe) {
-    ticketUnsubscribe();
-    ticketUnsubscribe = null;
-  }
   if (priorityUnsubscribe) {
     priorityUnsubscribe();
     priorityUnsubscribe = null;

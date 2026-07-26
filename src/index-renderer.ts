@@ -43,14 +43,6 @@ const sPreventDuplicate = document.getElementById('prevent-duplicate') as HTMLIn
 const sClipboardUpper = document.getElementById('clipboard-upper') as HTMLInputElement
 const sLogoutBtn = document.getElementById('logout-btn') as HTMLButtonElement
 
-// Bonus View Elements
-const bonusDropZone = document.getElementById('bonus-drop-zone')!
-const bonusFileInput = document.getElementById('bonus-file-input') as HTMLInputElement
-const bonusResults = document.getElementById('bonus-results')!
-const bonusAnalytics = document.getElementById('bonus-analytics')!
-const workStartInput = document.getElementById('work-start') as HTMLInputElement
-const workEndInput = document.getElementById('work-end') as HTMLInputElement
-
 // Z Report View Elements
 const zreportDropZone = document.getElementById('zreport-drop-zone')!
 const zreportFileInput = document.getElementById('zreport-file-input') as HTMLInputElement

@@ -17,15 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clearCache: () => safeInvoke('clear-cache'),
     toggleMonitoring: (enabled: boolean) => ipcRenderer.send('toggle-monitoring', enabled),
 
-    // Double Copy
-    getDoubleCopy: () => safeInvoke('get-double-copy'),
-    toggleDoubleCopy: (enabled: boolean) => safeInvoke('toggle-double-copy', enabled),
-
-    // Settings, Admin, Profile, Bonus Windows
+    // Settings & Admin
     openSettings: () => ipcRenderer.send('open-settings'),
-    openBonus: () => ipcRenderer.send('open-bonus'),
     openAdmin: () => ipcRenderer.send('open-admin'),
-    openProfile: () => ipcRenderer.send('open-profile'),
     getUsers: () => safeInvoke('get-users'),
     loginSuccess: () => safeInvoke('login-success'),
     getSettings: () => safeInvoke('get-settings'),
@@ -34,8 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     logout: () => safeInvoke('logout'),
     showLoginWindow: () => ipcRenderer.send('show-login-window'),
 
-    // Bonus Calculation
-    calculateBonus: (fileData: ArrayBuffer | string, customHours?: any) => safeInvoke('calculate-bonus', fileData, customHours),
+    // Z Report Calculation
     calculateZReport: (fileData: ArrayBuffer | string) => safeInvoke('calculate-zreport', fileData),
 
     // Popup Specific

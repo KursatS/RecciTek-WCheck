@@ -15,14 +15,9 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   deleteEntry: (serial) => safeInvoke("delete-entry", serial),
   clearCache: () => safeInvoke("clear-cache"),
   toggleMonitoring: (enabled) => electron.ipcRenderer.send("toggle-monitoring", enabled),
-  // Double Copy
-  getDoubleCopy: () => safeInvoke("get-double-copy"),
-  toggleDoubleCopy: (enabled) => safeInvoke("toggle-double-copy", enabled),
-  // Settings, Admin, Profile, Bonus Windows
+  // Settings & Admin
   openSettings: () => electron.ipcRenderer.send("open-settings"),
-  openBonus: () => electron.ipcRenderer.send("open-bonus"),
   openAdmin: () => electron.ipcRenderer.send("open-admin"),
-  openProfile: () => electron.ipcRenderer.send("open-profile"),
   getUsers: () => safeInvoke("get-users"),
   loginSuccess: () => safeInvoke("login-success"),
   getSettings: () => safeInvoke("get-settings"),
@@ -30,8 +25,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   restartApp: (settings) => safeInvoke("restart-app", settings),
   logout: () => safeInvoke("logout"),
   showLoginWindow: () => electron.ipcRenderer.send("show-login-window"),
-  // Bonus Calculation
-  calculateBonus: (fileData, customHours) => safeInvoke("calculate-bonus", fileData, customHours),
+  // Z Report Calculation
   calculateZReport: (fileData) => safeInvoke("calculate-zreport", fileData),
   // Popup Specific
   onPopupData: (callback) => electron.ipcRenderer.on("popup-data", (_event, info, duration) => callback(info, duration)),

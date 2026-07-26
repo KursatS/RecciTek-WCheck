@@ -788,20 +788,6 @@ class ClipboardMonitor {
     this.isEnabled = enabled;
   }
 }
-const MONTH_NAMES_TR = {
-  "01": "Ocak",
-  "02": "Şubat",
-  "03": "Mart",
-  "04": "Nisan",
-  "05": "Mayıs",
-  "06": "Haziran",
-  "07": "Temmuz",
-  "08": "Ağustos",
-  "09": "Eylül",
-  "10": "Ekim",
-  "11": "Kasım",
-  "12": "Aralık"
-};
 const DATE_FORMATS = [
   "dd-MM-yyyy HH:mm:ss",
   "dd-MM-yyyy HH:mm",
@@ -868,97 +854,6 @@ function extractDate(cell) {
     return null;
   }
   return parsedDate;
-}
-function ensureMonthAccumulator(monthlyStats, key, date) {
-  if (!monthlyStats[key]) {
-    monthlyStats[key] = {
-      total: 0,
-      valid: 0,
-      overtime: 0,
-      date: dateFns.startOfMonth(date),
-      days: {},
-      models: {}
-    };
-  }
-  return monthlyStats[key];
-}
-function ensureDayAccumulator(stats, dayKey) {
-  if (!stats.days[dayKey]) {
-    stats.days[dayKey] = { valid: 0, overtime: 0 };
-  }
-  return stats.days[dayKey];
-}
-function ensureModelAccumulator(stats, modelName) {
-  if (!stats.models[modelName]) {
-    stats.models[modelName] = { total: 0, valid: 0, overtime: 0 };
-  }
-  return stats.models[modelName];
-}
-function parseBonusData(buffer, workingHours) {
-  const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-  const rows = XLSX__namespace.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-  if (!rows.length) return [];
-  const headers = rows[0] || [];
-  const dateIndex = findColumnIndex(headers, ["kayit tarihi", "kayit zamani", "olusturma tarihi", "olusturma zamani"], 14);
-  const modelIndex = findColumnIndex(headers, ["model", "urun modeli", "cihaz modeli"], 2);
-  const [startH, startM] = workingHours.start.split(":").map(Number);
-  const [endH, endM] = workingHours.end.split(":").map(Number);
-  const monthlyStats = {};
-  rows.forEach((row, rowIndex) => {
-    if (rowIndex === 0 || !row) return;
-    const date = extractDate(row[dateIndex]);
-    if (!date) return;
-    const monthKey = dateFns.format(date, "MM-yyyy");
-    const dayKey = dateFns.format(date, "yyyy-MM-dd");
-    const stats = ensureMonthAccumulator(monthlyStats, monthKey, date);
-    const dayStats = ensureDayAccumulator(stats, dayKey);
-    const modelName = String(row[modelIndex] || "Model belirtilmedi").trim() || "Model belirtilmedi";
-    const modelStats = ensureModelAccumulator(stats, modelName);
-    stats.total++;
-    modelStats.total++;
-    const startLimit = new Date(date.getFullYear(), date.getMonth(), date.getDate(), startH, startM, 0);
-    const endLimit = new Date(date.getFullYear(), date.getMonth(), date.getDate(), endH, endM, 59);
-    const isWorkingHours = dateFns.isWithinInterval(date, { start: startLimit, end: endLimit });
-    if (isWorkingHours) {
-      stats.valid++;
-      dayStats.valid++;
-      modelStats.valid++;
-    } else {
-      stats.overtime++;
-      dayStats.overtime++;
-      modelStats.overtime++;
-    }
-  });
-  const sortedMonthKeys = Object.keys(monthlyStats).sort(
-    (a, b) => dateFns.compareDesc(monthlyStats[a].date, monthlyStats[b].date)
-  );
-  return sortedMonthKeys.map((key) => {
-    const stats = monthlyStats[key];
-    const [monthNumber, year] = key.split("-");
-    const dailyStats = Object.keys(stats.days).sort().map((dayKey) => ({
-      date: dayKey,
-      validCount: stats.days[dayKey].valid,
-      overtimeCount: stats.days[dayKey].overtime,
-      totalCount: stats.days[dayKey].valid + stats.days[dayKey].overtime
-    }));
-    const modelStats = Object.entries(stats.models).map(([model, modelStats2]) => ({
-      model,
-      totalCount: modelStats2.total,
-      validCount: modelStats2.valid,
-      overtimeCount: modelStats2.overtime
-    })).sort((a, b) => b.totalCount - a.totalCount || b.validCount - a.validCount || a.model.localeCompare(b.model, "tr"));
-    return {
-      month: `${MONTH_NAMES_TR[monthNumber] || monthNumber} ${year}`,
-      totalCount: stats.total,
-      validCount: stats.valid,
-      overtimeCount: stats.overtime,
-      isEligible: stats.valid >= 850,
-      dailyStats,
-      modelStats
-    };
-  });
 }
 function parseZReportData(buffer) {
   const workbook = XLSX__namespace.read(buffer, { type: "buffer", cellDates: true });
@@ -1423,22 +1318,6 @@ function setupIpcHandlers() {
       }
     }, 180);
   });
-  electron$1.ipcMain.handle("calculate-bonus", async (_, fileData, customHours) => {
-    try {
-      const settings = loadSettings();
-      let buffer;
-      if (typeof fileData === "string") {
-        buffer = fs__namespace.readFileSync(fileData);
-      } else {
-        buffer = Buffer.from(fileData);
-      }
-      const workingHours = customHours || settings.workingHours || { start: "08:00", end: "18:30" };
-      return parseBonusData(buffer, workingHours);
-    } catch (error) {
-      console.error("Bonus calculation error:", error);
-      throw error;
-    }
-  });
   electron$1.ipcMain.handle("calculate-zreport", async (_, fileData) => {
     try {
       let buffer;
@@ -1861,10 +1740,6 @@ electron$1.app.whenReady().then(() => {
 });
 electron$1.app.on("will-quit", () => {
   electron$1.globalShortcut.unregisterAll();
-  if (ticketUnsubscribe) {
-    ticketUnsubscribe();
-    ticketUnsubscribe = null;
-  }
   if (priorityUnsubscribe) {
     priorityUnsubscribe();
     priorityUnsubscribe = null;

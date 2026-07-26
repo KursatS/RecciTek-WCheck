@@ -466,7 +466,7 @@
       color: var(--text-muted);
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-2_ggZKIj.js"></script>
+  <script type="module" crossorigin src="./assets/index-BgjtORdJ.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/input-BFAFI04Z.css">
   <link rel="stylesheet" crossorigin href="./assets/theme-CtkZ5-BB.css">
 </head>
@@ -1103,72 +1103,6 @@
     #search { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline: none; }
     .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
     
-    /* ── Tickets Styles ── */
-    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; }
-    .stat-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); font-size: 0.8rem; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .dot-pending { background: var(--pending); }
-    .dot-progress { background: var(--progress); }
-    .dot-completed { background: var(--completed); }
-    .ticket-filter-select { padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer; transition: all 0.2s; }
-    .ticket-filter-select:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
-    .ticket-filter-select option { background: var(--bg-color); color: var(--text-main); }
-    .ticket-list { display: flex; flex-direction: column; gap: 12px; }
-
-    /* ── Profile Styles (with medals) ── */
-    @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
-      50% { box-shadow: 0 0 36px rgba(56, 189, 248, 0.8), 0 0 60px rgba(56, 189, 248, 0.3); }
-    }
-    @keyframes shimmer {
-      0% { background-position: -200% center; }
-      100% { background-position: 200% center; }
-    }
-    @keyframes rankPop {
-      0% { transform: scale(0.5); opacity: 0; }
-      70% { transform: scale(1.15); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideInLeft {
-      from { opacity: 0; transform: translateX(-24px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-    .profile-banner { background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.05) 100%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 24px; display: flex; gap: 24px; align-items: center; margin-bottom: 24px; animation: fadeInUp 0.5s ease 0.1s both; }
-    .level-badge { width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, #38bdf8 0%, #0369a1 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; color: white; border: 4px solid rgba(255,255,255,0.2); animation: pulseGlow 3s ease-in-out infinite; flex-shrink: 0; transition: transform 0.3s; }
-    .level-badge:hover { transform: scale(1.08); }
-    .level-badge span:first-child { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); }
-    .level-badge span:last-child { font-size: 1.8rem; font-weight: bold; display: block; margin-top: -4px; }
-    .profile-details h3 { margin: 0 0 8px 0; font-size: 1.5rem; color: white; }
-    .profile-details p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
-    .xp-bar-container { margin-top: 16px; width: 100%; background: rgba(0,0,0,0.3); border-radius: 10px; height: 12px; position: relative; overflow: hidden; }
-    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc); background-size: 200% 100%; width: 0%; border-radius: 10px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); animation: shimmer 2.5s linear infinite; }
-    .xp-text { font-size: 0.8rem; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
-    .scoreboard-header { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; margin-bottom: 12px; }
-    .scoreboard-header h2 { margin: 0; }
-    .filter-group { display: flex; gap: 6px; }
-    .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #94a3b8; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .filter-btn:hover { border-color: #38bdf8; color: #38bdf8; }
-    .filter-btn.active { background: rgba(56,189,248,0.15); border-color: #38bdf8; color: #38bdf8; }
-    .scoreboard { background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden; animation: fadeInUp 0.5s ease 0.3s both; }
-    .score-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); opacity: 0; animation: slideInLeft 0.4s ease calc(var(--i, 0) * 60ms) both; transition: background 0.2s; }
-    .score-row:last-child { border-bottom: none; }
-    .score-row:hover { background: rgba(255,255,255,0.04); }
-    .score-rank { width: 40px; font-weight: bold; color: #94a3b8; font-size: 1.1rem; }
-    .rank-1 .score-rank { color: #fbbf24; font-size: 1.3rem; animation: rankPop 0.6s ease both; }
-    .rank-2 .score-rank { color: #9ca3af; font-size: 1.2rem; animation: rankPop 0.6s ease 0.1s both; }
-    .rank-3 .score-rank { color: #b45309; font-size: 1.15rem; animation: rankPop 0.6s ease 0.2s both; }
-    .score-name { flex: 1; font-weight: 500; font-size: 1rem; color: #f8fafc; }
-    .score-role { width: 150px; font-size: 0.85rem; color: #cbd5e1; }
-    .score-level { width: 100px; font-weight: bold; color: #38bdf8; text-align: right; }
-    .score-xp { width: 80px; color: #94a3b8; font-size: 0.9rem; text-align: right; }
-    .rank-1 { background: rgba(251,191,36,0.04); }
-    .rank-2 { background: rgba(156,163,175,0.02); }
-    .rank-3 { background: rgba(180,83,9,0.03); }
-
     /* ── Priority Styles ── */
     .priority-panel { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.2); border-radius: 20px; padding: 20px 24px; }
     .priority-panel-title { font-size: 1rem; font-weight: 700; color: #ef4444; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
@@ -1188,49 +1122,6 @@
     .btn-del-priority { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; cursor: pointer; font-size: 1.1rem; padding: 6px 10px; border-radius: 8px; flex-shrink: 0; transition: all 0.2s; }
     .btn-del-priority:hover { background: #ef4444; color: white; }
     .priority-empty { text-align: center; padding: 40px 20px; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px dashed var(--glass-border); color: var(--text-muted); font-size: 0.95rem; }
-
-    /* ── Tickets Search Bar ── */
-    .search-bar { position: relative; margin-bottom: 16px; }
-    .search-bar input { width: 100%; padding: 10px 16px 10px 40px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 14px; color: var(--text-main); font-size: 0.88rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
-    .search-bar input:focus { border-color: var(--accent); }
-    .search-bar .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1rem; pointer-events: none; }
-
-    /* ── Ticket Card Styles ── */
-    .ticket-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px 24px; display: flex; align-items: flex-start; gap: 20px; transition: all 0.3s; position: relative; overflow: hidden; }
-    .ticket-card::before { content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; }
-    .ticket-card.status-pending::before { background: var(--pending); }
-    .ticket-card.status-in_progress::before { background: var(--progress); }
-    .ticket-card.status-completed::before { background: var(--completed); }
-    .ticket-card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-    .ticket-body { flex: 1; }
-    .ticket-serial { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-    .ticket-model { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
-    .ticket-missing-type { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 6px; background: rgba(245,158,11,0.1); color: var(--pending); }
-    .ticket-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 160px; padding-right: 44px; }
-    .ticket-note { font-size: 0.85rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
-    .ticket-note strong { color: var(--text-main); }
-    .ticket-response { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(16,185,129,0.08); font-size: 0.85rem; word-break: break-word; border: 1px solid rgba(16,185,129,0.2); }
-    .ticket-response strong { color: var(--completed); }
-    .ticket-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
-    .response-input { width: 100%; padding: 8px 14px; margin-top: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); font-size: 0.85rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
-    .response-input:focus { border-color: var(--accent); }
-    .collab-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); }
-    .collab-group { display: flex; flex-direction: column; gap: 4px; }
-    .collab-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-    .btn-sm { padding: 8px 18px; border-radius: 12px; border: none; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
-    .btn-claim { background: var(--progress); color: white; }
-    .btn-claim:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
-    .btn-complete { background: var(--completed); color: white; }
-    .btn-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
-    .btn-update { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid rgba(255,255,255,0.2); margin-top: 12px; width: -moz-fit-content; width: fit-content; align-self: flex-start; }
-    .btn-update:hover { background: rgba(255,255,255,0.2); }
-    .btn-reopen { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
-    .ticket-info-btn { background: rgba(56,189,248,0.12); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.24); min-width: 34px; padding: 8px 10px; line-height: 1; }
-    .ticket-info-btn:hover { background: rgba(56,189,248,0.22); transform: translateY(-1px); }
-    .badge-pending { background: rgba(245,158,11,0.15); color: var(--pending); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
-    .badge-in_progress { background: rgba(59,130,246,0.15); color: var(--progress); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
-    .badge-completed { background: rgba(16,185,129,0.15); color: var(--completed); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 4px 14px; border-radius: 8px; }
-    .stat-chip .dot { box-shadow: 0 0 8px currentColor; }
 
     /* ── Admin Styles ── */
     .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
@@ -1252,21 +1143,6 @@
     .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #94a3b8; }
     .form-group input, .form-group select { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; box-sizing: border-box; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
-
-    /* ── Bonus Styles ── */
-    .upload-area { background: var(--card-bg); border: 2px dashed var(--glass-border); border-radius: 24px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
-    .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: rgba(56,189,248,0.05); }
-    .results-container { display: grid; gap: 20px; }
-    .result-card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
-    .result-card:hover { transform: scale(1.02); border-color: var(--accent); }
-    .result-card.active { border-color: var(--accent); background: rgba(56,189,248,0.1); }
-    .result-info h3 { font-size: 1.2rem; margin-bottom: 4px; }
-    .result-stats { display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-muted); }
-    .stat-item strong { color: var(--text-main); }
-    .status-badge { padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
-    .status-eligible { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
-    .status-pending-badge { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
-    .analytics-panel { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; margin-top: 30px; width: 100%; }
 
     /* Pre-existing Card Styles from original HTML (keeping them active) */
     .card { background: var(--card-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); position: relative; transition: transform 0.2s; }
@@ -1290,6 +1166,20 @@
     .setting-input option { background-color: var(--bg-color); color: var(--text-main); }
     .shortcut-input { width: 220px; padding: 12px 18px; background: rgba(255,255,255,0.05); border: 2px solid var(--glass-border); border-radius: 12px; color: var(--accent); font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; outline: none; transition: border-color 0.2s; }
     .shortcut-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(56,189,248,0.3); }
+
+    /* ── Z Report & File Upload Styles ── */
+    .upload-area { background: var(--card-bg); border: 2px dashed var(--glass-border); border-radius: 24px; padding: 40px 30px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 24px; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+    .results-container { display: grid; gap: 16px; margin-bottom: 24px; }
+    .result-card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
+    .result-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .result-card.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+    .result-info h3 { font-size: 1.2rem; margin: 0 0 6px 0; color: var(--text-main); }
+    .result-stats { display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-muted); }
+    .stat-item strong { color: var(--text-main); }
+    .status-badge { padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+    .status-eligible { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
+    .analytics-panel { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; margin-top: 30px; width: 100%; box-sizing: border-box; }
 
     /* Toggle Switch */
     .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
