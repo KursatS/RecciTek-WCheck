@@ -1,0 +1,137 @@
+/* ─── RecciTek Theme System ─── */
+/* Single source of truth for all CSS variables. Used by every page. */
+
+:root {
+    --bg-color: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --recci: #10b981;
+    --kvk: #3b82f6;
+    --none: #64748b;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --pending: #f59e0b;
+    --progress: #3b82f6;
+    --completed: #10b981;
+    --sidebar-bg: rgba(15, 23, 42, 0.8);
+}
+
+
+/* ─── Midnight Theme (Deep Purple) ─── */
+.midnight {
+    --bg-color: #0d0a1e;
+    --card-bg: rgba(30, 22, 55, 0.75);
+    --glass-border: rgba(167, 139, 250, 0.15);
+    --text-main: #ede9fe;
+    --text-muted: #a78bfa;
+    --accent: #a78bfa;
+    --recci: #34d399;
+    --kvk: #818cf8;
+    --none: #6b7280;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --pending: #fbbf24;
+    --progress: #818cf8;
+    --completed: #34d399;
+    --sidebar-bg: rgba(13, 10, 30, 0.85);
+}
+
+/* ─── Ocean Theme (Deep Teal) ─── */
+.ocean {
+    --bg-color: #042f2e;
+    --card-bg: rgba(6, 78, 75, 0.7);
+    --glass-border: rgba(45, 212, 191, 0.2);
+    --text-main: #ccfbf1;
+    --text-muted: #5eead4;
+    --accent: #2dd4bf;
+    --recci: #34d399;
+    --kvk: #38bdf8;
+    --none: #4b5563;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --pending: #fbbf24;
+    --progress: #38bdf8;
+    --completed: #34d399;
+    --sidebar-bg: rgba(4, 47, 46, 0.85);
+}
+
+/* ─── Sunset Theme (Warm Amber / Rose) ─── */
+.sunset {
+    --bg-color: #1c0a00;
+    --card-bg: rgba(55, 22, 5, 0.78);
+    --glass-border: rgba(251, 146, 60, 0.2);
+    --text-main: #fff7ed;
+    --text-muted: #fdba74;
+    --accent: #fb923c;
+    --recci: #4ade80;
+    --kvk: #60a5fa;
+    --none: #6b7280;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --pending: #fb923c;
+    --progress: #60a5fa;
+    --completed: #4ade80;
+    --sidebar-bg: rgba(28, 10, 0, 0.85);
+}
+
+
+/* ─── Global Reset ─── */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* ─── Focus Accessibility ─── */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ─── Pulse Animation (Shared) ─── */
+@keyframes pulse-soft {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* ─── Skeleton Loading ─── */
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 2s infinite linear;
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ─── Empty State SVG ─── */
+.empty-state-svg {
+    width: 140px;
+    height: 140px;
+    margin-bottom: 16px;
+    opacity: 0.9;
+    filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.15));
+}

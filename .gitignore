@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+release/
+*.exe
+*.zip
+*.dmg
+*.AppImage
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# OS related files
+.DS_Store
+Thumbs.db
+
+# Database and Local Storage (IMPORTANT)
+*.sqlite
+*.db
+settings.json
+backup/
+
+# Logs
+logs/
+*.log
