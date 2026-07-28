@@ -125,6 +125,7 @@ export function parseZReportData(buffer: Buffer): ZReportDayResult[] {
         const date = extractDate(row[dateIndex]);
         if (!date) return;
 
+        const dayKey = format(date, 'yyyy-MM-dd');
         let rawModelName = String(row[modelIndex] || 'Model belirtilmedi').trim() || 'Model belirtilmedi';
         const modelName = rawModelName
             .replace(/^ROBOROCK\s+/i, '')

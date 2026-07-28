@@ -34,15 +34,22 @@ export function initZReportLogic(api: any, elements: any) {
 
     async function handleZReportFile(file: File) {
         if (!file) return
-        zreportResults.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Hesaplan\u0131yor...</div>'
+        zreportResults.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Hesaplanıyor...</div>'
         zreportAnalytics.style.display = 'none'
 
         try {
-            const buffer = await file.arrayBuffer()
-            const results = await api.calculateZReport(buffer)
+            let fileData: any = null
+            const path = api.getPathForFile ? api.getPathForFile(file) : (file as any).path
+            if (path) {
+                fileData = path
+            } else {
+                fileData = await file.arrayBuffer()
+            }
+            const results = await api.calculateZReport(fileData)
             displayZReportResults(results)
-        } catch (err) {
-            zreportResults.innerHTML = '<div style="text-align:center; color:#ef4444;">Dosya okunurken hata olu\u015ftu.</div>'
+        } catch (err: any) {
+            console.error('Z-Report error:', err)
+            zreportResults.innerHTML = `<div style="text-align:center; color:#ef4444;">Dosya okunurken hata oluştu: ${escapeHtml(err?.message || 'Bilinmeyen hata')}</div>`
         }
     }
 
